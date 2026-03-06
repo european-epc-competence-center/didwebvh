@@ -1,32 +1,26 @@
-# Project Notes Index
+# Notes Index
 
-## Project Summary
+## Project Overview
 
-Java library implementing the `did:webvh` DID method (DID Web + Verifiable History, v1.0).
-- Spec source: `/spec/spec-v1.0/` (local) and https://identity.foundation/didwebvh/v1.0/
-- No Java implementation exists yet; this project fills that gap.
-- Typical implementation size: ~1500–2000 lines of code.
+Bachelor thesis project: security analysis of `did:webvh` (DID method combining `did:web` with verifiable hash-chained history).
 
-## Repository Structure
+- **Thesis topic**: STRIDE-based security analysis of `did:webvh` vs. `did:web`
+- **Practical component**: Java library implementing `did:webvh` (log chaining, key rotation, Data Integrity Proofs)
+
+## Folder Structure
 
 ```
 /
-├── LICENSE
+├── docs/application.md     # Thesis application document (motivation, research question, approach)
 ├── README.md
 ├── CHANGELOG.md
-├── spec/                   ← did:webvh spec source files
-│   ├── spec-v1.0/          ← v1.0 spec (abstract, overview, specification, definitions,
-│   │                          security_and_privacy, references, version, header)
-│   ├── spec-v0.3/ .. v0.5/ ← previous versions
-│   ├── schemas/v1.0/       ← log_entry.json (JSON Schema for log entries)
-│   └── watcherOpenAPI/     ← watcher-v1.0.0.yml (OpenAPI spec for watcher HTTP API)
 └── .cursor/
-    ├── notes/              ← AI knowledge base (this folder)
-    └── rules/              ← Cursor AI rules
+    ├── notes/              # This knowledge base
+    └── rules/              # Cursor AI rules
 ```
-
-> Note: Java source structure (e.g. Maven/Gradle layout) not yet established.
 
 ## Notes Files
 
-- [did-webvh-spec.md](./did-webvh-spec.md) — Comprehensive spec summary based on local `/spec/spec-v1.0/`: DID format (ABNF), DID-to-HTTPS transformation (incl. internationalized domains), log file structure and JSON schema, all parameters with defaults, cryptographic operations (SCID, entry hash, Data Integrity proofs, pre-rotation hashes), all DID operations (create/resolve/update/deactivate) with step-by-step algorithms, authorized key rules, optional features (witnesses, pre-rotation, portability, watchers, /whois, parallel did:web), resolution metadata, error codes, security and privacy considerations, and existing implementations.
+- [SSI / DID Layer vs. X.509 PKI](./ssi-did-vs-x509.md) — Comparison of DID indirection layer vs. X.509 certificate model; key advantages (key rotation, no CA, hash chaining in did:webvh)
+- [did:webvh spec](./did-webvh-spec.md) — Full spec summary: DID format, log structure, cryptographic operations, all DID operations, optional features, security/privacy considerations, existing implementations
+- [KERI](./keri.md) — KERI (Key Event Receipt Infrastructure): AID, KEL, KERL, pre-rotation, trust modalities, did:keri method, and comparison table with did:webvh including research relevance
