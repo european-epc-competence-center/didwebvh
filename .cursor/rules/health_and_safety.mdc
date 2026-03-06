@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+
+# Script Safety Principles
+
+## CRITICAL: No Destructive Git Operations
+
+**Never use destructive git commands in automation scripts without explicit user interaction!**
+
+- **Forbidden Commands**: `git reset --hard`, `git push --force`, `git clean -fd`, etc.
+- **Rationale**: Could lose uncommitted user work or changes in progress
+- **Alternative Approach**:
+  - Display clear error messages with manual recovery steps
+  - Save file content before modifications and restore by rewriting (not git commands)
+  - Let user decide how to handle git state (commit, discard, or keep changes)
+  - Provide exact commands for both completion and rollback paths
+
+**Example**: Release script saves original CHANGELOG.md content and restores it by file write if git operations fail, leaving version files modified for user review.
+
+**Always prioritize data safety over automation convenience!**
