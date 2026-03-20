@@ -1,10 +1,10 @@
 # Antrag für die Abschlussarbeit
 
 **Titel (Deutsch):**
-> did:webvh: Bedrohungsmodellierung und die Grenzen kryptografischer Garantien
+> Implementierung und Bedrohungsmodellierung der did:webvh-Method
 
 **Title (English):**
-> did:webvh: Threat Modeling and the Limits of Cryptographic Guarantees
+> Implementation and Threat Modeling of the did:webvh-Method
 
 ---
 
@@ -34,14 +34,14 @@ Ziel dieser Arbeit ist eine systematische Sicherheitsanalyse von `did:webvh` anh
 
 ### 2.1 Ansatz
 
-Da `did:webvh` ein noch junger Standard ist, ist die wissenschaftliche Auseinandersetzung damit bisher begrenzt. Die Arbeit stützt sich daher primär auf die Spezifikation selbst sowie auf etablierte Literatur zu DID-Sicherheit und Bedrohungsmodellierung. Ergänzend werden die bestehenden Referenzimplementierungen in TypeScript und Python als inhaltliche Referenz herangezogen.
+did:webvh ist ein junger Standard, der in der wissenschaftlichen Literatur bisher vor allem im Kontext von DID-Methodenvergleich als Randthema behandelt wird. Eine dedizierte Sicherheitsanalyse existiert nach aktuellem Kenntnisstand nicht. Diese Arbeit adressiert diese Lücke und stützt sich dabei auf die W3C/DIF-Spezifikation als primäre Quelle, ergänzt durch Literatur zu DID-Sicherheit, DID-Methodenvergleichen und Bedrohungsmodellierungen. Die bestehenden Referenzimplementierungen in TypeScript und Python dienen zusätzlich als inhaltliche Referenz für die praktische Umsetzung des Standards in Java.
 
 Als methodischer Ansatz für die Sicherheitsanalyse wird STRIDE eingesetzt, da dieses Framework einen strukturierten, kategorisierten Vergleich der Sicherheitseigenschaften von `did:web` und `did:webvh` ermöglicht. Alternative DID-Methoden, etwa blockchain-basierte oder zustandslose Ansätze, lösen das Problem der manipulationsresistenten DID grundlegend anders und werden im Rahmen der Einordnung vergleichend betrachtet, jedoch nicht implementiert.
 
-**KERI (Key Event Receipt Infrastructure)** ist ein besonders aufschlussreiches Vergleichsobjekt, weil es dasselbe Problem unabhängig und auf ähnliche Weise löst: selbst-zertifizierende Identifikatoren, ein hash-verkettetes Key Event Log und Pre-Rotation. Ein Vergleich beider Ansätze schärft den Blick dafür, wo `did:webvh` KERI-äquivalente Garantien bietet und wo die Bindung an Web-Infrastruktur neue Angriffsflächen einführt.
+**KERI (Key Event Receipt Infrastructure)** ist ein besonders aufschlussreiches Vergleichsobjekt, weil es dasselbe Problem unabhängig und auf ähnliche Weise löst: selbst-zertifizierende Identifikatoren, ein hash-verkettetes Key Event Log und Pre-Rotation. Ein Vergleich beider Ansätze schärft den Blick dafür, wo did:webvh KERI-äquivalente Garantien bietet und wo die Bindung an Web-Infrastruktur möglicherweise weitere Angriffsflächen bietet.
 
 ### 2.2 Praktische Umsetzung
 
-Im Praxisprojekt wird eine Java-Bibliothek entwickelt, die die `did:webvh`-Spezifikation implementiert und als eigenständiges Package in Java-basierte SSI-Systeme integriert werden kann. Eine Java-Implementierung existiert bisher nicht; die Bibliothek soll wesentliche Aspekte des Standards abdecken, insbesondere Log-Chaining, Key Rotation und die Verifikation von Data Integrity Proofs.
+Im Praxisprojekt wird eine Java-Bibliothek entwickelt, die die did:webvh-Spezifikation implementiert und als eigenständiges Package in Java-basierte SSI-Systeme integriert werden kann. Eine Java-Implementierung existiert bisher nicht; die Bibliothek soll wesentliche Aspekte (CRUD) des Standards abdecken.
 
-Die daraus gewonnenen Erkenntnisse über das Protokoll fließen direkt in die Bachelorarbeit ein, deren Kern eine Sicherheitsanalyse anhand des STRIDE-Modells bildet. Das Ergebnis ist eine strukturierte Analyse, die aufzeigt, welche Bedrohungsklassen `did:webvh` gegenüber `did:web` adressiert und wo die Grenzen der technischen Sicherheitsgarantien liegen.
+Die daraus gewonnenen Erkenntnisse über das Protokoll fließen direkt in die Bachelorarbeit ein, deren Kern eine Sicherheitsanalyse anhand des STRIDE-Modells bildet. Das Ergebnis ist eine strukturierte Analyse, die aufzeigt, welche Bedrohungsklassen `did:webvh` gegenüber `did:web` adressiert und wo die Grenzen der technischen Sicherheitsgarantien liegen, vor allem bei webbasierten DIDs.
