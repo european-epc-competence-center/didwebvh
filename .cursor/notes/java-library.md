@@ -51,10 +51,10 @@ io.didwebvh/
 
 ### `api/`
 Public entry point. Consumers only need this package.
-- `DidWebVh.java` — four static methods: `create(CreateOptions)`, `resolve(String did, ResolveOptions)`, `update(DidLog, UpdateOptions)`, `deactivate(DidLog, DeactivateOptions)`
+- `DidWebVh.java` — four static methods: `create(CreateOptions)`, `resolve(String did, ResolveOptions)`, `update(UpdateOptions)`, `deactivate(DeactivateOptions)`
 - `CreateOptions` — bundles `domain`, `initialDocument`, `updateKeys`, `signer`, `portable`, `nextKeyHashes`, `witness`, `watchers`
-- `UpdateOptions` — bundles `updatedDocument`, `signer`, and optional `updateKeys`, `nextKeyHashes`, `witness`, `watchers`, `witnessProofs`
-- `DeactivateOptions` — bundles `signer`; kept as named class for extensibility
+- `UpdateOptions` — bundles `log`, `updatedDocument`, `signer`, and optional `updateKeys`, `nextKeyHashes`, `witness`, `watchers`, `witnessProofs`
+- `DeactivateOptions` — bundles `log` and `signer`
 - `ResolveOptions` — bundles `verifier` (required) plus optional version filters: `versionId`, `versionTime`, `versionNumber`
 - `CreateResult` / `UpdateResult` / `ResolveResult` / `DeactivateResult` — immutable records
 

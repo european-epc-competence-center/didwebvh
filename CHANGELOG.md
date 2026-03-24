@@ -9,12 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `update` and `deactivate` now take a single options object; `DidLog` moved inside `UpdateOptions` and `DeactivateOptions`
+  - `DidWebVh.update(DidLog, UpdateOptions)` → `DidWebVh.update(UpdateOptions)` (log via `UpdateOptions.builder().log(...)`)
+  - `DidWebVh.deactivate(DidLog, DeactivateOptions)` → `DidWebVh.deactivate(DeactivateOptions)` (log via `DeactivateOptions.builder().log(...)`)
 - Redesigned public API of `didwebvh-java` so `Parameters` is internal-only (never in a public method signature)
   - `CreateOptions` now bundles all creation inputs: `domain`, `initialDocument`, `updateKeys`, `signer`, `portable`, `nextKeyHashes`, `witness`, `watchers`
-  - `UpdateOptions` now bundles all update inputs: `updatedDocument`, `signer`, and optional `updateKeys`, `nextKeyHashes`, `witness`, `watchers`, `witnessProofs`
-  - `DeactivateOptions` now holds `signer` (replaces the empty placeholder)
+  - `UpdateOptions` now bundles all update inputs: `log`, `updatedDocument`, `signer`, and optional `updateKeys`, `nextKeyHashes`, `witness`, `watchers`, `witnessProofs`
+  - `DeactivateOptions` now holds `log` and `signer`
   - `ResolveOptions` now holds `verifier` alongside the optional version filters (`versionId`, `versionTime`, `versionNumber`)
-  - `DidWebVh` facade reduced to four methods: `create(CreateOptions)`, `resolve(String, ResolveOptions)`, `update(DidLog, UpdateOptions)`, `deactivate(DidLog, DeactivateOptions)`
+  - `DidWebVh` facade reduced to four methods: `create(CreateOptions)`, `resolve(String, ResolveOptions)`, `update(UpdateOptions)`, `deactivate(DeactivateOptions)`
   - Removed `resolveFromLog` from the public facade; `LogBasedResolver.resolveFromLog` remains available for advanced use
 
 ### Fixed

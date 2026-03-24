@@ -2,7 +2,6 @@ package io.didwebvh.operation;
 
 import io.didwebvh.api.UpdateOptions;
 import io.didwebvh.api.UpdateResult;
-import io.didwebvh.model.DidLog;
 
 /**
  * Implements the did:webvh {@code Update} operation.
@@ -24,13 +23,12 @@ public final class UpdateOperation {
     private UpdateOperation() {}
 
     /**
-     * Appends an update entry to the given log.
+     * Appends an update entry to the log supplied in {@code options}.
      *
-     * @param log     the current (validated) log
-     * @param options update options (new document, signer, and any parameter changes)
+     * @param options update options (current log, new document, signer, and any parameter changes)
      * @return the result containing the updated log
      */
-    public static UpdateResult update(DidLog log, UpdateOptions options) {
+    public static UpdateResult update(UpdateOptions options) {
         // TODO: implement
         throw new UnsupportedOperationException("TODO");
     }

@@ -2,6 +2,7 @@ package io.didwebvh.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.didwebvh.crypto.Signer;
+import io.didwebvh.model.DidLog;
 import io.didwebvh.model.WitnessParameter;
 import io.didwebvh.witness.WitnessProofCollection;
 
@@ -10,9 +11,9 @@ import java.util.List;
 /**
  * Options for the {@link DidWebVh#update} operation.
  *
- * <p>Use the nested {@link Builder} to construct instances. {@code updatedDocument}
- * and {@code signer} are required; all other fields are optional and only need to
- * be supplied when that aspect of the DID is changing.
+ * <p>Use the nested {@link Builder} to construct instances. {@code log},
+ * {@code updatedDocument}, and {@code signer} are required; all other fields are optional
+ * and only need to be supplied when that aspect of the DID is changing.
  *
  * <p>The library computes the parameter delta between the current log state and these
  * options; callers never need to construct a {@code Parameters} instance directly.
@@ -20,6 +21,7 @@ import java.util.List;
  * <p>Example (document-only update):
  * <pre>{@code
  * var options = UpdateOptions.builder()
+ *     .log(currentLog)
  *     .updatedDocument(newDoc)
  *     .signer(signer)
  *     .build();
@@ -28,6 +30,7 @@ import java.util.List;
  * <p>Example (key rotation):
  * <pre>{@code
  * var options = UpdateOptions.builder()
+ *     .log(currentLog)
  *     .updatedDocument(newDoc)
  *     .updateKeys(List.of(newPublicKeyMultibase))
  *     .signer(newSigner)
@@ -35,6 +38,9 @@ import java.util.List;
  * }</pre>
  */
 public final class UpdateOptions {
+
+    /** The current log to which the update entry will be appended. */
+    private final DidLog log;
 
     /** The new DID document state to record in this log entry. */
     private final JsonNode updatedDocument;
@@ -73,6 +79,7 @@ public final class UpdateOptions {
     private final WitnessProofCollection witnessProofs;
 
     private UpdateOptions(Builder builder) {
+        this.log = builder.log;
         this.updatedDocument = builder.updatedDocument;
         this.signer = builder.signer;
         this.updateKeys = builder.updateKeys;
@@ -82,6 +89,7 @@ public final class UpdateOptions {
         this.witnessProofs = builder.witnessProofs;
     }
 
+    public DidLog getLog() { return log; }
     public JsonNode getUpdatedDocument() { return updatedDocument; }
     public Signer getSigner() { return signer; }
     public List<String> getUpdateKeys() { return updateKeys; }
@@ -95,6 +103,7 @@ public final class UpdateOptions {
     }
 
     public static final class Builder {
+        private DidLog log;
         private JsonNode updatedDocument;
         private Signer signer;
         private List<String> updateKeys;
@@ -104,6 +113,11 @@ public final class UpdateOptions {
         private WitnessProofCollection witnessProofs;
 
         private Builder() {}
+
+        public Builder log(DidLog log) {
+            this.log = log;
+            return this;
+        }
 
         public Builder updatedDocument(JsonNode updatedDocument) {
             this.updatedDocument = updatedDocument;

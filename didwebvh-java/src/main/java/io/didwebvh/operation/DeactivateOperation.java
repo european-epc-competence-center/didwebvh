@@ -2,7 +2,6 @@ package io.didwebvh.operation;
 
 import io.didwebvh.api.DeactivateOptions;
 import io.didwebvh.api.DeactivateResult;
-import io.didwebvh.model.DidLog;
 
 /**
  * Implements the did:webvh {@code Deactivate} operation.
@@ -23,13 +22,12 @@ public final class DeactivateOperation {
     private DeactivateOperation() {}
 
     /**
-     * Appends a deactivation entry to the given log.
+     * Appends a deactivation entry to the log supplied in {@code options}.
      *
-     * @param log     the current (validated) log
-     * @param options deactivation options (signing key)
+     * @param options deactivation options (current log and signing key)
      * @return the result containing the updated log with the deactivation entry
      */
-    public static DeactivateResult deactivate(DidLog log, DeactivateOptions options) {
+    public static DeactivateResult deactivate(DeactivateOptions options) {
         // TODO: implement
         throw new UnsupportedOperationException("TODO");
     }

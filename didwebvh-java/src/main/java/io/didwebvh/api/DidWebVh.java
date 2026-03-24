@@ -1,6 +1,5 @@
 package io.didwebvh.api;
 
-import io.didwebvh.model.DidLog;
 import io.didwebvh.operation.CreateOperation;
 import io.didwebvh.operation.DeactivateOperation;
 import io.didwebvh.operation.UpdateOperation;
@@ -71,12 +70,11 @@ public final class DidWebVh {
      * {@code watchers} in the options when those aspects of the DID are actually changing;
      * unchanged fields are inherited from the previous log entry automatically.
      *
-     * @param log     the current (validated) log
-     * @param options update options including the new document and signing key
+     * @param options update options including the current log, the new document, and signing key
      * @return the update result containing the extended log
      */
-    public static UpdateResult update(DidLog log, UpdateOptions options) {
-        return UpdateOperation.update(log, options);
+    public static UpdateResult update(UpdateOptions options) {
+        return UpdateOperation.update(options);
     }
 
     // -------------------------------------------------------------------------
@@ -89,11 +87,10 @@ public final class DidWebVh {
      * <p>After deactivation, resolvers will not return the DID document and will
      * include {@code deactivated: true} in the resolution metadata.
      *
-     * @param log     the current (validated) log
-     * @param options deactivation options including the signing key
+     * @param options deactivation options including the current log and signing key
      * @return the deactivation result containing the updated log
      */
-    public static DeactivateResult deactivate(DidLog log, DeactivateOptions options) {
-        return DeactivateOperation.deactivate(log, options);
+    public static DeactivateResult deactivate(DeactivateOptions options) {
+        return DeactivateOperation.deactivate(options);
     }
 }
