@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Corrected license declaration in `didwebvh-java/pom.xml` from Apache 2.0 to GNU GPL v3.0 to match the root `LICENSE` file
+
 ### Added
 
 - Java library scaffold: `didwebvh-java/` Maven project (`io.didwebvh:didwebvh-java:0.1.0-SNAPSHOT`, Java 21)
