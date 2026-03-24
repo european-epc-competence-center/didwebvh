@@ -1,11 +1,8 @@
 package io.didwebvh.operation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.didwebvh.api.UpdateOptions;
 import io.didwebvh.api.UpdateResult;
-import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.DidLog;
-import io.didwebvh.model.Parameters;
 
 /**
  * Implements the did:webvh {@code Update} operation.
@@ -14,7 +11,7 @@ import io.didwebvh.model.Parameters;
  * <ol>
  *   <li>Resolve the current state from the existing log (validates the full chain).</li>
  *   <li>Reject if the DID is deactivated.</li>
- *   <li>Compute the parameter delta: {@link Parameters#diff(Parameters)}.</li>
+ *   <li>Compute the parameter delta between the active state and the requested options.</li>
  *   <li>Build the new entry: {@code versionId} = previous {@code versionId}, new
  *       {@code versionTime}, updated {@code state}, delta {@code parameters}.</li>
  *   <li>Compute the new entry hash and set {@code versionId = "{n+1}-{hash}"}.</li>
@@ -29,20 +26,11 @@ public final class UpdateOperation {
     /**
      * Appends an update entry to the given log.
      *
-     * @param log             the current (validated) log
-     * @param updatedDocument the new DID document state
-     * @param paramsUpdate    parameter changes to apply ({@code null} if document-only update)
-     * @param signer          the current update signing key
-     * @param options         additional update options
+     * @param log     the current (validated) log
+     * @param options update options (new document, signer, and any parameter changes)
      * @return the result containing the updated log
-     * @implNote TODO: implement the full update flow
      */
-    public static UpdateResult update(
-            DidLog log,
-            JsonNode updatedDocument,
-            Parameters paramsUpdate,
-            Signer signer,
-            UpdateOptions options) {
+    public static UpdateResult update(DidLog log, UpdateOptions options) {
         // TODO: implement
         throw new UnsupportedOperationException("TODO");
     }

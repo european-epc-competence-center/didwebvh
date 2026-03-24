@@ -5,12 +5,23 @@ import io.didwebvh.crypto.Verifier;
 import java.time.Instant;
 
 /**
- * Options for {@link DidWebVh#resolve} and {@link DidWebVh#resolveFromLog}.
+ * Options for {@link DidWebVh#resolve}.
  *
- * <p>All fields are optional. When all version filters are absent, the latest valid
- * version of the DID document is returned.
+ * <p>{@code verifier} is required. All version filter fields are optional; when all
+ * are absent, the latest valid version of the DID document is returned.
+ *
+ * <p>Example:
+ * <pre>{@code
+ * var options = ResolveOptions.builder()
+ *     .verifier(verifier)
+ *     .versionNumber(3)   // optional: resolve a specific version
+ *     .build();
+ * }</pre>
  */
 public final class ResolveOptions {
+
+    /** The verifier used to validate Data Integrity proofs on each log entry. */
+    private final Verifier verifier;
 
     /** Return the version whose {@code versionId} exactly matches this string. */
     private final String versionId;
@@ -21,44 +32,52 @@ public final class ResolveOptions {
     /** Return the version with this version number (the integer prefix of {@code versionId}). */
     private final Integer versionNumber;
 
-    /**
-     * Optional verifier override for use when calling the resolver directly.
-     * When using {@link DidWebVh#resolve} or {@link DidWebVh#resolveFromLog}, the verifier
-     * is passed as a top-level argument and this field is ignored.
-     */
-    private final Verifier verifier;
-
     private ResolveOptions(Builder builder) {
+        this.verifier = builder.verifier;
         this.versionId = builder.versionId;
         this.versionTime = builder.versionTime;
         this.versionNumber = builder.versionNumber;
-        this.verifier = builder.verifier;
     }
 
-    public static ResolveOptions defaults() {
-        return new Builder().build();
-    }
-
+    public Verifier getVerifier() { return verifier; }
     public String getVersionId() { return versionId; }
     public Instant getVersionTime() { return versionTime; }
     public Integer getVersionNumber() { return versionNumber; }
-    public Verifier getVerifier() { return verifier; }
 
     public static Builder builder() {
         return new Builder();
     }
 
     public static final class Builder {
+        private Verifier verifier;
         private String versionId;
         private Instant versionTime;
         private Integer versionNumber;
-        private Verifier verifier;
 
-        public Builder versionId(String versionId) { this.versionId = versionId; return this; }
-        public Builder versionTime(Instant versionTime) { this.versionTime = versionTime; return this; }
-        public Builder versionNumber(int versionNumber) { this.versionNumber = versionNumber; return this; }
-        public Builder verifier(Verifier verifier) { this.verifier = verifier; return this; }
+        private Builder() {}
 
-        public ResolveOptions build() { return new ResolveOptions(this); }
+        public Builder verifier(Verifier verifier) {
+            this.verifier = verifier;
+            return this;
+        }
+
+        public Builder versionId(String versionId) {
+            this.versionId = versionId;
+            return this;
+        }
+
+        public Builder versionTime(Instant versionTime) {
+            this.versionTime = versionTime;
+            return this;
+        }
+
+        public Builder versionNumber(int versionNumber) {
+            this.versionNumber = versionNumber;
+            return this;
+        }
+
+        public ResolveOptions build() {
+            return new ResolveOptions(this);
+        }
     }
 }

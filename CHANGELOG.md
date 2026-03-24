@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Redesigned public API of `didwebvh-java` so `Parameters` is internal-only (never in a public method signature)
+  - `CreateOptions` now bundles all creation inputs: `domain`, `initialDocument`, `updateKeys`, `signer`, `portable`, `nextKeyHashes`, `witness`, `watchers`
+  - `UpdateOptions` now bundles all update inputs: `updatedDocument`, `signer`, and optional `updateKeys`, `nextKeyHashes`, `witness`, `watchers`, `witnessProofs`
+  - `DeactivateOptions` now holds `signer` (replaces the empty placeholder)
+  - `ResolveOptions` now holds `verifier` alongside the optional version filters (`versionId`, `versionTime`, `versionNumber`)
+  - `DidWebVh` facade reduced to four methods: `create(CreateOptions)`, `resolve(String, ResolveOptions)`, `update(DidLog, UpdateOptions)`, `deactivate(DidLog, DeactivateOptions)`
+  - Removed `resolveFromLog` from the public facade; `LogBasedResolver.resolveFromLog` remains available for advanced use
+
 ### Fixed
 
 - Corrected license declaration in `didwebvh-java/pom.xml` from Apache 2.0 to GNU GPL v3.0 to match the root `LICENSE` file

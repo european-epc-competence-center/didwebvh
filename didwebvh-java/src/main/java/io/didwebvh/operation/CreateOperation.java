@@ -1,10 +1,7 @@
 package io.didwebvh.operation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
-import io.didwebvh.crypto.Signer;
-import io.didwebvh.model.Parameters;
 
 /**
  * Implements the did:webvh {@code Create} operation.
@@ -29,18 +26,10 @@ public final class CreateOperation {
     /**
      * Creates the genesis DID log entry.
      *
-     * @param initialDocument the initial DID document (may contain {@code {SCID}} placeholders)
-     * @param initialParams   the initial parameters ({@code method}, {@code updateKeys}, etc.)
-     * @param signer          the signing key (must correspond to one of the {@code updateKeys})
-     * @param options         additional creation options (domain, portable, witnesses, etc.)
-     * @return the result containing the DID string, resolved document, and single-entry log
-     * @implNote TODO: implement the full create flow
+     * @param options creation options (domain, initial document, update keys, signer, etc.)
+     * @return the result containing the DID string, resolved document, metadata, and single-entry log
      */
-    public static CreateResult create(
-            JsonNode initialDocument,
-            Parameters initialParams,
-            Signer signer,
-            CreateOptions options) {
+    public static CreateResult create(CreateOptions options) {
         // TODO: implement
         throw new UnsupportedOperationException("TODO");
     }

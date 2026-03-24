@@ -1,4 +1,5 @@
 target/
+didwebvh-java/.m2/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup

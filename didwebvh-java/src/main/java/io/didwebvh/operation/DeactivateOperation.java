@@ -2,7 +2,6 @@ package io.didwebvh.operation;
 
 import io.didwebvh.api.DeactivateOptions;
 import io.didwebvh.api.DeactivateResult;
-import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.DidLog;
 
 /**
@@ -27,15 +26,10 @@ public final class DeactivateOperation {
      * Appends a deactivation entry to the given log.
      *
      * @param log     the current (validated) log
-     * @param signer  the current update signing key (for the last authorized proof)
-     * @param options additional options
+     * @param options deactivation options (signing key)
      * @return the result containing the updated log with the deactivation entry
-     * @implNote TODO: implement the deactivate flow
      */
-    public static DeactivateResult deactivate(
-            DidLog log,
-            Signer signer,
-            DeactivateOptions options) {
+    public static DeactivateResult deactivate(DidLog log, DeactivateOptions options) {
         // TODO: implement
         throw new UnsupportedOperationException("TODO");
     }

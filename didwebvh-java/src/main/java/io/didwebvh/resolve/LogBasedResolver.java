@@ -2,7 +2,6 @@ package io.didwebvh.resolve;
 
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
-import io.didwebvh.crypto.Verifier;
 import io.didwebvh.model.DidLog;
 
 /**
@@ -16,21 +15,24 @@ import io.didwebvh.model.DidLog;
  *   <li>Returns the DID document at the requested version (latest if unspecified).</li>
  *   <li>Populates {@link io.didwebvh.model.ResolutionMetadata}.</li>
  * </ol>
+ *
+ * <p>The {@link io.didwebvh.crypto.Verifier} used for proof validation is taken from
+ * {@link ResolveOptions#getVerifier()}.
+ *
+ * <p>This class is intentionally not exposed on the {@link io.didwebvh.api.DidWebVh}
+ * facade. Advanced callers may use it directly when they have already obtained the log
+ * through a non-HTTP channel.
  */
 public final class LogBasedResolver implements DidResolver {
 
-    private final Verifier verifier;
-
-    public LogBasedResolver(Verifier verifier) {
-        this.verifier = verifier;
-    }
+    public LogBasedResolver() {}
 
     /**
      * Resolves the DID from the given pre-fetched log.
      *
      * @param did     the DID string (used to verify the {@code id} field of the resolved document)
      * @param log     the pre-parsed log
-     * @param options resolution options
+     * @param options resolution options including the verifier and optional version filters
      * @return the resolution result
      */
     public ResolveResult resolveFromLog(String did, DidLog log, ResolveOptions options) {

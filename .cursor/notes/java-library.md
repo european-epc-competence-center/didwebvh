@@ -51,8 +51,11 @@ io.didwebvh/
 
 ### `api/`
 Public entry point. Consumers only need this package.
-- `DidWebVh.java` — static methods: `create`, `resolve`, `resolveFromLog`, `update`, `deactivate`
-- `CreateOptions` / `UpdateOptions` / `ResolveOptions` / `DeactivateOptions` — builder pattern
+- `DidWebVh.java` — four static methods: `create(CreateOptions)`, `resolve(String did, ResolveOptions)`, `update(DidLog, UpdateOptions)`, `deactivate(DidLog, DeactivateOptions)`
+- `CreateOptions` — bundles `domain`, `initialDocument`, `updateKeys`, `signer`, `portable`, `nextKeyHashes`, `witness`, `watchers`
+- `UpdateOptions` — bundles `updatedDocument`, `signer`, and optional `updateKeys`, `nextKeyHashes`, `witness`, `watchers`, `witnessProofs`
+- `DeactivateOptions` — bundles `signer`; kept as named class for extensibility
+- `ResolveOptions` — bundles `verifier` (required) plus optional version filters: `versionId`, `versionTime`, `versionNumber`
 - `CreateResult` / `UpdateResult` / `ResolveResult` / `DeactivateResult` — immutable records
 
 ### `model/`
@@ -108,6 +111,7 @@ Typed exception hierarchy; maps to spec error codes (`notFound`, `invalidDid`).
 
 1. **`DidLog` is source of truth** — mutations return a new `DidLog`; the caller persists (no file I/O in core)
 2. **Caller-supplied crypto** — `Signer`/`Verifier` are interfaces only; no built-in key provider is shipped
-3. **`Parameters.validate()` + `Parameters.diff()`** — encode the bulk of spec rules (pre-rotation, portable immutability, deactivation)
-4. **v1.0 only** — no spec version dispatch for now; add `method_versions/` subpackage later if needed
-5. **`HttpResolver` in `resolve/`** — same module; extract to a separate module if publishing to Maven Central later becomes a goal
+3. **`Parameters` is internal** — never appears in public API signatures; assembled by operations from the options objects
+4. **`Parameters.validate()` + `Parameters.diff()`** — encode the bulk of spec rules (pre-rotation, portable immutability, deactivation); used internally by operations and `LogValidator`
+5. **v1.0 only** — no spec version dispatch for now; add `method_versions/` subpackage later if needed
+6. **`HttpResolver` in `resolve/`** — same module; extract to a separate module if publishing to Maven Central later becomes a goal

@@ -2,7 +2,6 @@ package io.didwebvh.resolve;
 
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
-import io.didwebvh.crypto.Verifier;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
@@ -17,6 +16,9 @@ import java.time.Duration;
  *   <li>All connections MUST use HTTPS (spec requirement)</li>
  * </ul>
  *
+ * <p>The {@link io.didwebvh.crypto.Verifier} for proof validation is taken from
+ * {@link ResolveOptions#getVerifier()}.
+ *
  * <p>Note: the spec recommends DNS-over-HTTPS (RFC 8484) during resolution to prevent
  * tracking. That is an option for future implementation.
  */
@@ -27,8 +29,8 @@ public final class HttpResolver implements DidResolver {
     private final LogBasedResolver delegate;
     private final HttpClient httpClient;
 
-    public HttpResolver(Verifier verifier) {
-        this.delegate = new LogBasedResolver(verifier);
+    public HttpResolver() {
+        this.delegate = new LogBasedResolver();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(DEFAULT_TIMEOUT)
                 .build();
