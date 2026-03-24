@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Java library scaffold: `didwebvh-java/` Maven project (`io.didwebvh:didwebvh-java:0.1.0-SNAPSHOT`, Java 21)
+  - Package structure: `api/`, `model/`, `crypto/`, `log/`, `operation/`, `resolve/`, `witness/`, `exception/`
+  - Public facade `DidWebVh` with `create`, `resolve`, `resolveFromLog`, `update`, `deactivate` entry points
+  - All data models: `DidLog`, `DidLogEntry`, `Parameters`, `ResolutionMetadata`, `DataIntegrityProof`, `WitnessParameter`
+  - Crypto interfaces (`Signer`, `Verifier`) and stubs (`Ed25519Signer`, `DataIntegrity`, `Multiformats`, `JcsCanonicalizer`)
+  - CRUD operation stubs: `CreateOperation`, `UpdateOperation`, `DeactivateOperation`
+  - Resolution stubs: `LogBasedResolver`, `HttpResolver`, `DidUrlTransformer`
+  - Witness stubs: `WitnessProofCollection`, `WitnessValidator`
+  - Typed exception hierarchy: `DidWebVhException`, `InvalidDidException`, `ResolutionException`, `LogValidationException`
+  - Cross-cutting constants: `DidWebVhConstants`
+  - Architecture notes: `.cursor/notes/java-library.md`
 - Initial project setup: `README.md`, `CHANGELOG.md`
 - `.cursor/notes` knowledge base with `did:webvh` specification research
 - Extended `docs/application.md` section 1.1 with paragraph on DID layer advantages over X.509/PKI
