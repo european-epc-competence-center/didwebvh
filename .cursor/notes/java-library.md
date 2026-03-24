@@ -2,7 +2,7 @@
 
 ## Location
 
-`/home/yannik/git/didwebvh/didwebvh-java/` — Maven project at repo root, separate from spec files.
+`/didwebvh/didwebvh-java/` — Maven project at repo root, separate from spec files.
 
 ## Maven Coordinates
 
