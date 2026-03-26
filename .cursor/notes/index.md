@@ -37,3 +37,4 @@ Bachelor thesis project: security analysis of `did:webvh` (DID method combining 
 - [did:webvh spec](./did-webvh-spec.md) — Full spec summary: DID format, log structure, cryptographic operations, all DID operations, optional features, security/privacy considerations, existing implementations
 - [KERI](./keri.md) — KERI (Key Event Receipt Infrastructure): AID, KEL, KERL, pre-rotation, trust modalities, did:keri method, and comparison table with did:webvh including research relevance
 - [Java Library Architecture](./java-library.md) — Maven setup, package structure, design decisions
+- [Crypto Primitives](./crypto-primitives.md) — Beginner-friendly explanation of JcsCanonicalizer, Multiformats, DataIntegrity, and DidLogEntry helpers: what they do, which libraries to use, and how to test them
