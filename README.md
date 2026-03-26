@@ -1,11 +1,14 @@
 # did:webvh Java Library
 
+[![Tests](https://github.com/european-epc-competence-center/didwebvh/actions/workflows/ci.yml/badge.svg)](https://github.com/european-epc-competence-center/didwebvh/actions/workflows/ci.yml)
+
 A Java library implementing the [`did:webvh`](https://identity.foundation/didwebvh/v1.0/) DID method (DID Web + Verifiable History). `did:webvh` enhances `did:web` with a cryptographically verifiable, tamper-evident history, self-certifying identifiers (SCIDs), and optional features such as key pre-rotation, witnesses, and DID portability — without relying on a ledger.
 
 ## Repository Overview
 
 ```
 /
+├── .github/workflows/ # CI: tests on push to `main` (`ci.yml`)
 ├── didwebvh-java/     # Java library (Maven, Java 21) — main implementation
 ├── spec/              # did:webvh specification v1.0 source files
 ├── docs/              # Thesis documentation
@@ -28,7 +31,7 @@ This library targets `did:webvh` **v1.0**:
 cd didwebvh-java
 mvn compile
 
-# Run tests (once implemented)
+# Run tests
 mvn test
 
 # Package as JAR

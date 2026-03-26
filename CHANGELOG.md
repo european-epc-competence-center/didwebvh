@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- README: GitHub Actions CI status badge (links to workflow runs) and overview line for `.github/workflows/`
+
 ### Changed
 
 - `update` and `deactivate` now take a single options object; `DidLog` moved inside `UpdateOptions` and `DeactivateOptions`
