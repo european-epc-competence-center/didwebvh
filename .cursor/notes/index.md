@@ -11,6 +11,7 @@ Bachelor thesis project: security analysis of `did:webvh` (DID method combining 
 
 ```
 /
+├── .github/workflows/ci.yml  # GitHub Actions CI: mvn verify on push to main
 ├── docs/application.md       # Thesis application document (motivation, research question, approach)
 ├── README.md
 ├── CHANGELOG.md
