@@ -16,7 +16,7 @@ import java.util.List;
  * to avoid prematurely binding to a specific DID doc schema.
  *
  * <p>Wire format:
- * <pre>{@code
+ * <pre>
  * {
  *   "versionId": "1-QmXxx...",
  *   "versionTime": "2025-01-23T04:12:36Z",
@@ -24,7 +24,7 @@ import java.util.List;
  *   "state": { ... },
  *   "proof": [ { ... } ]
  * }
- * }</pre>
+ * </pre>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -41,16 +41,14 @@ public record DidLogEntry(
      * For example, {@code "3-QmXxx..."} → {@code 3}.
      */
     public int versionNumber() {
-        // TODO: implement parsing
-        throw new UnsupportedOperationException("TODO");
+        return Integer.parseInt(versionId.substring(0, versionId.indexOf('-')));
     }
 
     /**
      * Returns the entry hash portion of the {@code versionId} (the base58btc multihash after the {@code -}).
      */
     public String entryHash() {
-        // TODO: implement parsing
-        throw new UnsupportedOperationException("TODO");
+        return versionId.substring(versionId.indexOf('-') + 1);
     }
 
     /**
