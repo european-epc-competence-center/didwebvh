@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `JcsCanonicalizerTest`: optional before/after JSON lines (Jackson compact vs RFC 8785) when run with `-Djcs.test.verbose=true`
+- `JcsCanonicalizer`: implemented RFC 8785 JCS canonicalization using `io.github.erdtman:java-json-canonicalization:1.1` (RFC Appendix G reference implementation); added 10 tests including the exact RFC §3.2.4 byte-vector test
 - README: GitHub Actions CI status badge (links to workflow runs) and overview line for `.github/workflows/`
 
 ### Changed
 
+- `JcsCanonicalizerTest`: simpler cases use `ObjectNode` / `ArrayNode`; RFC §3.2.4 vector uses literal JSON + `readTree` (wire path); document why `JsonNode#toString()` is not used for wire JSON
 - `update` and `deactivate` now take a single options object; `DidLog` moved inside `UpdateOptions` and `DeactivateOptions`
   - `DidWebVh.update(DidLog, UpdateOptions)` → `DidWebVh.update(UpdateOptions)` (log via `UpdateOptions.builder().log(...)`)
   - `DidWebVh.deactivate(DidLog, DeactivateOptions)` → `DidWebVh.deactivate(DeactivateOptions)` (log via `DeactivateOptions.builder().log(...)`)
@@ -26,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `JcsCanonicalizer`: removed debug `System.out.println` of intermediate JSON from production code
 - Corrected license declaration in `didwebvh-java/pom.xml` from Apache 2.0 to GNU GPL v3.0 to match the root `LICENSE` file
 
 ### Added

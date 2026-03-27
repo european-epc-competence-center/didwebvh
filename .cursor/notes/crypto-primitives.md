@@ -32,16 +32,17 @@ Result: two machines with the same logical JSON always produce byte-identical ou
 
 ### Implementation
 
-Pure Jackson — no external lib needed:
-1. Recursively walk the `JsonNode` tree
-2. For `ObjectNode`: collect all `(key, value)` pairs into a `TreeMap<String, JsonNode>` (which sorts by natural Java string order = Unicode codepoint order for BMP characters), rebuild as `ObjectNode`
-3. For `ArrayNode`: recurse on each element, preserve order
-4. For leaf nodes (strings, numbers, booleans, null): pass through unchanged
-5. Serialize the sorted tree with `ObjectMapper.writeValueAsBytes()` (compact, no spaces)
+**Library:** `io.github.erdtman:java-json-canonicalization:1.1` — the RFC's reference Java implementation (co-authored by RFC author Anders Rundgren, listed in RFC Appendix G). Zero transitive dependencies.
 
-**Known limitation:** ES2019 float serialization edge cases (e.g., `1e308`) differ from Java's `Double.toString()`. This is acceptable because did:webvh log entries only contain small integers (TTL, witness threshold). Add a comment in the class.
+Implementation is a thin delegation:
+1. Serialize `JsonNode` → JSON string with Jackson (`MAPPER.writeValueAsString(node)`)
+2. Pass to `new JsonCanonicalizer(json).getEncodedUTF8()` which handles key sorting, ES2019 number format, and string escaping
+
+See [RFC 8785 JCS Explained](./rfc8785-jcs-explained.md) for the full deep-dive on why the number serialization part (Ryu/Grisu3) is hard and why using the reference library is the correct choice.
 
 ### Testing
+
+To print Jackson’s compact JSON and the final JCS string for each `JcsCanonicalizerTest` case: `mvn test -Djcs.test.verbose=true` (or add the same `-D` in the IDE run config). Default runs stay quiet.
 
 Reference: RFC 8785 Appendix B contains exact test vectors with expected byte output.
 

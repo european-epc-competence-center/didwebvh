@@ -39,3 +39,4 @@ Bachelor thesis project: security analysis of `did:webvh` (DID method combining 
 - [KERI](./keri.md) — KERI (Key Event Receipt Infrastructure): AID, KEL, KERL, pre-rotation, trust modalities, did:keri method, and comparison table with did:webvh including research relevance
 - [Java Library Architecture](./java-library.md) — Maven setup, package structure, design decisions
 - [Crypto Primitives](./crypto-primitives.md) — Beginner-friendly explanation of JcsCanonicalizer, Multiformats, DataIntegrity, and DidLogEntry helpers: what they do, which libraries to use, and how to test them
+- [RFC 8785 JCS Explained](./rfc8785-jcs-explained.md) — Deep dive into the JSON Canonicalization Scheme: why it exists, all four rules (whitespace, string escaping, number format, key sorting), why number serialization is hard (Ryu/Grisu3), and why pure Jackson is correct for did:webvh
