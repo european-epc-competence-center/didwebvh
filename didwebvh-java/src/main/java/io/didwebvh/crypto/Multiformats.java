@@ -1,5 +1,13 @@
 package io.didwebvh.crypto;
 
+import io.didwebvh.DidWebVhConstants;
+import io.didwebvh.exception.InvalidDidException;
+import io.ipfs.multibase.Multibase;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
+
 /**
  * Utilities for multibase encoding/decoding and multihash construction.
  *
@@ -23,8 +31,8 @@ public final class Multiformats {
      * @return the multibase-encoded string including the {@code z} prefix
      */
     public static String encodeBase58btc(byte[] bytes) {
-        // TODO: implement
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(bytes, "bytes");
+        return Multibase.encode(Multibase.Base.Base58BTC, bytes);
     }
 
     /**
@@ -32,11 +40,22 @@ public final class Multiformats {
      *
      * @param multibase the multibase string (must start with {@code z})
      * @return the decoded raw bytes
-     * @throws io.didwebvh.exception.InvalidDidException if the prefix is not {@code z}
+     * @throws InvalidDidException if the prefix is not {@code z} or the payload is invalid
      */
     public static byte[] decodeBase58btc(String multibase) {
-        // TODO: implement
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(multibase, "multibase");
+        if (multibase.isEmpty()) {
+            throw new InvalidDidException("Multibase string must be non-empty");
+        }
+        if (multibase.charAt(0) != DidWebVhConstants.MULTIBASE_BASE58BTC_PREFIX) {
+            throw new InvalidDidException(
+                    "Expected base58btc multibase (prefix 'z'), got prefix '" + multibase.charAt(0) + "'");
+        }
+        try {
+            return Multibase.decode(multibase);
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            throw new InvalidDidException("Invalid multibase base58btc payload", e);
+        }
     }
 
     /**
@@ -44,10 +63,18 @@ public final class Multiformats {
      *
      * @param hashBytes a raw 32-byte SHA-256 digest
      * @return the multihash-prefixed byte array (34 bytes total)
+     * @throws IllegalArgumentException if {@code hashBytes} is not exactly 32 bytes
      */
     public static byte[] wrapSha256Multihash(byte[] hashBytes) {
-        // TODO: implement
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(hashBytes, "hashBytes");
+        if (hashBytes.length != 32) {
+            throw new IllegalArgumentException("Expected 32-byte SHA-256 digest, got " + hashBytes.length + " bytes");
+        }
+        byte[] out = new byte[34];
+        out[0] = DidWebVhConstants.MULTIHASH_SHA2_256_CODE;
+        out[1] = DidWebVhConstants.MULTIHASH_SHA2_256_DIGEST_LENGTH;
+        System.arraycopy(hashBytes, 0, out, 2, 32);
+        return out;
     }
 
     /**
@@ -58,7 +85,13 @@ public final class Multiformats {
      * @return the encoded multihash string with {@code z} prefix
      */
     public static String sha256Multihash(byte[] input) {
-        // TODO: implement
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(input, "input");
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(input);
+            return encodeBase58btc(wrapSha256Multihash(digest));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available in this JVM", e);
+        }
     }
 }

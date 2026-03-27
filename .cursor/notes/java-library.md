@@ -21,7 +21,7 @@ Java 21 LTS. Single module (no multi-module split).
 | `com.fasterxml.jackson.core:jackson-databind` | JSON (de)serialization, `JsonNode` for DID docs |
 | `org.bouncycastle:bcprov-jdk18on` | Ed25519 signing/verification (tests and `Verifier` helpers); not required for multibase |
 | `io.github.erdtman:java-json-canonicalization` | RFC 8785 JCS in `JcsCanonicalizer` (RFC reference implementation) |
-| `com.github.multiformats:java-multibase` (via JitPack) | Multibase base58btc (`z…`) in `Multiformats` — planned / replace ad-hoc base58 |
+| `com.github.multiformats:java-multibase` (via JitPack) | Multibase base58btc (`z…`) in `Multiformats` |
 | `java.security.MessageDigest` | SHA-256 digests (JDK, no artifact) |
 | `org.slf4j:slf4j-api` | Logging interface (no impl forced on consumers) |
 | `org.junit.jupiter:junit-jupiter` | Tests |

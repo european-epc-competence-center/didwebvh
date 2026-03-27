@@ -86,6 +86,20 @@ For SHA-256:
 
 Total: 34 bytes. The first two bytes `[0x12, 0x20]` always identify "this is a SHA-256 hash of 32 bytes".
 
+### Pipeline: SHA-256 → multihash → base58btc
+
+For **spec hash strings** (SCID, entry hash inside `versionId`, `nextKeyHashes`, etc.), the flow is always:
+
+1. **SHA-256** — Hash the input bytes (typically `JCS(...)` UTF-8 output). Produces **32 raw digest bytes**.
+2. **Multihash** — Prefix those bytes with **`0x12`** (sha2-256) and **`0x20`** (digest length 32). Produces **34 bytes** (self-describing: algorithm + length + digest).
+3. **Multibase base58btc** — Encode the **34-byte** multihash with the multibase **base58btc** alphabet; the multibase layer adds the **`z`** prefix. Produces the final **`z…`** string.
+
+So: *raw digest* → *multihash blob* → *textual `z…`*. In code, `Multiformats.sha256Multihash(byte[])` performs steps 1–3. Use `wrapSha256Multihash` + `encodeBase58btc` separately only when you already have a 32-byte digest or are testing pieces.
+
+**`updateKeys` vs pre-rotation (`nextKeyHashes`):** Strings in **`updateKeys`** are **multikey** values only: multibase base58btc over `[multicodec || raw public key]` (e.g. Ed25519: `encodeBase58btc([0xed, 0x01] || raw_pk)`). You do **not** wrap that string again in SHA-256 + multihash for storage in `updateKeys`.
+
+For **`nextKeyHashes`**, the spec is different: **Pre-Rotation Key Hash Generation and Verification** in `spec/spec-v1.0/specification.md` requires `base58btc(multihash(multikey, <hash algorithm>))` — the **same** SHA-256 → multihash → base58btc pipeline as SCID/entry hash, with the multikey as the preimage (in practice: hash the bytes after multibase-decoding the multikey string — the multicodec-prefixed key material — unless interop vectors say otherwise). So: **multikey string** goes in `updateKeys`; **hash-of-multikey** strings go in `nextKeyHashes`.
+
 ### The canonical hash used throughout the spec
 
 ```
@@ -117,13 +131,18 @@ Prefix bytes `[0xed, 0x01]` identify the key type as Ed25519. To extract the raw
 
 **Maven note:** `java-multibase` is not on Maven Central; add the JitPack repository and dependency coordinates as in the upstream README (e.g. `com.github.multiformats:java-multibase` with a release tag). CI must resolve JitPack (network) like any external repo.
 
-### Implementation plan (hashes / `Multiformats`)
+### Implementation (`Multiformats.java`)
 
-1. **POM** — Add JitPack `repository` and `java-multibase` dependency (pin a tagged version). Keep `bcprov-jdk18on` for signing only.
-2. **`wrapSha256Multihash`** — Require exactly **32** raw digest bytes; build `byte[34]` with `[0]=0x12`, `[1]=0x20`, then copy the digest at offset 2.
-3. **`encodeBase58btc` / `decodeBase58btc`** — Delegate to `Multibase.encode(Multibase.Base.Base58BTC, bytes)` and `Multibase.decode(multibase)`; on decode, reject or normalize if the multibase type is not base58btc (library may throw — map to `InvalidDidException` where appropriate).
-4. **`sha256Multihash`** — `digest = MessageDigest.getInstance("SHA-256").digest(input)` → `wrapSha256Multihash(digest)` → `encodeBase58btc(wrapped)`.
-5. **Tests** — Vectors from this note (prefix `z`, multihash bytes `0x12 0x20`, known string hash), plus round-trip encode/decode; align with spec examples when integrating `CreateOperation` / entry hash.
+JitPack + `java-multibase` (`io.ipfs.multibase.Multibase`), JDK `MessageDigest` for SHA-256. Prefix values (`z`, `0x12`, `0x20`) live in `DidWebVhConstants`. `decodeBase58btc` requires the multibase base58btc prefix; null `multibase` → `NullPointerException`; bad/empty payload → `InvalidDidException`. Tests: `MultiformatsTest`.
+
+**Public methods (did:webvh flow):**
+
+| Method | What it does | Where it matters |
+|--------|----------------|------------------|
+| `sha256Multihash(byte[])` | `SHA-256` → multihash `0x1220…` → multibase `z…` | SCID, entry hash (`versionId`), `nextKeyHashes` — all spec “hash this bytes/JCS then emit `z…`” steps |
+| `wrapSha256Multihash(byte[32])` | Prefixes an existing digest (34 bytes) | Composition / tests; use when you already have a raw digest |
+| `encodeBase58btc(byte[])` | Raw bytes → `z` + base58btc | Ed25519 `proofValue`, `updateKeys` multikey (`[0xed,0x01]\|\|pk` then encode) |
+| `decodeBase58btc(String)` | `z…` → raw bytes | Verify signatures (decode `proofValue`), extract raw key from multikey strings |
 
 ### Testing
 
@@ -131,7 +150,6 @@ Prefix bytes `[0xed, 0x01]` identify the key type as Ed25519. To extract the raw
 - `decodeBase58btc` → round-trip; wrong prefix → throws `InvalidDidException`
 - `wrapSha256Multihash`: `output[0]==0x12`, `output[1]==0x20`, `output.length==34`
 - `sha256Multihash("hello".getBytes())` → compare to precomputed expected value
-- SCID character count: result of `sha256Multihash` is 47 chars (`z` + 46 base58 characters = 47)
 
 ---
 

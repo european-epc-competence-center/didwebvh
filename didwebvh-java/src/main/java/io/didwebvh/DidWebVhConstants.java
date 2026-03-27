@@ -41,8 +41,20 @@ public final class DidWebVhConstants {
     /** Default TTL in seconds (1 hour), as per spec. */
     public static final int DEFAULT_TTL_SECONDS = 3600;
 
-    /** Multibase prefix character for base58btc encoding. */
+    /** Multibase prefix character for base58btc encoding (multiformats). */
     public static final char MULTIBASE_BASE58BTC_PREFIX = 'z';
+
+    /**
+     * Multihash type code for SHA2-256 (single-byte form used with 32-byte digests in did:webvh).
+     *
+     * @see <a href="https://github.com/multiformats/multihash">Multihash</a>
+     */
+    public static final byte MULTIHASH_SHA2_256_CODE = 0x12;
+
+    /**
+     * Multihash digest-length field for a 32-byte SHA-256 digest ({@code 0x20}).
+     */
+    public static final byte MULTIHASH_SHA2_256_DIGEST_LENGTH = 0x20;
 
     private DidWebVhConstants() {
         // utility class

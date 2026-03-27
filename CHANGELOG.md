@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Multiformats`: base58btc via `com.github.multiformats:java-multibase` (JitPack), SHA-256 multihash (`0x1220` + 32-byte digest) via `MessageDigest`, and `sha256Multihash` for spec-style `z…` strings; `MultiformatsTest` with round-trip and known vectors for `hello` and empty input
 - `JcsCanonicalizerTest`: optional before/after JSON lines (Jackson compact vs RFC 8785) when run with `-Djcs.test.verbose=true`
 - `JcsCanonicalizer`: implemented RFC 8785 JCS canonicalization using `io.github.erdtman:java-json-canonicalization:1.1` (RFC Appendix G reference implementation); added 10 tests including the exact RFC §3.2.4 byte-vector test
 - README: GitHub Actions CI status badge (links to workflow runs) and overview line for `.github/workflows/`
 
 ### Changed
 
+- Multiformats multibase / SHA-256 multihash prefix bytes centralized in `DidWebVhConstants` (`MULTIBASE_BASE58BTC_PREFIX`, `MULTIHASH_SHA2_256_CODE`, `MULTIHASH_SHA2_256_DIGEST_LENGTH`); `Multiformats` references them
+- `Multiformats.decodeBase58btc`: null `multibase` throws `NullPointerException` (aligned with `Objects.requireNonNull` elsewhere); empty or non-`z` / malformed payloads still `InvalidDidException`
+- `didwebvh-java/pom.xml`: JitPack repository and `java-multibase` dependency; BouncyCastle scoped to Ed25519
 - `JcsCanonicalizerTest`: simpler cases use `ObjectNode` / `ArrayNode`; RFC §3.2.4 vector uses literal JSON + `readTree` (wire path); document why `JsonNode#toString()` is not used for wire JSON
 - `update` and `deactivate` now take a single options object; `DidLog` moved inside `UpdateOptions` and `DeactivateOptions`
   - `DidWebVh.update(DidLog, UpdateOptions)` → `DidWebVh.update(UpdateOptions)` (log via `UpdateOptions.builder().log(...)`)
