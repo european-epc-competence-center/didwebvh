@@ -105,10 +105,25 @@ multikey = encodeBase58btc([0xed, 0x01] + raw_32_byte_public_key)
 ```
 Prefix bytes `[0xed, 0x01]` identify the key type as Ed25519. To extract the raw key from a multikey string: decode base58btc, skip first 2 bytes.
 
-### Library
+### Libraries (recommended split)
 
-`org.bouncycastle.util.encoders.Base58` (in `bcprov-jdk18on:1.79`) — already a dependency.
-`java.security.MessageDigest` for SHA-256 (standard JDK, no dep).
+| Concern | Choice | Rationale |
+|--------|--------|-----------|
+| **Multibase base58btc** (`z` + payload) | [java-multibase](https://github.com/multiformats/java-multibase) via [JitPack](https://jitpack.io/#multiformats/java-multibase) | Official multiformats Java implementation; `Multibase.encode(Base58BTC, …)` / `Multibase.decode(…)` handle the prefix and alphabet per spec. No custom base58 in this repo. |
+| **SHA-256** | `java.security.MessageDigest.getInstance("SHA-256")` | JDK standard; no extra dependency. |
+| **SHA-256 multihash envelope** | Tiny local helper (`0x12`, `0x20`, then 32 digest bytes) | Spec uses only this fixed prefix (sha2-256, 32-byte digest). Not “reimplementing multihash”: two header bytes + concat. Optional: [java-multihash](https://github.com/multiformats/java-multihash) on JitPack if you want encode/decode helpers for arbitrary multihash types later — it still expects you to supply digests from `MessageDigest`. |
+
+**BouncyCastle** remains for **Ed25519** (`DataIntegrity`, tests). It also exposes `org.bouncycastle.util.encoders.Base58`, which is Bitcoin-alphabet compatible; for did:webvh you still prefer **java-multibase** so multibase prefix rules stay in one maintained place.
+
+**Maven note:** `java-multibase` is not on Maven Central; add the JitPack repository and dependency coordinates as in the upstream README (e.g. `com.github.multiformats:java-multibase` with a release tag). CI must resolve JitPack (network) like any external repo.
+
+### Implementation plan (hashes / `Multiformats`)
+
+1. **POM** — Add JitPack `repository` and `java-multibase` dependency (pin a tagged version). Keep `bcprov-jdk18on` for signing only.
+2. **`wrapSha256Multihash`** — Require exactly **32** raw digest bytes; build `byte[34]` with `[0]=0x12`, `[1]=0x20`, then copy the digest at offset 2.
+3. **`encodeBase58btc` / `decodeBase58btc`** — Delegate to `Multibase.encode(Multibase.Base.Base58BTC, bytes)` and `Multibase.decode(multibase)`; on decode, reject or normalize if the multibase type is not base58btc (library may throw — map to `InvalidDidException` where appropriate).
+4. **`sha256Multihash`** — `digest = MessageDigest.getInstance("SHA-256").digest(input)` → `wrapSha256Multihash(digest)` → `encodeBase58btc(wrapped)`.
+5. **Tests** — Vectors from this note (prefix `z`, multihash bytes `0x12 0x20`, known string hash), plus round-trip encode/decode; align with spec examples when integrating `CreateOperation` / entry hash.
 
 ### Testing
 
@@ -209,7 +224,7 @@ DidLogEntry helpers  (no deps)
       ↓
 JcsCanonicalizer     (Jackson only)
       ↓
-Multiformats         (BouncyCastle Base58 + JDK SHA-256)
+Multiformats         (java-multibase + JDK SHA-256 + 2-byte multihash prefix)
       ↓
 DataIntegrity        (JcsCanonicalizer + Multiformats + Signer/Verifier)
       ↓
