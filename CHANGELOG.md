@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `DataIntegrity`: implemented `eddsa-jcs-2022` proof creation and verification per W3C spec §3.3 — `createProof`, `verifyProof`, and `prepareSigningInput` (64-byte proofConfigHash || documentHash); `DataIntegrityProof.of` factory method with constant fields from `DidWebVhConstants`;
 - `Multiformats`: base58btc via `com.github.multiformats:java-multibase` (JitPack), SHA-256 multihash (`0x1220` + 32-byte digest) via `MessageDigest`, and `sha256Multihash` for spec-style `z…` strings; `MultiformatsTest` with round-trip and known vectors for `hello` and empty input
 - `JcsCanonicalizerTest`: optional before/after JSON lines (Jackson compact vs RFC 8785) when run with `-Djcs.test.verbose=true`
 - `JcsCanonicalizer`: implemented RFC 8785 JCS canonicalization using `io.github.erdtman:java-json-canonicalization:1.1` (RFC Appendix G reference implementation); added 10 tests including the exact RFC §3.2.4 byte-vector test

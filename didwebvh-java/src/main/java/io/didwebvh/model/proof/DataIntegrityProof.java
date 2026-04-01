@@ -3,6 +3,7 @@ package io.didwebvh.model.proof;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.didwebvh.DidWebVhConstants;
 
 /**
  * A W3C Data Integrity proof as used in did:webvh log entries.
@@ -23,5 +24,23 @@ public record DataIntegrityProof(
         @JsonProperty("proofValue") String proofValue,
         @JsonProperty("id") String id
 ) {
-    // TODO: add factory method / builder once DataIntegrity.java is implemented
+    /**
+     * Creates a fully-populated {@code eddsa-jcs-2022} proof with all constant fields
+     * set from {@link DidWebVhConstants}.
+     *
+     * @param verificationMethod the multikey-encoded public key URI used to sign
+     * @param created            the ISO 8601 creation timestamp
+     * @param proofValue         the base58btc-encoded Ed25519 signature
+     * @return a new {@link DataIntegrityProof}
+     */
+    public static DataIntegrityProof of(String verificationMethod, String created, String proofValue) {
+        return new DataIntegrityProof(
+                DidWebVhConstants.PROOF_TYPE,
+                DidWebVhConstants.CRYPTOSUITE,
+                verificationMethod,
+                created,
+                DidWebVhConstants.PROOF_PURPOSE,
+                proofValue,
+                null);
+    }
 }

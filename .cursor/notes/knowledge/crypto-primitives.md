@@ -85,21 +85,34 @@ multikey = encodeBase58btc([0xed, 0x01] + raw_32_byte_public_key)
 
 **File:** `crypto/DataIntegrity.java`
 
+**Spec:** [W3C vc-di-eddsa §3.3](https://www.w3.org/TR/vc-di-eddsa/#eddsa-jcs-2022) (W3C Recommendation, May 2025)
+
 W3C Data Integrity cryptosuite `eddsa-jcs-2022`: proves that a specific key holder authorized a specific JSON document. Used in every log entry's `proof` field.
 
-### Signing flow
+### Exact signing flow (per §3.3.4 — proof config FIRST, document SECOND)
 
 ```
-hash(proofOptions) = SHA-256(JCS({ type, cryptosuite, proofPurpose, verificationMethod, created }))
-hash(document)     = SHA-256(JCS(document_without_proof))
-signingInput       = hash(proofOptions) || hash(document)   ← 64 bytes
-signature          = Ed25519.sign(signingInput)             ← 64 bytes
-proofValue         = encodeBase58btc(signature)             ← z-prefixed string
+proofOptions       = { type, cryptosuite, verificationMethod, created, proofPurpose }  ← no proofValue, no @context for did:webvh
+proofConfigHash    = SHA-256(JCS(proofOptions))     ← 32 bytes  ← FIRST
+documentHash       = SHA-256(JCS(document))         ← 32 bytes  ← SECOND (document without proof field)
+hashData           = proofConfigHash || documentHash ← 64 bytes concatenated
+signature          = Ed25519.sign(hashData)          ← 64 bytes
+proofValue         = encodeBase58btc(signature)      ← z-prefixed string
 ```
 
-The two-hash construction binds the proof to both document content and proof metadata — changing either invalidates the signature.
+**Critical**: proofConfigHash is the FIRST 32 bytes, documentHash is SECOND 32 bytes.
+This is confirmed by W3C spec §3.3.4 step 3 and the TypeScript reference impl (`concatBuffers(proofHash, dataHash)`).
 
-`verificationMethod` in the proof = the multikey-encoded public key string (from `updateKeys`).
+### Verification flow (per §3.3.2)
+
+1. Strip `proof` field from document → `unsecuredDocument`
+2. Build `proofOptions` from proof fields, omitting `proofValue` (and `id`)
+3. Compute `hashData` via same proofConfigHash || documentHash construction
+4. `Ed25519.verify(hashData, decodeBase58btc(proof.proofValue), publicKey)`
+
+### @context handling
+
+W3C spec says: if `unsecuredDocument.@context` is present, copy it to `proofOptions.@context` before JCS-canonicalizing. For did:webvh log entries, the top-level log entry object has no `@context` (only the `state` DIDDoc inside does), so this step is a no-op and no `@context` is added to `proofOptions`.
 
 ### Signer / Verifier interfaces
 
@@ -137,7 +150,7 @@ JcsCanonicalizer     (Jackson only)
       ↓
 Multiformats         (java-multibase + JDK SHA-256 + 2-byte multihash prefix)
       ↓
-DataIntegrity        (JcsCanonicalizer + Multiformats + Signer/Verifier)
+DataIntegrity        (JcsCanonicalizer + Multiformats + Signer/Verifier)  ← IMPLEMENTED
       ↓
 CreateOperation, LogValidator, ...
 ```
