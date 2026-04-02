@@ -97,7 +97,7 @@ public final class DataIntegrity {
 
         // Per spec §3.3.2 step 1: unsecuredDocument = securedDocument without the proof field
         JsonNode unsecuredDocument = document.has("proof")
-                ? ((ObjectNode) document).without("proof")
+                ? ((ObjectNode) document.deepCopy()).without("proof")
                 : document;
 
         // Per spec §3.3.2 step 2: proofOptions = proof without proofValue
