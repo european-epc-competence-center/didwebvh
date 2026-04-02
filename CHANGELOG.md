@@ -9,51 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `DataIntegrity`: implemented `eddsa-jcs-2022` proof creation and verification per W3C spec §3.3 — `createProof`, `verifyProof`, and `prepareSigningInput` (64-byte proofConfigHash || documentHash); `DataIntegrityProof.of` factory method with constant fields from `DidWebVhConstants`;
-- `Multiformats`: base58btc via `com.github.multiformats:java-multibase` (JitPack), SHA-256 multihash (`0x1220` + 32-byte digest) via `MessageDigest`, and `sha256Multihash` for spec-style `z…` strings; `MultiformatsTest` with round-trip and known vectors for `hello` and empty input
-- `JcsCanonicalizerTest`: optional before/after JSON lines (Jackson compact vs RFC 8785) when run with `-Djcs.test.verbose=true`
-- `JcsCanonicalizer`: implemented RFC 8785 JCS canonicalization using `io.github.erdtman:java-json-canonicalization:1.1` (RFC Appendix G reference implementation); added 10 tests including the exact RFC §3.2.4 byte-vector test
-- README: GitHub Actions CI status badge (links to workflow runs) and overview line for `.github/workflows/`
+- `LogSerializer` / `LogParser`: JSONL serialization and deserialization of `did.jsonl`
+- `DataIntegrity`: `eddsa-jcs-2022` proof creation and verification (W3C Data Integrity spec)
+- `Multiformats`: base58btc multibase encoding and SHA-256 multihash
+- `JcsCanonicalizer`: RFC 8785 JCS canonicalization
+- Java library scaffold (`didwebvh-java/`): package structure, public API facade, all data models, crypto interfaces, operation/resolution/witness stubs, typed exception hierarchy
 
 ### Changed
 
-- Multiformats multibase / SHA-256 multihash prefix bytes centralized in `DidWebVhConstants` (`MULTIBASE_BASE58BTC_PREFIX`, `MULTIHASH_SHA2_256_CODE`, `MULTIHASH_SHA2_256_DIGEST_LENGTH`); `Multiformats` references them
-- `Multiformats.decodeBase58btc`: null `multibase` throws `NullPointerException` (aligned with `Objects.requireNonNull` elsewhere); empty or non-`z` / malformed payloads still `InvalidDidException`
-- `didwebvh-java/pom.xml`: JitPack repository and `java-multibase` dependency; BouncyCastle scoped to Ed25519
-- `JcsCanonicalizerTest`: simpler cases use `ObjectNode` / `ArrayNode`; RFC §3.2.4 vector uses literal JSON + `readTree` (wire path); document why `JsonNode#toString()` is not used for wire JSON
-- `update` and `deactivate` now take a single options object; `DidLog` moved inside `UpdateOptions` and `DeactivateOptions`
-  - `DidWebVh.update(DidLog, UpdateOptions)` → `DidWebVh.update(UpdateOptions)` (log via `UpdateOptions.builder().log(...)`)
-  - `DidWebVh.deactivate(DidLog, DeactivateOptions)` → `DidWebVh.deactivate(DeactivateOptions)` (log via `DeactivateOptions.builder().log(...)`)
-- Redesigned public API of `didwebvh-java` so `Parameters` is internal-only (never in a public method signature)
-  - `CreateOptions` now bundles all creation inputs: `domain`, `initialDocument`, `updateKeys`, `signer`, `portable`, `nextKeyHashes`, `witness`, `watchers`
-  - `UpdateOptions` now bundles all update inputs: `log`, `updatedDocument`, `signer`, and optional `updateKeys`, `nextKeyHashes`, `witness`, `watchers`, `witnessProofs`
-  - `DeactivateOptions` now holds `log` and `signer`
-  - `ResolveOptions` now holds `verifier` alongside the optional version filters (`versionId`, `versionTime`, `versionNumber`)
-  - `DidWebVh` facade reduced to four methods: `create(CreateOptions)`, `resolve(String, ResolveOptions)`, `update(UpdateOptions)`, `deactivate(DeactivateOptions)`
-  - Removed `resolveFromLog` from the public facade; `LogBasedResolver.resolveFromLog` remains available for advanced use
+- Public API refactored: `Parameters` is now internal; all inputs bundled into `*Options` objects
+- `update` and `deactivate` take a single options object (log moved into options)
 
 ### Fixed
 
-- `JcsCanonicalizer`: removed debug `System.out.println` of intermediate JSON from production code
-- Corrected license declaration in `didwebvh-java/pom.xml` from Apache 2.0 to GNU GPL v3.0 to match the root `LICENSE` file
-
-### Added
-
-- Java library scaffold: `didwebvh-java/` Maven project (`io.didwebvh:didwebvh-java:0.1.0-SNAPSHOT`, Java 21)
-  - Package structure: `api/`, `model/`, `crypto/`, `log/`, `operation/`, `resolve/`, `witness/`, `exception/`
-  - Public facade `DidWebVh` with `create`, `resolve`, `resolveFromLog`, `update`, `deactivate` entry points
-  - All data models: `DidLog`, `DidLogEntry`, `Parameters`, `ResolutionMetadata`, `DataIntegrityProof`, `WitnessParameter`
-  - Crypto interfaces (`Signer`, `Verifier`) and stubs (`Ed25519Signer`, `DataIntegrity`, `Multiformats`, `JcsCanonicalizer`)
-  - CRUD operation stubs: `CreateOperation`, `UpdateOperation`, `DeactivateOperation`
-  - Resolution stubs: `LogBasedResolver`, `HttpResolver`, `DidUrlTransformer`
-  - Witness stubs: `WitnessProofCollection`, `WitnessValidator`
-  - Typed exception hierarchy: `DidWebVhException`, `InvalidDidException`, `ResolutionException`, `LogValidationException`
-  - Cross-cutting constants: `DidWebVhConstants`
-  - Architecture notes: `.cursor/notes/java-library.md`
-- Initial project setup: `README.md`, `CHANGELOG.md`
-- `.cursor/notes` knowledge base with `did:webvh` specification research
-- Extended `docs/application.md` section 1.1 with paragraph on DID layer advantages over X.509/PKI
-- Added KERI research notes (`.cursor/notes/keri.md`): KEL, pre-rotation, did:keri, comparison with `did:webvh`
-- Extended `docs/application.md` section 2.1 with KERI as related research topic and design comparison
-- Extended `docs/application.md` section 1.2 with two additional research questions: key compromise scenarios and implementation correctness
-
+- Corrected license in `pom.xml` from Apache 2.0 to GNU GPL v3.0
