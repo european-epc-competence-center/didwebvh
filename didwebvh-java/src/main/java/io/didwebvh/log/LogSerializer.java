@@ -1,7 +1,14 @@
 package io.didwebvh.log;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.didwebvh.exception.DidWebVhException;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 /**
  * Serializes a did:webvh log to its JSONL wire format.
@@ -14,17 +21,33 @@ import io.didwebvh.model.DidLogEntry;
  */
 public final class LogSerializer {
 
+    private static final Logger log = LoggerFactory.getLogger(LogSerializer.class);
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private LogSerializer() {}
 
     /**
      * Serializes the full log to a JSONL string.
      *
-     * @param log the log to serialize
+     * <p>Each entry occupies exactly one line. The returned string is {@code \n}-terminated
+     * (i.e. the last line also ends with a newline), matching the JSONL convention.
+     *
+     * @param didLog the log to serialize
      * @return the JSONL string ready to be written as {@code did.jsonl}
+     * @throws DidWebVhException if serialization fails
      */
-    public static String serialize(DidLog log) {
-        // TODO: implement
-        throw new UnsupportedOperationException("TODO");
+    public static String serialize(DidLog didLog) {
+        Objects.requireNonNull(didLog, "didLog must not be null");
+        log.trace("Serializing DID log with {} entries", didLog.size());
+
+        var sb = new StringBuilder();
+        for (DidLogEntry entry : didLog.entries()) {
+            sb.append(serializeLine(entry)).append('\n');
+        }
+
+        log.trace("Serialized DID log ({} entries, {} chars)", didLog.size(), sb.length());
+        return sb.toString();
     }
 
     /**
@@ -32,9 +55,15 @@ public final class LogSerializer {
      *
      * @param entry the log entry
      * @return the compact JSON string
+     * @throws DidWebVhException if serialization fails
      */
     public static String serializeLine(DidLogEntry entry) {
-        // TODO: implement
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(entry, "entry must not be null");
+        try {
+            return MAPPER.writeValueAsString(entry);
+        } catch (JsonProcessingException e) {
+            throw new DidWebVhException("invalidDid",
+                    "Failed to serialize log entry: " + e.getMessage(), e);
+        }
     }
 }
