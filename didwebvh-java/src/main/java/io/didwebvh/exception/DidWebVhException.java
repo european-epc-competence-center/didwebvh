@@ -3,27 +3,21 @@ package io.didwebvh.exception;
 /**
  * Base exception for all did:webvh errors.
  *
- * <p>Maps to the spec-defined error codes: {@code notFound}, {@code invalidDid}.
- * Where applicable, a {@code problemDetails} payload (RFC 9457) is included.
+ * <p>The spec defines two resolution error codes ({@code invalidDid}, {@code notFound}).
+ * The exception <em>type</em> determines which code applies:
+ * <ul>
+ *   <li>{@link InvalidDidException} — DID string is syntactically/semantically invalid → {@code invalidDid}</li>
+ *   <li>{@link LogValidationException} — log chain / proof / parameter validation failed → {@code invalidDid}</li>
+ *   <li>{@link DidNotFoundException} — DID log or resource not found → {@code notFound}</li>
+ * </ul>
  */
 public class DidWebVhException extends RuntimeException {
 
-    private static final long serialVersionUID = 1L;
-
-    /** Spec-defined error code (e.g. "notFound", "invalidDid"). */
-    private final String errorCode;
-
-    public DidWebVhException(String errorCode, String message) {
+    public DidWebVhException(String message) {
         super(message);
-        this.errorCode = errorCode;
     }
 
-    public DidWebVhException(String errorCode, String message, Throwable cause) {
+    public DidWebVhException(String message, Throwable cause) {
         super(message, cause);
-        this.errorCode = errorCode;
-    }
-
-    public String getErrorCode() {
-        return errorCode;
     }
 }

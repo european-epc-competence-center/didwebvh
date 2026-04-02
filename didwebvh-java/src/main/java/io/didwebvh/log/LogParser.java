@@ -2,7 +2,7 @@ package io.didwebvh.log;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.didwebvh.exception.DidWebVhException;
+import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import org.slf4j.Logger;
@@ -37,7 +37,7 @@ public final class LogParser {
      *
      * @param jsonl the raw content of {@code did.jsonl}
      * @return the parsed log (may be empty if the input contains no non-blank lines)
-     * @throws DidWebVhException if any non-blank line fails to parse
+     * @throws LogValidationException if any non-blank line fails to parse
      */
     public static DidLog parse(String jsonl) {
         Objects.requireNonNull(jsonl, "jsonl must not be null");
@@ -48,14 +48,13 @@ public final class LogParser {
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].strip();
-            // skip blank lines
             if (line.isEmpty()) {
                 continue;
             }
             try {
                 entries.add(parseLine(line));
-            } catch (DidWebVhException e) {
-                throw new DidWebVhException("invalidDid",
+            } catch (LogValidationException e) {
+                throw new LogValidationException(
                         "Failed to parse log entry at line " + (i + 1) + ": " + e.getMessage(), e);
             }
         }
@@ -69,16 +68,14 @@ public final class LogParser {
      *
      * @param line a single JSON object string (must not be null or blank)
      * @return the parsed entry
-     * @throws DidWebVhException if the line is not valid JSON or cannot be mapped to a {@link DidLogEntry}
+     * @throws LogValidationException if the line is not valid JSON or cannot be mapped to a {@link DidLogEntry}
      */
     public static DidLogEntry parseLine(String line) {
         Objects.requireNonNull(line, "line must not be null");
         try {
-            // deserialize the line into a DidLogEntry
             return MAPPER.readValue(line, DidLogEntry.class);
         } catch (JsonProcessingException e) {
-            throw new DidWebVhException("invalidDid",
-                    "Failed to parse log entry: " + e.getMessage(), e);
+            throw new LogValidationException("Failed to parse log entry: " + e.getMessage(), e);
         }
     }
 }

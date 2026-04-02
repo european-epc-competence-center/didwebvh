@@ -153,8 +153,7 @@ class DataIntegrityTest {
                 proof.id());
 
         assertThatThrownBy(() -> DataIntegrity.verifyProof(document, tamperedProof, verifier))
-                // verificationMethod can't be decoded since it's not a valid base58btc string after tampering
-                .isInstanceOf(Exception.class);
+                .isInstanceOf(LogValidationException.class);
     }
 
     @Test

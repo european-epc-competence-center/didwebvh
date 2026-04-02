@@ -109,9 +109,22 @@ public final class DataIntegrity {
                 proof.proofPurpose());
 
         byte[] transformedData = prepareSigningInput(unsecuredDocument, proofOptions);
-        byte[] signature = Multiformats.decodeBase58btc(proof.proofValue());
 
-        boolean valid = verifier.verify(signature, transformedData, proof.verificationMethod());
+        byte[] signature;
+        try {
+            signature = Multiformats.decodeBase58btc(proof.proofValue());
+        } catch (IllegalArgumentException e) {
+            throw new LogValidationException(
+                    "Invalid proofValue encoding " + e.getMessage());
+        }
+
+        boolean valid;
+        try {
+            valid = verifier.verify(signature, transformedData, proof.verificationMethod());
+        } catch (IllegalArgumentException e) {
+            throw new LogValidationException(
+                    "Invalid verifier input: " + e.getMessage());
+        }
         if (!valid) {
             throw new LogValidationException(
                     "Data Integrity proof verification failed for verificationMethod: " + proof.verificationMethod());

@@ -1,6 +1,5 @@
 package io.didwebvh.crypto;
 
-import io.didwebvh.exception.InvalidDidException;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -44,14 +43,14 @@ class MultiformatsTest {
     @Test
     void decodeBase58btc_rejectsWrongPrefix() {
         assertThatThrownBy(() -> Multiformats.decodeBase58btc("f00"))
-                .isInstanceOf(InvalidDidException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("base58btc");
     }
 
     @Test
     void decodeBase58btc_rejectsEmpty() {
         assertThatThrownBy(() -> Multiformats.decodeBase58btc(""))
-                .isInstanceOf(InvalidDidException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

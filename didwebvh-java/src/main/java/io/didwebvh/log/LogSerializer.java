@@ -2,7 +2,6 @@ package io.didwebvh.log;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.didwebvh.exception.DidWebVhException;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import org.slf4j.Logger;
@@ -35,7 +34,7 @@ public final class LogSerializer {
      *
      * @param didLog the log to serialize
      * @return the JSONL string ready to be written as {@code did.jsonl}
-     * @throws DidWebVhException if serialization fails
+     * @throws IllegalStateException if serialization fails
      */
     public static String serialize(DidLog didLog) {
         Objects.requireNonNull(didLog, "didLog must not be null");
@@ -55,15 +54,14 @@ public final class LogSerializer {
      *
      * @param entry the log entry
      * @return the compact JSON string
-     * @throws DidWebVhException if serialization fails
+     * @throws IllegalStateException if serialization fails
      */
     public static String serializeLine(DidLogEntry entry) {
         Objects.requireNonNull(entry, "entry must not be null");
         try {
             return MAPPER.writeValueAsString(entry);
         } catch (JsonProcessingException e) {
-            throw new DidWebVhException("invalidDid",
-                    "Failed to serialize log entry: " + e.getMessage(), e);
+            throw new IllegalStateException("Failed to serialize log entry: " + e.getMessage(), e);
         }
     }
 }

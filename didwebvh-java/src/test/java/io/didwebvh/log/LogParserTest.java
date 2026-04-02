@@ -2,7 +2,7 @@ package io.didwebvh.log;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.didwebvh.exception.DidWebVhException;
+import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
@@ -68,7 +68,7 @@ class LogParserTest {
     @Test
     void parseLine_invalidJson_throws() {
         assertThatThrownBy(() -> LogParser.parseLine("not valid json"))
-                .isInstanceOf(DidWebVhException.class);
+                .isInstanceOf(LogValidationException.class);
     }
 
     @Test
@@ -134,7 +134,7 @@ class LogParserTest {
                 + "broken json\n";
 
         assertThatThrownBy(() -> LogParser.parse(jsonl))
-                .isInstanceOf(DidWebVhException.class)
+                .isInstanceOf(LogValidationException.class)
                 .hasMessageContaining("line 2");
     }
 

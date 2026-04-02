@@ -1,7 +1,6 @@
 package io.didwebvh.crypto;
 
 import io.didwebvh.DidWebVhConstants;
-import io.didwebvh.exception.InvalidDidException;
 import io.ipfs.multibase.Multibase;
 
 import java.security.MessageDigest;
@@ -40,21 +39,21 @@ public final class Multiformats {
      *
      * @param multibase the multibase string (must start with {@code z})
      * @return the decoded raw bytes
-     * @throws InvalidDidException if the prefix is not {@code z} or the payload is invalid
+     * @throws IllegalArgumentException if the prefix is not {@code z} or the payload is invalid
      */
     public static byte[] decodeBase58btc(String multibase) {
         Objects.requireNonNull(multibase, "multibase");
         if (multibase.isEmpty()) {
-            throw new InvalidDidException("Multibase string must be non-empty");
+            throw new IllegalArgumentException("Multibase string must be non-empty");
         }
         if (multibase.charAt(0) != DidWebVhConstants.MULTIBASE_BASE58BTC_PREFIX) {
-            throw new InvalidDidException(
+            throw new IllegalArgumentException(
                     "Expected base58btc multibase (prefix 'z'), got prefix '" + multibase.charAt(0) + "'");
         }
         try {
             return Multibase.decode(multibase);
         } catch (IllegalStateException | IllegalArgumentException e) {
-            throw new InvalidDidException("Invalid multibase base58btc payload", e);
+            throw new IllegalArgumentException("Invalid multibase base58btc payload", e);
         }
     }
 
