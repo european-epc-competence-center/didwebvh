@@ -99,8 +99,12 @@ io.didwebvh/
 - `WitnessProofCollection` — model for `did-witness.json`
 - `WitnessValidator` — threshold check, witness proof signature verification
 
-**`exception/`** — Maps to spec error codes (`notFound`, `invalidDid`).
-- `DidWebVhException` (base), `InvalidDidException`, `ResolutionException`, `LogValidationException`
+**`exception/`** — Typed hierarchy; exception type determines which spec error code applies.
+- `DidWebVhException` (base)
+- `InvalidDidException` — DID string parsing/ABNF → `invalidDid`
+- `LogValidationException` — log chain/proof/param/parse failures → `invalidDid`
+- `DidNotFoundException` — DID log or resource not found → `notFound`
+- Low-level utilities (`Multiformats`, `JcsCanonicalizer`) throw `IllegalArgumentException`; callers wrap into the appropriate spec exception
 
 ### Key Design Decisions
 
