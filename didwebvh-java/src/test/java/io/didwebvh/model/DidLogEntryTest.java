@@ -21,13 +21,13 @@ class DidLogEntryTest {
 
     @Test
     void versionNumber_largeNumber() {
-        var entry = entryWithVersionId("42-zAbc123XYZ");
+        var entry = entryWithVersionId("42-Abc123XYZ");
         assertThat(entry.versionNumber()).isEqualTo(42);
     }
 
     @Test
     void versionNumber_singleDigit() {
-        var entry = entryWithVersionId("7-zSomeLongHash");
+        var entry = entryWithVersionId("7-SomeLongHash");
         assertThat(entry.versionNumber()).isEqualTo(7);
     }
 
@@ -43,7 +43,7 @@ class DidLogEntryTest {
 
     @Test
     void entryHash_realisticMultihash() {
-        String hash = "zQmWvQxTqbG2Z9HPJgG57jjwR154cKhbtJenbyYTWkjgF3e";
+        String hash = "QmWvQxTqbG2Z9HPJgG57jjwR154cKhbtJenbyYTWkjgF3e";
         var entry = entryWithVersionId("3-" + hash);
         assertThat(entry.entryHash()).isEqualTo(hash);
     }
@@ -52,9 +52,9 @@ class DidLogEntryTest {
     void entryHash_containsHyphen_usesFirstHyphenOnly() {
         // if (hypothetically) the hash itself contained a '-', only the part
         // before the first '-' is the version number
-        var entry = entryWithVersionId("2-zAbc-NotAVersion");
+        var entry = entryWithVersionId("2-Abc-NotAVersion");
         assertThat(entry.versionNumber()).isEqualTo(2);
-        assertThat(entry.entryHash()).isEqualTo("zAbc-NotAVersion");
+        assertThat(entry.entryHash()).isEqualTo("Abc-NotAVersion");
     }
 
     // -------------------------------------------------------------------------
@@ -65,7 +65,7 @@ class DidLogEntryTest {
     void withoutProof_removesProof() {
         var proof = new DataIntegrityProof(
                 "DataIntegrityProof", "eddsa-jcs-2022", "did:example:key#key-1",
-                null, "assertionMethod", "zSig", null);
+                null, "assertionMethod", "Sig", null);
         var entry = new DidLogEntry("1-QmFoo", "2025-01-01T00:00:00Z",
                 null, null, List.of(proof));
 

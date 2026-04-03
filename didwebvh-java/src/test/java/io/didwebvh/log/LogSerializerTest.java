@@ -26,19 +26,19 @@ class LogSerializerTest {
 
     @Test
     void serializeLine_minimalEntry_compactJson() {
-        DidLogEntry entry = new DidLogEntry("1-zQmHash", "2025-01-23T04:12:36Z", null, null, null);
+        DidLogEntry entry = new DidLogEntry("1-QmHash", "2025-01-23T04:12:36Z", null, null, null);
         String json = LogSerializer.serializeLine(entry);
 
         assertThat(json)
                 .doesNotContain("\n")
                 .doesNotContain("  ");
-        assertThat(json).contains("\"versionId\":\"1-zQmHash\"");
+        assertThat(json).contains("\"versionId\":\"1-QmHash\"");
         assertThat(json).contains("\"versionTime\":\"2025-01-23T04:12:36Z\"");
     }
 
     @Test
     void serializeLine_nullFieldsOmitted() {
-        var entry = new DidLogEntry("1-zQmHash", "2025-01-23T04:12:36Z", null, null, null);
+        var entry = new DidLogEntry("1-QmHash", "2025-01-23T04:12:36Z", null, null, null);
         String json = LogSerializer.serializeLine(entry);
 
         assertThat(json).doesNotContain("parameters");
@@ -48,20 +48,20 @@ class LogSerializerTest {
 
     @Test
     void serializeLine_fullEntry_allFieldsPresent() {
-        Parameters params = new Parameters("did:webvh:1.0", "zScid123", List.of("zKey1"), null, null, null, null, null, null);
+        Parameters params = new Parameters("did:webvh:1.0", "Scid123", List.of("Key1"), null, null, null, null, null, null);
         ObjectNode state = MAPPER.createObjectNode();
-        state.put("id", "did:webvh:zScid123:example.com");
-        DataIntegrityProof proof = DataIntegrityProof.of("zKey1", "2025-01-23T04:12:36Z", "zSigValue");
+        state.put("id", "did:webvh:Scid123:example.com");
+        DataIntegrityProof proof = DataIntegrityProof.of("Key1", "2025-01-23T04:12:36Z", "SigValue");
 
-        DidLogEntry entry = new DidLogEntry("1-zQmHash", "2025-01-23T04:12:36Z", params, state, List.of(proof));
+        DidLogEntry entry = new DidLogEntry("1-QmHash", "2025-01-23T04:12:36Z", params, state, List.of(proof));
         String json = LogSerializer.serializeLine(entry);
 
         assertThat(json).contains("\"parameters\":");
         assertThat(json).contains("\"method\":\"did:webvh:1.0\"");
-        assertThat(json).contains("\"scid\":\"zScid123\"");
-        assertThat(json).contains("\"state\":{\"id\":\"did:webvh:zScid123:example.com\"}");
+        assertThat(json).contains("\"scid\":\"Scid123\"");
+        assertThat(json).contains("\"state\":{\"id\":\"did:webvh:Scid123:example.com\"}");
         assertThat(json).contains("\"proof\":[{");
-        assertThat(json).contains("\"proofValue\":\"zSigValue\"");
+        assertThat(json).contains("\"proofValue\":\"SigValue\"");
     }
 
     @Test
@@ -82,7 +82,7 @@ class LogSerializerTest {
 
     @Test
     void serialize_singleEntry_oneLineWithTrailingNewline() {
-        DidLogEntry entry = new DidLogEntry("1-zQmHash", "2025-01-23T04:12:36Z", null, null, null);
+        DidLogEntry entry = new DidLogEntry("1-QmHash", "2025-01-23T04:12:36Z", null, null, null);
         DidLog log = new DidLog(List.of(entry));
 
         String jsonl = LogSerializer.serialize(log);
@@ -96,16 +96,16 @@ class LogSerializerTest {
 
     @Test
     void serialize_multipleEntries_onePerLine() {
-        DidLogEntry entry1 = new DidLogEntry("1-zQmHash1", "2025-01-23T04:12:36Z", null, null, null);
-        DidLogEntry entry2 = new DidLogEntry("2-zQmHash2", "2025-01-24T10:00:00Z", null, null, null);
+        DidLogEntry entry1 = new DidLogEntry("1-QmHash1", "2025-01-23T04:12:36Z", null, null, null);
+        DidLogEntry entry2 = new DidLogEntry("2-QmHash2", "2025-01-24T10:00:00Z", null, null, null);
         DidLog log = new DidLog(List.of(entry1, entry2));
 
         String jsonl = LogSerializer.serialize(log);
         String[] lines = jsonl.split("\n", -1);
 
         assertThat(lines).hasSize(3);
-        assertThat(lines[0]).contains("1-zQmHash1");
-        assertThat(lines[1]).contains("2-zQmHash2");
+        assertThat(lines[0]).contains("1-QmHash1");
+        assertThat(lines[1]).contains("2-QmHash2");
         assertThat(lines[2]).isEmpty();
     }
 
@@ -121,10 +121,10 @@ class LogSerializerTest {
 
     @Test
     void serialize_outputIsCompactNoWhitespaceInObjects() {
-        Parameters params = new Parameters("did:webvh:1.0", "zScid", List.of("zKey"), null, null, null, null, null, null);
+        Parameters params = new Parameters("did:webvh:1.0", "Scid", List.of("Key"), null, null, null, null, null, null);
         ObjectNode state = MAPPER.createObjectNode();
-        state.put("id", "did:webvh:zScid:example.com");
-        DidLogEntry entry = new DidLogEntry("1-zQmHash", "2025-01-23T04:12:36Z", params, state, null);
+        state.put("id", "did:webvh:Scid:example.com");
+        DidLogEntry entry = new DidLogEntry("1-QmHash", "2025-01-23T04:12:36Z", params, state, null);
 
         String line = LogSerializer.serializeLine(entry);
 
