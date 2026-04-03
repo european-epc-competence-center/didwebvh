@@ -28,9 +28,6 @@ class DataIntegrityTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    /** Multicodec prefix for Ed25519 public keys: [0xed, 0x01]. */
-    private static final byte[] ED25519_MULTICODEC_PREFIX = {(byte) 0xed, (byte) 0x01};
-
     private Signer signer;
     private Verifier verifier;
     private String publicKeyMultibase;
@@ -44,12 +41,7 @@ class DataIntegrityTest {
         Ed25519PrivateKeyParameters privateKey = (Ed25519PrivateKeyParameters) keyPair.getPrivate();
         Ed25519PublicKeyParameters publicKey   = (Ed25519PublicKeyParameters) keyPair.getPublic();
 
-        // Encode public key as multikey: base58btc([0xed, 0x01] + rawPublicKey)
-        byte[] rawPublicKey = publicKey.getEncoded();
-        byte[] multikeyBytes = new byte[ED25519_MULTICODEC_PREFIX.length + rawPublicKey.length];
-        System.arraycopy(ED25519_MULTICODEC_PREFIX, 0, multikeyBytes, 0, ED25519_MULTICODEC_PREFIX.length);
-        System.arraycopy(rawPublicKey, 0, multikeyBytes, ED25519_MULTICODEC_PREFIX.length, rawPublicKey.length);
-        publicKeyMultibase = Multiformats.encodeBase58btc(multikeyBytes);
+        publicKeyMultibase = Multiformats.encodeEd25519Multikey(publicKey.getEncoded());
 
         signer = Signer.create(publicKeyMultibase, data -> {
             Ed25519Signer s = new Ed25519Signer();
@@ -58,12 +50,9 @@ class DataIntegrityTest {
             return s.generateSignature();
         });
 
-        // Create a verifier that uses the public key to verify the signature
         verifier = (signature, message, keyMultibase) -> {
-            // Decode multikey: strip 2-byte multicodec prefix to get the raw 32-byte public key
-            byte[] decodedKey = Multiformats.decodeBase58btc(keyMultibase);
-            Ed25519PublicKeyParameters pubKey = new Ed25519PublicKeyParameters(
-                    decodedKey, ED25519_MULTICODEC_PREFIX.length);
+            byte[] rawKey = Multiformats.decodeEd25519Multikey(keyMultibase);
+            Ed25519PublicKeyParameters pubKey = new Ed25519PublicKeyParameters(rawKey, 0);
             Ed25519Signer v = new Ed25519Signer();
             v.init(false, pubKey);
             v.update(message, 0, message.length);
@@ -182,21 +171,14 @@ class DataIntegrityTest {
         ObjectNode document = sampleDocument();
         DataIntegrityProof proof = DataIntegrity.createProof(document, publicKeyMultibase, signer);
 
-        // Generate a completely different key pair
         Ed25519KeyPairGenerator gen = new Ed25519KeyPairGenerator();
         gen.init(new Ed25519KeyGenerationParameters(new SecureRandom()));
         AsymmetricCipherKeyPair otherKeyPair = gen.generateKeyPair();
         Ed25519PublicKeyParameters otherPublicKey = (Ed25519PublicKeyParameters) otherKeyPair.getPublic();
 
-        byte[] rawOtherKey = otherPublicKey.getEncoded();
-        byte[] otherMultikeyBytes = new byte[ED25519_MULTICODEC_PREFIX.length + rawOtherKey.length];
-        System.arraycopy(ED25519_MULTICODEC_PREFIX, 0, otherMultikeyBytes, 0, ED25519_MULTICODEC_PREFIX.length);
-        System.arraycopy(rawOtherKey, 0, otherMultikeyBytes, ED25519_MULTICODEC_PREFIX.length, rawOtherKey.length);
-
-        // A verifier that always uses the OTHER public key
         Verifier wrongKeyVerifier = (signature, message, keyMultibase) -> {
             Ed25519PublicKeyParameters wrongKey = new Ed25519PublicKeyParameters(
-                    otherMultikeyBytes, ED25519_MULTICODEC_PREFIX.length);
+                    otherPublicKey.getEncoded(), 0);
             Ed25519Signer v = new Ed25519Signer();
             v.init(false, wrongKey);
             v.update(message, 0, message.length);

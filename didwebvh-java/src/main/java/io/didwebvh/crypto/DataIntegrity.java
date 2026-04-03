@@ -62,7 +62,7 @@ public final class DataIntegrity {
 
         byte[] signingInput = prepareSigningInput(unsecuredDocument, options);
         byte[] signature = signer.sign(signingInput);
-        String proofValue = Multiformats.encodeBase58btc(signature);
+        String proofValue = Multiformats.multibaseEncode(signature);
 
         DataIntegrityProof proof = new DataIntegrityProof(
                 DidWebVhConstants.PROOF_TYPE,
@@ -112,7 +112,7 @@ public final class DataIntegrity {
 
         byte[] signature;
         try {
-            signature = Multiformats.decodeBase58btc(proof.proofValue());
+            signature = Multiformats.multibaseDecode(proof.proofValue());
         } catch (IllegalArgumentException e) {
             throw new LogValidationException(
                     "Invalid proofValue encoding " + e.getMessage());
