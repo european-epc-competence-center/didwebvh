@@ -4,16 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.proof.DataIntegrityProof;
-import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
-import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
-import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
-import org.bouncycastle.crypto.params.Ed25519PrivateKeyParameters;
-import org.bouncycastle.crypto.params.Ed25519PublicKeyParameters;
-import org.bouncycastle.crypto.signers.Ed25519Signer;
+import io.didwebvh.support.Ed25519TestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import java.security.SecureRandom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,8 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Tests for {@link DataIntegrity} verifying the {@code eddsa-jcs-2022} proof lifecycle.
  *
- * <p>Uses BouncyCastle {@link Ed25519Signer} as the {@link Signer}/{@link Verifier}
- * implementation. All key material is freshly generated per test class setup.
+ * <p>Key material is freshly generated per test via {@link Ed25519TestFixture}.
  */
 class DataIntegrityTest {
 
@@ -34,30 +26,10 @@ class DataIntegrityTest {
 
     @BeforeEach
     void setUp() {
-        Ed25519KeyPairGenerator gen = new Ed25519KeyPairGenerator();
-        gen.init(new Ed25519KeyGenerationParameters(new SecureRandom()));
-        AsymmetricCipherKeyPair keyPair = gen.generateKeyPair();
-
-        Ed25519PrivateKeyParameters privateKey = (Ed25519PrivateKeyParameters) keyPair.getPrivate();
-        Ed25519PublicKeyParameters publicKey   = (Ed25519PublicKeyParameters) keyPair.getPublic();
-
-        publicKeyMultibase = Multiformats.encodeEd25519Multikey(publicKey.getEncoded());
-
-        signer = Signer.create(publicKeyMultibase, data -> {
-            Ed25519Signer s = new Ed25519Signer();
-            s.init(true, privateKey);
-            s.update(data, 0, data.length);
-            return s.generateSignature();
-        });
-
-        verifier = (signature, message, keyMultibase) -> {
-            byte[] rawKey = Multiformats.decodeEd25519Multikey(keyMultibase);
-            Ed25519PublicKeyParameters pubKey = new Ed25519PublicKeyParameters(rawKey, 0);
-            Ed25519Signer v = new Ed25519Signer();
-            v.init(false, pubKey);
-            v.update(message, 0, message.length);
-            return v.verifySignature(signature);
-        };
+        Ed25519TestFixture fixture = Ed25519TestFixture.generate();
+        signer = fixture.signer();
+        verifier = fixture.verifier();
+        publicKeyMultibase = fixture.publicKeyMultibase();
     }
 
     // -------------------------------------------------------------------------
@@ -171,19 +143,10 @@ class DataIntegrityTest {
         ObjectNode document = sampleDocument();
         DataIntegrityProof proof = DataIntegrity.createProof(document, publicKeyMultibase, signer);
 
-        Ed25519KeyPairGenerator gen = new Ed25519KeyPairGenerator();
-        gen.init(new Ed25519KeyGenerationParameters(new SecureRandom()));
-        AsymmetricCipherKeyPair otherKeyPair = gen.generateKeyPair();
-        Ed25519PublicKeyParameters otherPublicKey = (Ed25519PublicKeyParameters) otherKeyPair.getPublic();
-
-        Verifier wrongKeyVerifier = (signature, message, keyMultibase) -> {
-            Ed25519PublicKeyParameters wrongKey = new Ed25519PublicKeyParameters(
-                    otherPublicKey.getEncoded(), 0);
-            Ed25519Signer v = new Ed25519Signer();
-            v.init(false, wrongKey);
-            v.update(message, 0, message.length);
-            return v.verifySignature(signature);
-        };
+        // Force verification with a different key by ignoring the keyMultibase from the proof
+        Ed25519TestFixture wrongFixture = Ed25519TestFixture.generate();
+        Verifier wrongKeyVerifier = (signature, message, ignored) ->
+                wrongFixture.verifier().verify(signature, message, wrongFixture.publicKeyMultibase());
 
         assertThatThrownBy(() -> DataIntegrity.verifyProof(document, proof, wrongKeyVerifier))
                 .isInstanceOf(LogValidationException.class);
