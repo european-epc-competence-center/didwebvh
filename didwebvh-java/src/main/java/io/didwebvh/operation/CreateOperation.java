@@ -57,80 +57,85 @@ public final class CreateOperation {
 
         validateOptions(options);
 
-        // Build preliminary log entry with {SCID} placeholders and no proof
-        String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+        try {
+            // Build preliminary log entry with {SCID} placeholders and no proof
+            String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
 
-        Parameters parameters = new Parameters(
-                DidWebVhConstants.METHOD_V1_0,
-                DidWebVhConstants.SCID_PLACEHOLDER,
-                List.copyOf(options.getUpdateKeys()),
-                hasContent(options.getNextKeyHashes()) ? List.copyOf(options.getNextKeyHashes()) : null,
-                options.isPortable() ? Boolean.TRUE : null,
-                null,
-                null,
-                options.getWitness(),
-                hasContent(options.getWatchers()) ? List.copyOf(options.getWatchers()) : null);
+            Parameters parameters = new Parameters(
+                    DidWebVhConstants.METHOD_V1_0,
+                    DidWebVhConstants.SCID_PLACEHOLDER,
+                    List.copyOf(options.getUpdateKeys()),
+                    hasContent(options.getNextKeyHashes()) ? List.copyOf(options.getNextKeyHashes()) : null,
+                    options.isPortable() ? Boolean.TRUE : null,
+                    null,
+                    null,
+                    options.getWitness(),
+                    hasContent(options.getWatchers()) ? List.copyOf(options.getWatchers()) : null);
 
-        DidLogEntry preliminaryEntry = new DidLogEntry(
-                DidWebVhConstants.SCID_PLACEHOLDER,
-                versionTime,
-                parameters,
-                options.getInitialDocument(),
-                null);
+            DidLogEntry preliminaryEntry = new DidLogEntry(
+                    DidWebVhConstants.SCID_PLACEHOLDER,
+                    versionTime,
+                    parameters,
+                    options.getInitialDocument(),
+                    null);
 
-        // Compute SCID = base58btc(multihash(SHA-256(JCS(preliminary_entry))))
-        JsonNode preliminaryJson = MAPPER.valueToTree(preliminaryEntry);
-        String scid = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(preliminaryJson));
+            // Compute SCID = base58btc(multihash(SHA-256(JCS(preliminary_entry))))
+            JsonNode preliminaryJson = MAPPER.valueToTree(preliminaryEntry);
+            String scid = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(preliminaryJson));
 
-        // Text-replace all {SCID} placeholders with the real SCID
-        DidLogEntry scidEntry = replaceScidPlaceholder(preliminaryEntry, scid);
-        String did = DidWebVhConstants.DID_METHOD_PREFIX + scid + ":" + options.getDomain();
+            // Text-replace all {SCID} placeholders with the real SCID
+            DidLogEntry scidEntry = replaceScidPlaceholder(preliminaryEntry, scid);
+            String did = DidWebVhConstants.DID_METHOD_PREFIX + scid + ":" + options.getDomain();
 
-        // Compute entry hash; for the first entry the predecessor versionId is the SCID itself,
-        // which is already the versionId after placeholder replacement
-        JsonNode hashInput = MAPPER.valueToTree(scidEntry);
-        String entryHash = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(hashInput));
-        String versionId = "1-" + entryHash;
+            // Compute entry hash; for the first entry the predecessor versionId is the SCID itself,
+            // which is already the versionId after placeholder replacement
+            JsonNode hashInput = MAPPER.valueToTree(scidEntry);
+            String entryHash = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(hashInput));
+            String versionId = "1-" + entryHash;
 
-        DidLogEntry entryWithVersionId = new DidLogEntry(
-                versionId,
-                scidEntry.versionTime(),
-                scidEntry.parameters(),
-                scidEntry.state(),
-                null);
+            DidLogEntry entryWithVersionId = new DidLogEntry(
+                    versionId,
+                    scidEntry.versionTime(),
+                    scidEntry.parameters(),
+                    scidEntry.state(),
+                    null);
 
-        // Create Data Integrity proof signed by the signer's key
-        JsonNode documentToSign = MAPPER.valueToTree(entryWithVersionId);
-        DataIntegrityProof proof = DataIntegrity.createProof(
-                documentToSign,
-                options.getSigner().getVerificationMethodId(),
-                options.getSigner());
+            // Create Data Integrity proof signed by the signer's key
+            JsonNode documentToSign = MAPPER.valueToTree(entryWithVersionId);
+            DataIntegrityProof proof = DataIntegrity.createProof(
+                    documentToSign,
+                    options.getSigner().getVerificationMethodId(),
+                    options.getSigner());
 
-        DidLogEntry finalEntry = new DidLogEntry(
-                versionId,
-                scidEntry.versionTime(),
-                scidEntry.parameters(),
-                scidEntry.state(),
-                List.of(proof));
+            DidLogEntry finalEntry = new DidLogEntry(
+                    versionId,
+                    scidEntry.versionTime(),
+                    scidEntry.parameters(),
+                    scidEntry.state(),
+                    List.of(proof));
 
-        DidLog didLog = DidLog.empty().append(finalEntry);
+            DidLog didLog = DidLog.empty().append(finalEntry);
 
-        ResolutionMetadata metadata = new ResolutionMetadata(
-                versionId,
-                versionTime,
-                versionTime,
-                versionTime,
-                scid,
-                options.isPortable(),
-                false,
-                String.valueOf(DidWebVhConstants.DEFAULT_TTL_SECONDS),
-                options.getWitness(),
-                options.getWatchers(),
-                null,
-                null);
+            ResolutionMetadata metadata = new ResolutionMetadata(
+                    versionId,
+                    versionTime,
+                    versionTime,
+                    versionTime,
+                    scid,
+                    options.isPortable(),
+                    false,
+                    String.valueOf(DidWebVhConstants.DEFAULT_TTL_SECONDS),
+                    options.getWitness(),
+                    options.getWatchers(),
+                    null,
+                    null);
 
-        log.trace("Successfully created DID: {}", did);
-        return new CreateResult(did, finalEntry.state(), metadata, didLog);
+            log.trace("Successfully created DID: {}", did);
+            return new CreateResult(did, finalEntry.state(), metadata, didLog);
+        } catch (RuntimeException e) {
+            log.error("Failed to create DID for domain: {}", options.getDomain(), e);
+            throw e;
+        }
     }
 
     private static void validateOptions(CreateOptions options) {
