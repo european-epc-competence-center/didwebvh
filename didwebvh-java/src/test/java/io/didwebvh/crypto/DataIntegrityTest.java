@@ -51,13 +51,12 @@ class DataIntegrityTest {
         System.arraycopy(rawPublicKey, 0, multikeyBytes, ED25519_MULTICODEC_PREFIX.length, rawPublicKey.length);
         publicKeyMultibase = Multiformats.encodeBase58btc(multikeyBytes);
 
-        // Create a signer that uses the private key to sign the data
-        signer = data -> {
+        signer = Signer.create(publicKeyMultibase, data -> {
             Ed25519Signer s = new Ed25519Signer();
             s.init(true, privateKey);
             s.update(data, 0, data.length);
             return s.generateSignature();
-        };
+        });
 
         // Create a verifier that uses the public key to verify the signature
         verifier = (signature, message, keyMultibase) -> {
