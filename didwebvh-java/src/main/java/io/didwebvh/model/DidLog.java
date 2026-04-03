@@ -52,6 +52,11 @@ public final class DidLog {
         return entries.get(0);
     }
 
+    @Override
+    public String toString() {
+        return "DidLog" + entries.toString();
+    }
+
     /** Returns a new {@code DidLog} with {@code newEntry} appended. */
     public DidLog append(DidLogEntry newEntry) {
         List<DidLogEntry> updated = new ArrayList<>(entries);
