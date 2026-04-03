@@ -18,15 +18,17 @@ Bachelor thesis project: security analysis of `did:webvh` (DID method combining 
 ├── spec/                     # did:webvh spec v1.0 source files
 ├── didwebvh-java/            # Java library implementation (Maven, Java 21)
 │   ├── pom.xml               # io.didwebvh:didwebvh-java:0.1.0-SNAPSHOT
-│   └── src/main/java/io/didwebvh/
-│       ├── api/              # Public facade + Options/Result types
-│       ├── model/            # Data models (DidLog, Parameters, WitnessParameter, etc.)
-│       ├── crypto/           # Signer/Verifier interfaces + impls
-│       ├── log/              # JSONL parse/serialize/validate
-│       ├── operation/        # Create/Update/Deactivate logic
-│       ├── resolve/          # DidResolver, LogBasedResolver, HttpResolver
-│       ├── witness/          # Witness support
-│       └── exception/        # Typed exception hierarchy
+│   ├── src/main/java/io/didwebvh/
+│   │   ├── api/              # Public facade + Options/Result types
+│   │   ├── model/            # Data models (DidLog, Parameters, WitnessParameter, etc.)
+│   │   ├── crypto/           # Signer/Verifier interfaces + impls
+│   │   ├── log/              # JSONL parse/serialize/validate
+│   │   ├── operation/        # Create/Update/Deactivate logic
+│   │   ├── resolve/          # DidResolver, LogBasedResolver, HttpResolver
+│   │   ├── witness/          # Witness support
+│   │   └── exception/        # Typed exception hierarchy
+│   └── src/test/java/io/didwebvh/
+│       └── support/          # Shared test helpers (Ed25519TestFixture)
 └── .cursor/
     ├── notes/                # This knowledge base
     └── rules/                # Cursor AI rules

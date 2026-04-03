@@ -32,52 +32,50 @@ public static byte[] canonicalize(JsonNode node) {
 
 ---
 
-## Primitive 2: `Multiformats` — base58btc + multihash
+## Primitive 2: `Multiformats` — base58btc + multihash + multikey
 
 **File:** `crypto/Multiformats.java`
 
-### Pipeline: SHA-256 → multihash → base58btc
+### Two base58btc conventions (critical distinction!)
 
-For all spec hash strings (SCID, entry hash inside `versionId`, `nextKeyHashes`):
+The spec uses **two different** base58btc encodings:
 
-1. **SHA-256** — hash input bytes → 32-byte digest
-2. **Multihash** — prefix with `0x12` (sha2-256) + `0x20` (digest length 32) → 34 bytes (self-describing)
-3. **Multibase base58btc** — encode 34 bytes with base58btc alphabet + `z` multibase prefix → final `z…` string
+| Convention | Prefix | Used for | Methods |
+|---|---|---|---|
+| **Raw base58btc** | none | SCID, entry hash, `nextKeyHashes` | `base58btcEncode/Decode`, `sha256Multihash` |
+| **Multibase base58btc** | `z` | `proofValue`, multikey `updateKeys` | `multibaseEncode/Decode` |
 
-`Multiformats.sha256Multihash(byte[])` performs all three steps. Use `wrapSha256Multihash` + `encodeBase58btc` separately only when you already have a raw digest.
+Hash strings (SCID, entry hash) start with `Qm` (the natural base58btc encoding of multihash prefix `0x1220`). Multikey strings start with `z6Mk` (the `z` multibase prefix + base58btc of Ed25519 multicodec prefix `0xed01`).
 
-### base58btc
+### Pipeline: SHA-256 → multihash → raw base58btc
 
-Bitcoin alphabet (58 chars): removes look-alike characters `0`, `O`, `I`, `l`. Multibase prefix `z` identifies base58btc.
+`sha256Multihash(byte[])`:
+1. SHA-256 → 32-byte digest
+2. Multihash envelope: `[0x12, 0x20]` + digest → 34 bytes
+3. Raw base58btc (NO `z` prefix) → `Qm...` string (46 chars)
 
-### multikey encoding for public keys
+### Multikey encoding
 
-Ed25519 public keys stored in `updateKeys`:
-```
-multikey = encodeBase58btc([0xed, 0x01] + raw_32_byte_public_key)
-```
-`[0xed, 0x01]` = Ed25519 multicodec prefix. To extract raw key: decode base58btc, skip first 2 bytes.
+`encodeEd25519Multikey(byte[32])` → `z` + base58btc(`[0xed, 0x01]` + rawKey) → `z6Mk...`
+`decodeEd25519Multikey(String)` → strips `z`, decodes, strips 2-byte prefix → raw 32-byte key
 
-**`updateKeys` vs `nextKeyHashes`:** `updateKeys` stores multikey strings directly. `nextKeyHashes` stores `sha256Multihash(multikey_bytes)` — i.e. hash the multicodec-prefixed key material after multibase-decoding the multikey string.
+### Public API summary
 
-### Public methods
-
-| Method | What it does | Where it matters |
-|--------|----------------|------------------|
-| `sha256Multihash(byte[])` | SHA-256 → multihash `0x1220…` → multibase `z…` | SCID, entry hash, `nextKeyHashes` |
-| `wrapSha256Multihash(byte[32])` | Prefixes an existing digest (34 bytes) | Composition / tests |
-| `encodeBase58btc(byte[])` | Raw bytes → `z` + base58btc | `proofValue`, `updateKeys` multikey |
-| `decodeBase58btc(String)` | `z…` → raw bytes | Verify signatures, extract raw key |
+| Method | Output | Usage |
+|---|---|---|
+| `sha256Multihash(byte[])` | `Qm...` (raw, 46 chars) | SCID, entry hash, `nextKeyHashes` |
+| `base58btcEncode/Decode` | raw base58btc | Low-level raw encoding |
+| `multibaseEncode/Decode` | `z...` | `proofValue`, general multibase |
+| `encodeEd25519Multikey/decodeEd25519Multikey` | `z6Mk...` / raw key | `updateKeys` |
+| `wrapSha256Multihash(byte[32])` | 34-byte multihash | Composition |
 
 ### Libraries
 
 | Concern | Choice |
-|--------|--------|
-| Multibase base58btc | [java-multibase](https://github.com/multiformats/java-multibase) via JitPack — `Multibase.encode(Base58BTC, …)` |
-| SHA-256 | `java.security.MessageDigest.getInstance("SHA-256")` (JDK) |
-| SHA-256 multihash envelope | Local 2-byte prefix helper (`0x12`, `0x20`) |
-
-`java-multibase` is not on Maven Central; add JitPack repository + `com.github.multiformats:java-multibase` dependency. CI must resolve JitPack over network.
+|---|---|
+| base58btc | [java-multibase](https://github.com/multiformats/java-multibase) via JitPack |
+| SHA-256 | `java.security.MessageDigest` (JDK) |
+| Multihash envelope | Local 2-byte prefix helper (`0x12`, `0x20`) |
 
 ---
 

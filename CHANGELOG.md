@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `CreateOperation`: genesis log entry creation following spec §6.1 (SCID generation, entry hash, Data Integrity proof, placeholder replacement)
 - `LogSerializer` / `LogParser`: JSONL serialization and deserialization of `did.jsonl`
 - `DataIntegrity`: `eddsa-jcs-2022` proof creation and verification (W3C Data Integrity spec)
-- `Multiformats`: base58btc multibase encoding and SHA-256 multihash
+- `Multiformats`: base58btc multibase decoding/encoding and SHA-256 multihash, centralized Ed25519 multikey decoding/encoding
 - `JcsCanonicalizer`: RFC 8785 JCS canonicalization
 - Java library scaffold (`didwebvh-java/`): package structure, public API facade, all data models, crypto interfaces, operation/resolution/witness stubs, typed exception hierarchy
 

@@ -77,7 +77,7 @@ io.didwebvh/
 
 **`crypto/`** — Crypto boundary. Callers supply their own `Signer`/`Verifier`.
 - `Signer` / `Verifier` interfaces — `sign(byte[])→byte[]`, `verify(sig, msg, publicKeyMultibase)→boolean`
-- `Multiformats` — multibase encode/decode, multihash (SHA-256 prefix `0x1220`)
+- `Multiformats` — raw base58btc + multibase encode/decode, multihash, Ed25519 multikey encode/decode
 - `JcsCanonicalizer` — RFC 8785 via erdtman library + Jackson `JsonNode` bridge
 - `DataIntegrity` — create and verify `eddsa-jcs-2022` proofs; calls through `Signer`/`Verifier`
 
