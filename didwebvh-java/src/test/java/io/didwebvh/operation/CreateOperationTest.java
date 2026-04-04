@@ -287,13 +287,11 @@ class CreateOperationTest {
         void proof_failsWithTamperedDocument() {
             CreateResult result = CreateOperation.create(defaultOptions().build());
             DidLogEntry entry = result.log().first();
-            log.info("Entry: {}", entry);
             DataIntegrityProof proof = entry.proof().get(0);
 
             ObjectNode tamperedDoc = (ObjectNode) MAPPER.valueToTree(entry.withoutProof());
             tamperedDoc.put("versionTime", "2099-01-01T00:00:00Z");
 
-            log.info("Tampered Document: {}", tamperedDoc);
             assertThatThrownBy(() -> DataIntegrity.verifyProof(tamperedDoc, proof, verifier))
                     .isInstanceOf(LogValidationException.class);
         }
