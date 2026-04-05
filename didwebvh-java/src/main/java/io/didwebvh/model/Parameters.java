@@ -3,8 +3,11 @@ package io.didwebvh.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.didwebvh.DidWebVhConstants;
+import io.didwebvh.exception.LogValidationException;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The {@code parameters} object of a did:webvh log entry.
@@ -41,30 +44,58 @@ public record Parameters(
 ) {
 
     /**
-     * Validates that these parameters are a legal state transition from {@code previous}.
-     * For the first entry, pass {@code null} as {@code previous}.
+     * Validates that these parameters are a legal state transition from {@code previous}
+     * and returns the resulting effective (merged) parameter set.
      *
-     * @param previous the validated parameters of the preceding log entry, or {@code null}
-     * @throws io.didwebvh.exception.LogValidationException if the transition is invalid
+     * <p>For the genesis entry pass {@code null} as {@code previous}; all subsequent
+     * entries must pass the previous entry's effective parameters.
+     *
+     * <p>Spec §3.6 rules enforced:
+     * <ul>
+     *   <li>Genesis: {@code method}, {@code scid}, {@code updateKeys} are required.</li>
+     *   <li>Later entries: {@code scid} MUST NOT appear.</li>
+     *   <li>{@code portable} cannot change after the first entry; once {@code false} it cannot become {@code true}.</li>
+     *   <li>While pre-rotation is active (previous {@code nextKeyHashes} is non-empty),
+     *       both {@code updateKeys} and {@code nextKeyHashes} MUST be present.</li>
+     *   <li>{@code null} field values are treated as absent (spec recommends graceful handling).</li>
+     * </ul>
+     *
+     * @param previous the validated parameters of the preceding log entry, or {@code null} for genesis
      * @return the merged/effective parameters after this entry
-     * @implNote TODO: implement full parameter validation rules from spec §6
+     * @throws LogValidationException if the transition is invalid
      */
     public Parameters validate(Parameters previous) {
-        // TODO: implement validation + merge logic
-        throw new UnsupportedOperationException("TODO");
+        if (previous == null) {
+            validateGenesis();
+        } else {
+            validateTransition(previous);
+        }
+        return mergeWith(previous);
     }
 
     /**
-     * Computes the minimal parameter delta between this entry and {@code previous},
-     * omitting fields that are unchanged. Used when appending update log entries.
+     * Computes the minimal parameter delta between {@code effective} (this) and {@code previous},
+     * returning a new {@code Parameters} with only fields that changed or were introduced.
+     *
+     * <p>Used when building update log entries: the on-wire parameters object should only
+     * contain fields that differ from the previous entry.
      *
      * @param previous the effective parameters of the preceding log entry
-     * @return a Parameters containing only the fields that changed
-     * @implNote TODO: implement diff logic
+     * @return a Parameters containing only the changed/new fields; unchanged fields are {@code null}
      */
     public Parameters diff(Parameters previous) {
-        // TODO: implement diff logic
-        throw new UnsupportedOperationException("TODO");
+        Objects.requireNonNull(previous, "previous must not be null for diff");
+        return new Parameters(
+                Objects.equals(method, previous.method) ? null : method,
+                null, // scid never appears in a diff
+                Objects.equals(updateKeys, previous.updateKeys) ? null : updateKeys,
+                Objects.equals(nextKeyHashes, previous.nextKeyHashes) ? null : nextKeyHashes,
+                Objects.equals(portable, previous.portable) ? null : portable,
+                Objects.equals(deactivated, previous.deactivated) ? null : deactivated,
+                Objects.equals(ttl, previous.ttl) ? null : ttl,
+                Objects.equals(witness, previous.witness) ? null : witness,
+                Objects.equals(watchers, previous.watchers) ? null : watchers
+        );
     }
 
     /**
@@ -79,5 +110,108 @@ public record Parameters(
      */
     public boolean isDeactivated() {
         return Boolean.TRUE.equals(deactivated);
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal validation helpers
+    // -------------------------------------------------------------------------
+
+    private void validateGenesis() {
+        if (method == null || method.isBlank()) {
+            throw new LogValidationException("Genesis entry must contain 'method'");
+        }
+        if (!DidWebVhConstants.METHOD_V1_0.equals(method)) {
+            throw new LogValidationException(
+                    "Unsupported method version '" + method + "'; expected '" + DidWebVhConstants.METHOD_V1_0 + "'");
+        }
+        if (scid == null || scid.isBlank()) {
+            throw new LogValidationException("Genesis entry must contain 'scid'");
+        }
+        if (updateKeys == null || updateKeys.isEmpty()) {
+            throw new LogValidationException("Genesis entry must contain at least one 'updateKeys' entry");
+        }
+    }
+
+    private void validateTransition(Parameters previous) {
+        if (scid != null) {
+            throw new LogValidationException("'scid' MUST NOT appear in entries after the genesis entry");
+        }
+
+        // portable: cannot be changed once set; can only be activated (true) in the genesis entry
+        Boolean prevPortable = previous.portable != null ? previous.portable : Boolean.FALSE;
+        if (portable != null) {
+            // if portable true && prevPortable false
+            if (Boolean.TRUE.equals(portable) && !Boolean.TRUE.equals(prevPortable)) {
+                throw new LogValidationException(
+                        "'portable' can only be set to true in the genesis entry");
+            }
+            // portable != prevPortable
+            if (!portable.equals(prevPortable)) {
+                throw new LogValidationException(
+                        "'portable' cannot change after the genesis entry (was "
+                                + prevPortable + ", attempted " + portable + ")");
+            }
+        }
+
+        // Pre-rotation: when active, both updateKeys and nextKeyHashes must be present in every entry
+        if (previous.isPreRotationActive()) {
+            if (updateKeys == null) {
+                throw new LogValidationException(
+                        "'updateKeys' MUST be present while pre-rotation is active");
+            }
+            if (nextKeyHashes == null) {
+                throw new LogValidationException(
+                        "'nextKeyHashes' MUST be present while pre-rotation is active");
+            }
+        }
+
+        // Once deactivated, no further entries are valid (LogValidator enforces this, but double-check)
+        if (Boolean.TRUE.equals(previous.deactivated)) {
+            throw new LogValidationException("DID is already deactivated; no further entries are valid");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Merge helper
+    // -------------------------------------------------------------------------
+
+    /**
+     * Produces the effective (resolved) parameter set by merging this entry's parameters
+     * with the previous entry's effective parameters. When {@code previous} is {@code null}
+     * (genesis entry) spec defaults are applied for absent fields.
+     *
+     * <p>Rule: use this entry's value if present (non-null), otherwise inherit from {@code previous}.
+     */
+    private Parameters mergeWith(Parameters previous) {
+        String effectiveMethod = coalesce(method, previous != null ? previous.method : null);
+        List<String> effectiveUpdateKeys = coalesce(updateKeys,  previous != null ? previous.updateKeys : null);
+        List<String> effectiveNextKeyHashes = coalesceWithDefault(nextKeyHashes, previous != null ? previous.nextKeyHashes : null, List.of());
+        Boolean effectivePortable = coalesceWithDefault(portable, previous != null ? previous.portable : null, Boolean.FALSE);
+        Boolean effectiveDeactivated = coalesceWithDefault(deactivated, previous != null ? previous.deactivated : null, Boolean.FALSE);
+        Integer effectiveTtl = coalesceWithDefault(ttl, previous != null ? previous.ttl : null, DidWebVhConstants.DEFAULT_TTL_SECONDS);
+        WitnessParameter effectiveWitness = coalesce(witness, previous != null ? previous.witness : null);
+        List<String> effectiveWatchers = coalesceWithDefault(watchers, previous != null ? previous.watchers : null, List.of());
+        
+        // scid is present in genesis and null in all subsequent effective params
+        String effectiveScid = previous == null ? scid : null;
+
+        return new Parameters(effectiveMethod, effectiveScid, effectiveUpdateKeys, effectiveNextKeyHashes,
+                effectivePortable, effectiveDeactivated, effectiveTtl, effectiveWitness, effectiveWatchers);
+    }
+
+    /**
+     * Returns {@code value} if non-null, otherwise returns {@code fallback}.
+     */
+    private static <T> T coalesce(T value, T fallback) {
+        return value != null ? value : fallback;
+    }
+
+    /**
+     * Returns {@code value} if non-null, otherwise returns {@code fallback} or {@code defaultValue}.
+     */
+    private static <T> T coalesceWithDefault(T value, T fallback, T defaultValue) {
+        if (value != null) return value;
+        if (fallback != null) return fallback;
+        return defaultValue;
     }
 }
