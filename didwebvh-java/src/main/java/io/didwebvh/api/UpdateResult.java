@@ -7,13 +7,11 @@ import io.didwebvh.model.ResolutionMetadata;
 /**
  * The result of a {@link DidWebVh#update} operation.
  *
- * @param did      the DID string (unchanged)
  * @param document the updated DID document
  * @param metadata the resolution metadata for the new log entry
  * @param log      the full updated log (existing entries + new entry) to replace {@code did.jsonl}
  */
 public record UpdateResult(
-        String did,
         JsonNode document,
         ResolutionMetadata metadata,
         DidLog log
