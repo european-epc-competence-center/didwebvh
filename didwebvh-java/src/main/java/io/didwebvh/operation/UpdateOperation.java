@@ -8,6 +8,7 @@ import io.didwebvh.api.UpdateResult;
 import io.didwebvh.crypto.DataIntegrity;
 import io.didwebvh.crypto.JcsCanonicalizer;
 import io.didwebvh.crypto.Multiformats;
+import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
@@ -221,7 +222,7 @@ public final class UpdateOperation {
      *
      * @throws IllegalArgumentException if the signer is not authorized
      */
-    private static void validateSigningKeyAuthorization(io.didwebvh.crypto.Signer signer, Parameters activeParams) {
+    private static void validateSigningKeyAuthorization(Signer signer, Parameters activeParams) {
         String signerKey = signer.getVerificationMethodId();
         if (activeParams.isPreRotationActive()) {
             String signerKeyHash = Multiformats.sha256Multihash(signerKey.getBytes(StandardCharsets.UTF_8));
