@@ -86,6 +86,25 @@ public final class UpdateOperation {
 
             Parameters delta = newEffective.diff(activeParams);
 
+            // Spec: while pre-rotation is active, updateKeys and nextKeyHashes
+            // MUST be present in every log entry — even if unchanged from the
+            // previous entry.  diff() strips equal fields, so we force them back in.
+            // Note: this is a workaround to ensure that the updateKeys and nextKeyHashes
+            // are always present in the log entry, even if they are unchanged from the
+            // previous entry. Not the intention behind pre-rotation, but allowed.
+            if (activeParams.isPreRotationActive()) {
+                delta = new Parameters(
+                        delta.method(),
+                        delta.scid(),
+                        delta.updateKeys() != null ? delta.updateKeys() : newEffective.updateKeys(),
+                        delta.nextKeyHashes() != null ? delta.nextKeyHashes() : newEffective.nextKeyHashes(),
+                        delta.portable(),
+                        delta.deactivated(),
+                        delta.ttl(),
+                        delta.witness(),
+                        delta.watchers());
+            }
+
             String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
 
             DidLogEntry preliminaryEntry = new DidLogEntry(
