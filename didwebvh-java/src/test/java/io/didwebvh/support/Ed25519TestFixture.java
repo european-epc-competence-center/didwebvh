@@ -13,12 +13,33 @@ import org.bouncycastle.crypto.signers.Ed25519Signer;
 import java.security.SecureRandom;
 
 /**
- * Test helper that generates a fresh Ed25519 key pair together with matching
- * {@link Signer} and {@link Verifier} implementations backed by BouncyCastle.
+ * Test helper that generates a fresh Ed25519 key pair with a matching
+ * {@link Signer} backed by BouncyCastle.
+ *
+ * <p>The {@link Verifier} is <strong>not</strong> per-instance — it is a stateless
+ * generic Ed25519 verifier that decodes the public key from the multikey argument
+ * at verification time. Use the static {@link #verifier()} method to obtain it.
  *
  * <p>Call {@link #generate()} in a JUnit {@code @BeforeEach} to get a fresh key pair per test.
  */
-public record Ed25519TestFixture(Signer signer, Verifier verifier, String publicKeyMultibase) {
+public record Ed25519TestFixture(Signer signer, String publicKeyMultibase) {
+
+    private static final Verifier VERIFIER = (signature, message, keyMultibase) -> {
+        byte[] rawKey = Multiformats.decodeEd25519Multikey(keyMultibase);
+        Ed25519PublicKeyParameters pubKey = new Ed25519PublicKeyParameters(rawKey, 0);
+        Ed25519Signer v = new Ed25519Signer();
+        v.init(false, pubKey);
+        v.update(message, 0, message.length);
+        return v.verifySignature(signature);
+    };
+
+    /**
+     * Returns a generic Ed25519 {@link Verifier} that derives the public key from
+     * the multikey argument — independent of any specific key pair.
+     */
+    public static Verifier verifier() {
+        return VERIFIER;
+    }
 
     public static Ed25519TestFixture generate() {
         Ed25519KeyPairGenerator gen = new Ed25519KeyPairGenerator();
@@ -37,15 +58,6 @@ public record Ed25519TestFixture(Signer signer, Verifier verifier, String public
             return s.generateSignature();
         });
 
-        Verifier verifier = (signature, message, keyMultibase) -> {
-            byte[] rawKey = Multiformats.decodeEd25519Multikey(keyMultibase);
-            Ed25519PublicKeyParameters pubKey = new Ed25519PublicKeyParameters(rawKey, 0);
-            Ed25519Signer v = new Ed25519Signer();
-            v.init(false, pubKey);
-            v.update(message, 0, message.length);
-            return v.verifySignature(signature);
-        };
-
-        return new Ed25519TestFixture(signer, verifier, publicKeyMultibase);
+        return new Ed25519TestFixture(signer, publicKeyMultibase);
     }
 }

@@ -21,14 +21,12 @@ class DataIntegrityTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private Signer signer;
-    private Verifier verifier;
     private String publicKeyMultibase;
 
     @BeforeEach
     void setUp() {
         Ed25519TestFixture fixture = Ed25519TestFixture.generate();
         signer = fixture.signer();
-        verifier = fixture.verifier();
         publicKeyMultibase = fixture.publicKeyMultibase();
     }
 
@@ -47,7 +45,7 @@ class DataIntegrityTest {
         assertThat(proof.verificationMethod()).isEqualTo(publicKeyMultibase);
         assertThat(proof.proofValue()).startsWith("z");
 
-        boolean result = DataIntegrity.verifyProof(document, proof, verifier);
+        boolean result = DataIntegrity.verifyProof(document, proof, Ed25519TestFixture.verifier());
         assertThat(result).isTrue();
     }
 
@@ -61,7 +59,7 @@ class DataIntegrityTest {
         securedDocument.putPOJO("proof", proof);
 
         // verifyProof must strip the embedded proof before hashing
-        boolean result = DataIntegrity.verifyProof(securedDocument, proof, verifier);
+        boolean result = DataIntegrity.verifyProof(securedDocument, proof, Ed25519TestFixture.verifier());
         assertThat(result).isTrue();
     }
 
@@ -77,7 +75,7 @@ class DataIntegrityTest {
         ObjectNode tamperedDocument = document.deepCopy();
         tamperedDocument.put("versionTime", "2099-01-01T00:00:00Z");
 
-        assertThatThrownBy(() -> DataIntegrity.verifyProof(tamperedDocument, proof, verifier))
+        assertThatThrownBy(() -> DataIntegrity.verifyProof(tamperedDocument, proof, Ed25519TestFixture.verifier()))
                 .isInstanceOf(LogValidationException.class);
     }
 
@@ -89,7 +87,7 @@ class DataIntegrityTest {
         ObjectNode tamperedDocument = document.deepCopy();
         tamperedDocument.put("injected", "tamperedWith");
 
-        assertThatThrownBy(() -> DataIntegrity.verifyProof(tamperedDocument, proof, verifier))
+        assertThatThrownBy(() -> DataIntegrity.verifyProof(tamperedDocument, proof, Ed25519TestFixture.verifier()))
                 .isInstanceOf(LogValidationException.class);
     }
 
@@ -112,7 +110,7 @@ class DataIntegrityTest {
                 proof.proofValue(),
                 proof.id());
 
-        assertThatThrownBy(() -> DataIntegrity.verifyProof(document, tamperedProof, verifier))
+        assertThatThrownBy(() -> DataIntegrity.verifyProof(document, tamperedProof, Ed25519TestFixture.verifier()))
                 .isInstanceOf(LogValidationException.class);
     }
 
@@ -130,7 +128,7 @@ class DataIntegrityTest {
                 proof.proofValue(),
                 proof.id());
 
-        assertThatThrownBy(() -> DataIntegrity.verifyProof(document, tamperedProof, verifier))
+        assertThatThrownBy(() -> DataIntegrity.verifyProof(document, tamperedProof, Ed25519TestFixture.verifier()))
                 .isInstanceOf(LogValidationException.class);
     }
 
@@ -146,7 +144,7 @@ class DataIntegrityTest {
         // Force verification with a different key by ignoring the keyMultibase from the proof
         Ed25519TestFixture wrongFixture = Ed25519TestFixture.generate();
         Verifier wrongKeyVerifier = (signature, message, ignored) ->
-                wrongFixture.verifier().verify(signature, message, wrongFixture.publicKeyMultibase());
+                Ed25519TestFixture.verifier().verify(signature, message, wrongFixture.publicKeyMultibase());
 
         assertThatThrownBy(() -> DataIntegrity.verifyProof(document, proof, wrongKeyVerifier))
                 .isInstanceOf(LogValidationException.class);

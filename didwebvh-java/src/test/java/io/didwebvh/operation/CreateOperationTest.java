@@ -6,7 +6,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
-import io.didwebvh.crypto.*;
+import io.didwebvh.crypto.DataIntegrity;
+import io.didwebvh.crypto.JcsCanonicalizer;
+import io.didwebvh.crypto.Multiformats;
+import io.didwebvh.crypto.Signer;
 import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
@@ -33,14 +36,12 @@ class CreateOperationTest {
     private static final String DOMAIN = "example.com";
 
     private Signer signer;
-    private Verifier verifier;
     private String publicKeyMultibase;
 
     @BeforeEach
     void setUp() {
         Ed25519TestFixture fixture = Ed25519TestFixture.generate();
         signer = fixture.signer();
-        verifier = fixture.verifier();
         publicKeyMultibase = fixture.publicKeyMultibase();
     }
 
@@ -279,7 +280,7 @@ class CreateOperationTest {
             DataIntegrityProof proof = entry.proof().get(0);
 
             JsonNode document = MAPPER.valueToTree(entry.withoutProof());
-            boolean valid = DataIntegrity.verifyProof(document, proof, verifier);
+            boolean valid = DataIntegrity.verifyProof(document, proof, Ed25519TestFixture.verifier());
             assertThat(valid).isTrue();
         }
 
@@ -292,7 +293,7 @@ class CreateOperationTest {
             ObjectNode tamperedDoc = (ObjectNode) MAPPER.valueToTree(entry.withoutProof());
             tamperedDoc.put("versionTime", "2099-01-01T00:00:00Z");
 
-            assertThatThrownBy(() -> DataIntegrity.verifyProof(tamperedDoc, proof, verifier))
+            assertThatThrownBy(() -> DataIntegrity.verifyProof(tamperedDoc, proof, Ed25519TestFixture.verifier()))
                     .isInstanceOf(LogValidationException.class);
         }
     }

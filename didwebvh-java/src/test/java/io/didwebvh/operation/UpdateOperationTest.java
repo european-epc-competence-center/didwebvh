@@ -7,7 +7,10 @@ import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
 import io.didwebvh.api.UpdateOptions;
 import io.didwebvh.api.UpdateResult;
-import io.didwebvh.crypto.*;
+import io.didwebvh.crypto.DataIntegrity;
+import io.didwebvh.crypto.JcsCanonicalizer;
+import io.didwebvh.crypto.Multiformats;
+import io.didwebvh.crypto.Signer;
 import io.didwebvh.log.LogValidator;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
@@ -17,8 +20,6 @@ import io.didwebvh.support.Ed25519TestFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
@@ -31,18 +32,14 @@ class UpdateOperationTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String DOMAIN = "example.com";
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(UpdateOperationTest.class);
-    
     private Ed25519TestFixture fixtureA;
     private Signer signerA;
-    private Verifier verifierA;
     private String keyA;
 
     @BeforeEach
     void setUp() {
         fixtureA = Ed25519TestFixture.generate();
         signerA = fixtureA.signer();
-        verifierA = fixtureA.verifier();
         keyA = fixtureA.publicKeyMultibase();
     }
 
@@ -88,8 +85,8 @@ class UpdateOperationTest {
                 .signer(signerA);
     }
 
-    private void assertLogPassesValidation(DidLog log, Verifier verifier) {
-        LogValidator validator = new LogValidator(verifier);
+    private void assertLogPassesValidation(DidLog log) {
+        LogValidator validator = new LogValidator(Ed25519TestFixture.verifier());
         int valid = validator.validate(log);
         assertThat(valid).isEqualTo(log.size());
     }
@@ -190,7 +187,7 @@ class UpdateOperationTest {
             UpdateResult result = UpdateOperation.update(
                     defaultUpdateOptions(created.log(), scid).build());
 
-            assertLogPassesValidation(result.log(), verifierA);
+            assertLogPassesValidation(result.log());
         }
     }
 
@@ -238,7 +235,7 @@ class UpdateOperationTest {
 
             assertThat(update3.log().size()).isEqualTo(4);
             assertThat(update3.log().latest().versionNumber()).isEqualTo(4);
-            assertLogPassesValidation(update3.log(), verifierA);
+            assertLogPassesValidation(update3.log());
         }
     }
 
@@ -276,7 +273,7 @@ class UpdateOperationTest {
             DidLogEntry entry = result.log().latest();
             DataIntegrityProof proof = entry.proof().get(0);
             JsonNode doc = MAPPER.valueToTree(entry.withoutProof());
-            boolean valid = DataIntegrity.verifyProof(doc, proof, verifierA);
+            boolean valid = DataIntegrity.verifyProof(doc, proof, Ed25519TestFixture.verifier());
             assertThat(valid).isTrue();
         }
     }
@@ -319,7 +316,7 @@ class UpdateOperationTest {
 
             Parameters delta = result.log().latest().parameters();
             assertThat(delta.updateKeys()).containsExactly(fixtureB.publicKeyMultibase());
-            assertLogPassesValidation(result.log(), verifierA);
+            assertLogPassesValidation(result.log());
         }
     }
 
@@ -354,7 +351,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(afterRotation.log().size()).isEqualTo(3);
-            assertLogPassesValidation(afterRotation.log(), fixtureB.verifier());
+            assertLogPassesValidation(afterRotation.log());
         }
 
         @Test
@@ -413,7 +410,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(result.log().size()).isEqualTo(2);
-            assertLogPassesValidation(result.log(), fixtureB.verifier());
+            assertLogPassesValidation(result.log());
         }
 
         @Test
@@ -497,7 +494,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(entry3.log().size()).isEqualTo(3);
-            assertLogPassesValidation(entry3.log(), fixtureC.verifier());
+            assertLogPassesValidation(entry3.log());
         }
 
         @Test
@@ -519,7 +516,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(result.log().size()).isEqualTo(2);
-            assertLogPassesValidation(result.log(), verifierA);
+            assertLogPassesValidation(result.log());
 
             // Can do it again — the same key is continuously re-committed
             UpdateResult result2 = UpdateOperation.update(
@@ -532,7 +529,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(result2.log().size()).isEqualTo(3);
-            assertLogPassesValidation(result2.log(), verifierA);
+            assertLogPassesValidation(result2.log());
         }
 
         @Test
@@ -575,7 +572,7 @@ class UpdateOperationTest {
                             .signer(fixtureB.signer())
                             .build());
 
-            assertLogPassesValidation(deactivated.log(), fixtureB.verifier());
+            assertLogPassesValidation(deactivated.log());
 
             // Next entry: normal rules — signed by previous updateKeys (keyB)
             UpdateResult afterDeactivation = UpdateOperation.update(
@@ -586,7 +583,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(afterDeactivation.log().size()).isEqualTo(3);
-            assertLogPassesValidation(afterDeactivation.log(), fixtureB.verifier());
+            assertLogPassesValidation(afterDeactivation.log());
         }
 
         @Test
@@ -634,7 +631,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(result.log().size()).isEqualTo(2);
-            assertLogPassesValidation(result.log(), fixtureB.verifier());
+            assertLogPassesValidation(result.log());
         }
 
         @Test
@@ -677,7 +674,7 @@ class UpdateOperationTest {
             Parameters delta = result.log().latest().parameters();
             assertThat(delta.nextKeyHashes()).containsExactly(hashB);
             assertThat(delta.updateKeys()).containsExactly(fixtureB.publicKeyMultibase());
-            assertLogPassesValidation(result.log(), fixtureB.verifier());
+            assertLogPassesValidation(result.log());
         }
     }
 
@@ -873,7 +870,7 @@ class UpdateOperationTest {
                             .signer(signerA)
                             .build());
 
-            assertLogPassesValidation(activated.log(), verifierA);
+            assertLogPassesValidation(activated.log());
 
             // Entry 3: must follow pre-rotation rules — reveal keyB
             Ed25519TestFixture fixtureC = Ed25519TestFixture.generate();
@@ -889,7 +886,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(entry3.log().size()).isEqualTo(3);
-            assertLogPassesValidation(entry3.log(), fixtureB.verifier());
+            assertLogPassesValidation(entry3.log());
         }
 
         @Test
@@ -967,7 +964,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(update3.log().size()).isEqualTo(4);
-            assertLogPassesValidation(update3.log(), fixtureB.verifier());
+            assertLogPassesValidation(update3.log());
         }
 
         @Test
@@ -1011,7 +1008,7 @@ class UpdateOperationTest {
                             .build());
 
             assertThat(entry4.log().size()).isEqualTo(4);
-            assertLogPassesValidation(entry4.log(), fixtureC.verifier());
+            assertLogPassesValidation(entry4.log());
         }
     }
 }
