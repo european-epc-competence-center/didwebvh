@@ -147,7 +147,7 @@ public final class UpdateOperation {
                     metadata,
                     updatedLog);
         } catch (RuntimeException e) {
-            log.error("Failed to update DID log", e);
+            log.debug("Failed to update DID log: {}", e.getMessage());
             throw e;
         }
     }

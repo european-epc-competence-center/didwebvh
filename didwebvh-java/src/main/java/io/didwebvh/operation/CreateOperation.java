@@ -133,7 +133,7 @@ public final class CreateOperation {
             log.trace("Successfully created DID: {}", did);
             return new CreateResult(did, finalEntry.state(), metadata, didLog);
         } catch (RuntimeException e) {
-            log.error("Failed to create DID for domain: {}", options.getDomain(), e);
+            log.debug("Failed to create DID for domain {}: {}", options.getDomain(), e.getMessage());
             throw e;
         }
     }
