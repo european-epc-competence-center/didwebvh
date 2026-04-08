@@ -43,4 +43,18 @@ public record DataIntegrityProof(
                 proofValue,
                 null);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("DataIntegrityProof {\n");
+        if (type != null)               sb.append("  type:               ").append(type).append("\n");
+        if (cryptosuite != null)        sb.append("  cryptosuite:        ").append(cryptosuite).append("\n");
+        if (verificationMethod != null) sb.append("  verificationMethod: ").append(verificationMethod).append("\n");
+        if (created != null)            sb.append("  created:            ").append(created).append("\n");
+        if (proofPurpose != null)       sb.append("  proofPurpose:       ").append(proofPurpose).append("\n");
+        if (proofValue != null)         sb.append("  proofValue:         ").append(proofValue).append("\n");
+        if (id != null)                 sb.append("  id:                 ").append(id).append("\n");
+        sb.append("}");
+        return sb.toString();
+    }
 }

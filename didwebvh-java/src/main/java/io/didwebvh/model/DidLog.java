@@ -54,7 +54,18 @@ public final class DidLog {
 
     @Override
     public String toString() {
-        return "DidLog" + entries.toString();
+        String label = entries.size() == 1 ? "1 entry" : entries.size() + " entries";
+        StringBuilder sb = new StringBuilder("DidLog [").append(label).append("] {\n");
+        for (int i = 0; i < entries.size(); i++) {
+            sb.append("  [").append(i).append("] ").append(indent(entries.get(i).toString(), "      ")).append("\n");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    /** Indents every line after the first by {@code prefix}. */
+    private static String indent(String s, String prefix) {
+        return s.replace("\n", "\n" + prefix);
     }
 
     /** Returns a new {@code DidLog} with {@code newEntry} appended. */

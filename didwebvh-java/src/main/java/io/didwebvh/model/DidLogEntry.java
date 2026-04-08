@@ -58,4 +58,30 @@ public record DidLogEntry(
     public DidLogEntry withoutProof() {
         return new DidLogEntry(versionId, versionTime, parameters, state, null);
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("DidLogEntry {\n");
+        sb.append("  versionId:   ").append(versionId).append("\n");
+        sb.append("  versionTime: ").append(versionTime).append("\n");
+        if (parameters != null) {
+            sb.append("  parameters:  ").append(indent(parameters.toString(), "               ")).append("\n");
+        }
+        if (state != null) {
+            sb.append("  state:       ").append(state).append("\n");
+        }
+        if (proof != null && !proof.isEmpty()) {
+            sb.append("  proof:\n");
+            for (DataIntegrityProof p : proof) {
+                sb.append("    - ").append(indent(p.toString(), "      ")).append("\n");
+            }
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    /** Indents every line after the first by {@code prefix}. */
+    private static String indent(String s, String prefix) {
+        return s.replace("\n", "\n" + prefix);
+    }
 }

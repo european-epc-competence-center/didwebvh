@@ -17,4 +17,25 @@ public record CreateResult(
         JsonNode document,
         ResolutionMetadata metadata,
         DidLog log
-) {}
+) {
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("CreateResult {\n");
+        sb.append("  did:      ").append(did).append("\n");
+        sb.append("  document: ").append(document).append("\n");
+        if (metadata != null) {
+            sb.append("  metadata: ").append(indent(metadata.toString(), "            ")).append("\n");
+        }
+        if (log != null) {
+            sb.append("  log:      ").append(indent(log.toString(), "            ")).append("\n");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    /** Indents every line after the first by {@code prefix}. */
+    private static String indent(String s, String prefix) {
+        return s.replace("\n", "\n" + prefix);
+    }
+}

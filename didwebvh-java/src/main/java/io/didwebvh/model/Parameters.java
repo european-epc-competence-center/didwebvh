@@ -112,6 +112,22 @@ public record Parameters(
         return Boolean.TRUE.equals(deactivated);
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("Parameters {\n");
+        if (method != null)         sb.append("  method:         ").append(method).append("\n");
+        if (scid != null)           sb.append("  scid:           ").append(scid).append("\n");
+        if (updateKeys != null)     sb.append("  updateKeys:     ").append(updateKeys).append("\n");
+        if (nextKeyHashes != null)  sb.append("  nextKeyHashes:  ").append(nextKeyHashes).append("\n");
+        if (portable != null)       sb.append("  portable:       ").append(portable).append("\n");
+        if (deactivated != null)    sb.append("  deactivated:    ").append(deactivated).append("\n");
+        if (ttl != null)            sb.append("  ttl:            ").append(ttl).append("\n");
+        if (witness != null)        sb.append("  witness:        ").append(witness).append("\n");
+        if (watchers != null)       sb.append("  watchers:       ").append(watchers).append("\n");
+        sb.append("}");
+        return sb.toString();
+    }
+
     // -------------------------------------------------------------------------
     // Internal validation helpers
     // -------------------------------------------------------------------------
