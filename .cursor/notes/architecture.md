@@ -88,6 +88,7 @@ io.didwebvh/
 
 **`operation/`** — Pure business logic, no I/O. All return an updated `DidLog`; caller persists.
 - `CreateOperation`, `UpdateOperation`, `DeactivateOperation`
+- `OperationSupport` (package-private) — effective `Parameters` from a `DidLog` via `Parameters.validate` chain; signer authorization vs active `updateKeys` / `nextKeyHashes` (shared by update/deactivate)
 
 **`resolve/`**
 - `DidResolver` interface

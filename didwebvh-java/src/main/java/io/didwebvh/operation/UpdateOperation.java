@@ -8,7 +8,6 @@ import io.didwebvh.api.UpdateResult;
 import io.didwebvh.crypto.DataIntegrity;
 import io.didwebvh.crypto.JcsCanonicalizer;
 import io.didwebvh.crypto.Multiformats;
-import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
@@ -66,7 +65,7 @@ public final class UpdateOperation {
             DidLog currentLog = options.getLog();
             DidLogEntry previous = currentLog.latest();
 
-            Parameters activeParams = computeEffectiveParams(currentLog);
+            Parameters activeParams = OperationSupport.effectiveParameters(currentLog);
 
             if (activeParams.isDeactivated()) {
                 throw new IllegalStateException("Cannot update a deactivated DID");
@@ -77,7 +76,7 @@ public final class UpdateOperation {
             // With pre-rotation: signer's key hash must be in the previous nextKeyHashes
             //   (because the key being used to sign is the new key being revealed, whose
             //    hash was committed in the previous entry's nextKeyHashes).
-            validateSigningKeyAuthorization(options.getSigner(), activeParams);
+            OperationSupport.validateSigningKeyAuthorization(options.getSigner(), activeParams);
 
             Parameters newEffective = buildNewEffective(options, activeParams);
 
@@ -182,18 +181,6 @@ public final class UpdateOperation {
     }
 
     /**
-     * Walks the log from genesis to latest, merging parameters at each step to compute
-     * the fully-merged effective parameter state.
-     */
-    private static Parameters computeEffectiveParams(DidLog log) {
-        Parameters active = null;
-        for (DidLogEntry entry : log.entries()) {
-            active = entry.parameters().validate(active);
-        }
-        return active;
-    }
-
-    /**
      * Builds the new effective (fully-merged) parameter set from the update options.
      * Fields set in {@code options} override the current active values; {@code null} means inherit.
      */
@@ -208,39 +195,6 @@ public final class UpdateOperation {
                 active.ttl(),
                 options.getWitness() != null ? options.getWitness() : active.witness(),
                 options.getWatchers() != null ? options.getWatchers() : active.watchers());
-    }
-
-    /**
-     * Validates that the signer is authorized to produce this update per the spec's
-     * "Authorized Keys" rules:
-     * <ul>
-     *   <li>No pre-rotation: signer's verification method must be listed in the active
-     *       (previous entry's effective) {@code updateKeys}.</li>
-     *   <li>Pre-rotation active: the signer is the newly-revealed key; its hash must appear
-     *       in the previous entry's {@code nextKeyHashes} (that is how it was pre-committed).</li>
-     * </ul>
-     *
-     * @throws IllegalArgumentException if the signer is not authorized
-     */
-    private static void validateSigningKeyAuthorization(Signer signer, Parameters activeParams) {
-        String signerKey = signer.getVerificationMethodId();
-        if (activeParams.isPreRotationActive()) {
-            String signerKeyHash = Multiformats.sha256Multihash(signerKey.getBytes(StandardCharsets.UTF_8));
-            List<String> committed = activeParams.nextKeyHashes();
-            if (committed == null || !committed.contains(signerKeyHash)) {
-                throw new IllegalArgumentException(
-                        "Signing key '" + signerKey + "' (hash: " + signerKeyHash
-                                + ") was not committed in the previous 'nextKeyHashes'. "
-                                + "When pre-rotation is active, you must sign with the "
-                                + "newly-revealed key whose hash was pre-committed.");
-            }
-        } else {
-            List<String> activeKeys = activeParams.updateKeys();
-            if (activeKeys == null || !activeKeys.contains(signerKey)) {
-                throw new IllegalArgumentException(
-                        "Signing key '" + signerKey + "' is not in the active 'updateKeys': " + activeKeys);
-            }
-        }
     }
 
     /**
