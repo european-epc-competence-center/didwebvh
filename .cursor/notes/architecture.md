@@ -115,3 +115,7 @@ io.didwebvh/
 4. **`Parameters.validate()` + `Parameters.diff()`** — encode the bulk of spec rules (pre-rotation, portable immutability, deactivation); used by operations and `LogValidator`
 5. **v1.0 only** — no spec version dispatch; add `method_versions/` subpackage later if needed
 6. **`HttpResolver` in `resolve/`** — same module; extract to separate Maven artifact if publishing to Maven Central
+
+### Implementation Status
+
+See [implementation-status.md](./implementation-status.md) for detailed gap analysis, remaining TODO items, and resolver testability patterns from reference implementations.

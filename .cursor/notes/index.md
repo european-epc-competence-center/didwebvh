@@ -39,9 +39,11 @@ Bachelor thesis project: security analysis of `did:webvh` (DID method combining 
 ### Top-level
 
 - [Architecture](./architecture.md) — Protocol overview (what did:webvh is, the log chain, SCID, Data Integrity) + full Java library architecture (packages, design decisions, dependencies)
+- [Implementation Status](./implementation-status.md) — Current completion assessment (~60%), detailed gap analysis against spec, P0/P1/P2 remaining work items, resolver testability patterns from reference implementations (TS, Rust), test coverage assessment
 
 ### `knowledge/` — Detailed Reference
 
 - [did:webvh Spec](./knowledge/did-webvh-spec.md) — Full spec reference: DID format, log structure, all cryptographic operations, all DID operations, optional features (pre-rotation, witnesses, portability, watchers), security/privacy considerations, existing implementations
 - [Crypto Primitives](./knowledge/crypto-primitives.md) — `JcsCanonicalizer` (RFC 8785 / JCS four rules), `Multiformats` (SHA-256 multihash, base58btc, multikey), `DataIntegrity` (eddsa-jcs-2022 signing flow), `DidLogEntry` helpers; implementation notes and library choices
+- [Pre-rotation](./knowledge/pre-rotation.md) — Pre-rotation key mechanism: commitment model, authorized keys rules, all activation/deactivation/decommit cases, validation checks
 - [Research Context](./knowledge/research-context.md) — X.509 PKI vs. DID layer comparison; KERI/did:keri concepts and comparison table with did:webvh; thesis relevance
