@@ -36,7 +36,7 @@ The **controller side** (create, update, deactivate) is solid and well-tested. T
    - HTTP GET `did.jsonl`
    - Parse response → `DidLog`
    - Delegate to `LogBasedResolver.resolveFromLog()`
-   - **Needs testability** — inject `HttpClient` or `LogFetcher` interface
+   - **Testability done** — `LogFetcher` interface + constructor injection in `HttpResolver`; default fetcher uses `HttpClient`
 
 3. **`WitnessValidator.validate()`** — witness proof verification
    - Verify witness proofs meet threshold
@@ -64,28 +64,7 @@ The **controller side** (create, update, deactivate) is solid and well-tested. T
 
 ### Recommended Java Approach
 
-**Constructor-injected `HttpClient`** + separate `LogFetcher` interface:
-
-```java
-@FunctionalInterface
-public interface LogFetcher {
-    String fetchLog(String url) throws IOException;
-}
-
-public final class HttpResolver implements DidResolver {
-    private final LogBasedResolver delegate;
-    private final LogFetcher logFetcher;
-
-    // Production: HTTP fetcher using java.net.http.HttpClient
-    public HttpResolver() { this(defaultHttpFetcher()); }
-
-    // Test: inject mock fetcher
-    public HttpResolver(LogFetcher logFetcher) {
-        this.delegate = new LogBasedResolver();
-        this.logFetcher = logFetcher;
-    }
-}
-```
+**Implemented:** `LogFetcher` interface + constructor injection in `HttpResolver`. See `resolve/LogFetcher.java` and `resolve/HttpResolver.java`.
 
 Benefits:
 - No mocking framework needed — use lambdas in tests

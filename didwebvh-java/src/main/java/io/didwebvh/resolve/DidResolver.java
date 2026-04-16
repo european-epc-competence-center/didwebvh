@@ -9,8 +9,8 @@ import io.didwebvh.api.ResolveResult;
  * <p>Implementations differ in how they obtain the raw log content:
  * <ul>
  *   <li>{@link LogBasedResolver} — resolves from an in-memory {@code DidLog} (no network)</li>
- *   <li>{@link HttpResolver} — fetches {@code did.jsonl} via HTTPS, then delegates to
- *       {@link LogBasedResolver}</li>
+ *   <li>{@link HttpResolver} — fetches {@code did.jsonl} via a {@link LogFetcher}, then
+ *       delegates to {@link LogBasedResolver}. The fetcher is injectable for testing.</li>
  * </ul>
  */
 public interface DidResolver {

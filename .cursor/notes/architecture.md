@@ -92,8 +92,9 @@ io.didwebvh/
 
 **`resolve/`**
 - `DidResolver` interface
+- `LogFetcher` — `@FunctionalInterface` for HTTP I/O; injectable for testability (default uses `HttpClient`)
 - `LogBasedResolver` — resolves from in-memory `DidLog`, no network
-- `HttpResolver` — `java.net.http.HttpClient` GET `did.jsonl`, delegates to `LogBasedResolver`
+- `HttpResolver` — accepts `LogFetcher` via constructor injection; delegates validation to `LogBasedResolver`
 - `DidUrlTransformer` — DID → HTTPS URL (IDNA normalization, percent-encoding, `.well-known` fallback)
 
 **`witness/`** — Optional spec feature, isolated.
