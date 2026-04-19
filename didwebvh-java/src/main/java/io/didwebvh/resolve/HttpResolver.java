@@ -2,6 +2,11 @@ package io.didwebvh.resolve;
 
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
+import io.didwebvh.exception.DidNotFoundException;
+import io.didwebvh.exception.DidWebVhException;
+import io.didwebvh.log.LogParser;
+import io.didwebvh.model.DidLog;
+import io.didwebvh.model.ResolutionMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,12 +80,26 @@ public final class HttpResolver implements DidResolver {
     @Override
     public ResolveResult resolve(String did, ResolveOptions options) {
         log.trace("Received resolve request for DID: {}", did);
-        // TODO: implement
-        // 1. DidUrlTransformer.toLogUrl(did) → logFetcher.fetch(logUrl) → JSONL string
-        // 2. If witnesses needed: DidUrlTransformer.toWitnessUrl(did) → logFetcher.fetch(witnessUrl)
-        // 3. LogParser.parse(body) → DidLog
-        // 4. delegate.resolveFromLog(did, log, options)
-        throw new UnsupportedOperationException("TODO: resolution not yet implemented");
+        try {
+            String logUrl = DidUrlTransformer.toLogUrl(did);
+            String body = logFetcher.fetch(logUrl);
+            DidLog didLog = LogParser.parse(body);
+            ResolveResult result = delegate.resolve(did, didLog, options);
+            log.trace("Finished resolve for DID: {} success={}", did, result.isSuccess());
+            return result;
+        } catch (IOException e) {
+            log.trace("HTTP fetch failed for DID {}: {}", did, e.getMessage());
+            return new ResolveResult(did, null,
+                    ResolutionMetadata.error("notFound", "Not Found", e.getMessage()));
+        } catch (DidNotFoundException e) {
+            log.trace("DID not found {}: {}", did, e.getMessage());
+            return new ResolveResult(did, null,
+                    ResolutionMetadata.error("notFound", "Not Found", e.getMessage()));
+        } catch (DidWebVhException e) {
+            log.trace("Resolution error for DID {}: {}", did, e.getMessage());
+            return new ResolveResult(did, null,
+                    ResolutionMetadata.error("invalidDid", "Invalid DID", e.getMessage()));
+        }
     }
 
     /**

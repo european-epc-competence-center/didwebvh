@@ -2,47 +2,258 @@ package io.didwebvh.resolve;
 
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
+import io.didwebvh.exception.DidNotFoundException;
+import io.didwebvh.exception.DidWebVhException;
+import io.didwebvh.log.LogValidator;
 import io.didwebvh.model.DidLog;
+import io.didwebvh.model.DidLogEntry;
+import io.didwebvh.model.Parameters;
+import io.didwebvh.model.ResolutionMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Resolves a DID from an in-memory {@link DidLog} without any network access.
  *
- * <p>This is the core resolution engine:
- * <ol>
- *   <li>Runs {@link io.didwebvh.log.LogValidator} to validate the full chain.</li>
- *   <li>Applies version filters from {@link ResolveOptions}
- *       ({@code versionId}, {@code versionTime}, {@code versionNumber}).</li>
- *   <li>Returns the DID document at the requested version (latest if unspecified).</li>
- *   <li>Populates {@link io.didwebvh.model.ResolutionMetadata}.</li>
- * </ol>
+ * <p>This is the core resolution engine. It validates the log chain entry-by-entry,
+ * applies version filters, handles deactivation, and builds resolution metadata.
  *
- * <p>The {@link io.didwebvh.crypto.Verifier} used for proof validation is taken from
- * {@link ResolveOptions#getVerifier()}.
+ * <p>This class does not implement {@link DidResolver} because its method signature
+ * requires a {@link DidLog} parameter. Use {@link HttpResolver} for the network-facing
+ * {@link DidResolver} contract.
  *
- * <p>This class is intentionally not exposed on the {@link io.didwebvh.api.DidWebVh}
- * facade. Advanced callers may use it directly when they have already obtained the log
- * through a non-HTTP channel.
+ * <p>Resolution never throws exceptions to the caller. All errors are encoded in
+ * {@link ResolveResult#metadata()} per the DID Resolution spec.
+ *
+ * @see HttpResolver
  */
-public final class LogBasedResolver implements DidResolver {
+public final class LogBasedResolver {
+
+    private static final Logger log = LoggerFactory.getLogger(LogBasedResolver.class);
+
+    private static final String ERROR_INVALID_DID = "invalidDid";
+    private static final String ERROR_NOT_FOUND = "notFound";
 
     public LogBasedResolver() {}
 
     /**
      * Resolves the DID from the given pre-fetched log.
      *
-     * @param did     the DID string (used to verify the {@code id} field of the resolved document)
-     * @param log     the pre-parsed log
+     * @param did     the DID string (used for the result; not re-parsed here)
+     * @param didLog  the pre-parsed log (must be non-empty)
      * @param options resolution options including the verifier and optional version filters
-     * @return the resolution result
+     * @return the resolution result; never {@code null}; errors are in
+     *         {@link ResolveResult#metadata()}, never thrown
      */
-    public ResolveResult resolveFromLog(String did, DidLog log, ResolveOptions options) {
-        // TODO: implement
-        throw new UnsupportedOperationException("TODO");
+    public ResolveResult resolve(String did, DidLog didLog, ResolveOptions options) {
+        log.trace("Received resolve request for DID: {}", did);
+        validateInputs(did, didLog, options);
+        try {
+            return doResolve(did, didLog, options);
+        } catch (DidNotFoundException e) {
+            log.trace("Resolution failed (notFound) for {}: {}", did, e.getMessage());
+            return errorResult(did, ERROR_NOT_FOUND, "Not Found", e.getMessage());
+        } catch (DidWebVhException e) {
+            log.trace("Resolution failed (invalidDid) for {}: {}", did, e.getMessage());
+            return errorResult(did, ERROR_INVALID_DID, "Invalid DID", e.getMessage());
+        } catch (Exception e) {
+            log.trace("Resolution failed (unexpected) for {}: {}", did, e.getMessage());
+            return errorResult(did, ERROR_INVALID_DID, "Resolution Error", e.getMessage());
+        }
     }
 
-    @Override
-    public ResolveResult resolve(String did, ResolveOptions options) {
-        // TODO: implement — called when the caller supplies the log out-of-band
-        throw new UnsupportedOperationException("TODO");
+    // -------------------------------------------------------------------------
+    // Core resolution logic
+    // -------------------------------------------------------------------------
+
+    private ResolveResult doResolve(String did, DidLog didLog, ResolveOptions options) {
+        List<ValidatedEntry> validEntries = validateLog(didLog, options);
+        if (validEntries.isEmpty()) {
+            return errorResult(did, ERROR_INVALID_DID, "Invalid DID",
+                    "No valid entries in the DID log");
+        }
+
+        ValidatedEntry target = selectVersion(validEntries, options);
+        ValidatedEntry latest = validEntries.get(validEntries.size() - 1);
+        ValidatedEntry genesis = validEntries.get(0);
+
+        boolean currentlyDeactivated = latest.effectiveParams().isDeactivated();
+        boolean isLatestQuery = noVersionFilter(options);
+
+        if (currentlyDeactivated && isLatestQuery) {
+            log.trace("DID {} is deactivated, returning null document", did);
+            return deactivatedResult(did, latest, genesis);
+        }
+
+        ResolutionMetadata metadata = buildMetadata(target, latest, genesis, currentlyDeactivated);
+        log.trace("Successfully resolved DID {} at version {}", did, target.entry().versionId());
+        return new ResolveResult(did, target.entry().state(), metadata);
     }
+
+    // -------------------------------------------------------------------------
+    // Validation
+    // -------------------------------------------------------------------------
+
+    private static void validateInputs(String did, DidLog didLog, ResolveOptions options) {
+        Objects.requireNonNull(did, "did must not be null");
+        Objects.requireNonNull(didLog, "didLog must not be null");
+        Objects.requireNonNull(options, "options must not be null");
+        Objects.requireNonNull(options.getVerifier(), "options.verifier must not be null");
+
+        int filterCount = 0;
+        if (options.getVersionId() != null) filterCount++;
+        if (options.getVersionTime() != null) filterCount++;
+        if (options.getVersionNumber() != null) filterCount++;
+        if (filterCount > 1) {
+            throw new IllegalArgumentException(
+                    "At most one version filter (versionId, versionTime, versionNumber) may be specified");
+        }
+    }
+
+    /**
+     * Walks the log entry-by-entry, delegating per-entry validation to
+     * {@link LogValidator#validateEntry}. Stops at the first invalid entry.
+     */
+    private static List<ValidatedEntry> validateLog(DidLog didLog, ResolveOptions options) {
+        if (didLog.isEmpty()) {
+            return List.of();
+        }
+
+        LogValidator validator = new LogValidator(options.getVerifier());
+        List<ValidatedEntry> result = new ArrayList<>();
+        Parameters activeParams = null;
+        DidLogEntry previous = null;
+
+        for (int i = 0; i < didLog.size(); i++) {
+            DidLogEntry entry = didLog.entries().get(i);
+            try {
+                activeParams = validator.validateEntry(entry, previous, activeParams);
+                result.add(new ValidatedEntry(entry, activeParams));
+                previous = entry;
+            } catch (DidWebVhException e) {
+                log.trace("Log validation stopped at entry {}: {}", i + 1, e.getMessage());
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    // -------------------------------------------------------------------------
+    // Version selection
+    // -------------------------------------------------------------------------
+
+    private static ValidatedEntry selectVersion(List<ValidatedEntry> validEntries, ResolveOptions options) {
+        if (options.getVersionId() != null) {
+            return findByVersionId(validEntries, options.getVersionId());
+        }
+        if (options.getVersionTime() != null) {
+            return findByVersionTime(validEntries, options.getVersionTime());
+        }
+        if (options.getVersionNumber() != null) {
+            return findByVersionNumber(validEntries, options.getVersionNumber());
+        }
+        return validEntries.get(validEntries.size() - 1);
+    }
+
+    private static ValidatedEntry findByVersionId(List<ValidatedEntry> entries, String versionId) {
+        return entries.stream()
+                .filter(v -> versionId.equals(v.entry().versionId()))
+                .findFirst()
+                .orElseThrow(() -> new DidNotFoundException(
+                        "No entry matches versionId '" + versionId + "'"));
+    }
+
+    private static ValidatedEntry findByVersionTime(List<ValidatedEntry> entries, Instant versionTime) {
+        ValidatedEntry match = null;
+        for (ValidatedEntry v : entries) {
+            Instant entryTime = Instant.parse(v.entry().versionTime());
+            if (!entryTime.isAfter(versionTime)) {
+                match = v;
+            } else {
+                break;
+            }
+        }
+        if (match == null) {
+            throw new DidNotFoundException(
+                    "No entry active at versionTime '" + versionTime + "'");
+        }
+        return match;
+    }
+
+    private static ValidatedEntry findByVersionNumber(List<ValidatedEntry> entries, int versionNumber) {
+        return entries.stream()
+                .filter(v -> v.entry().versionNumber() == versionNumber)
+                .findFirst()
+                .orElseThrow(() -> new DidNotFoundException(
+                        "No entry matches versionNumber " + versionNumber));
+    }
+
+    // -------------------------------------------------------------------------
+    // Metadata building
+    // -------------------------------------------------------------------------
+
+    private static ResolutionMetadata buildMetadata(ValidatedEntry target, ValidatedEntry latest,
+                                                    ValidatedEntry genesis, boolean currentlyDeactivated) {
+        Parameters params = target.effectiveParams();
+        String scid = genesis.entry().parameters().scid();
+
+        return ResolutionMetadata.builder()
+                .versionId(target.entry().versionId())
+                .versionTime(target.entry().versionTime())
+                .created(genesis.entry().versionTime())
+                .updated(latest.entry().versionTime())
+                .scid(scid)
+                .portable(Boolean.TRUE.equals(params.portable()))
+                .deactivated(currentlyDeactivated)
+                .ttl(params.ttl() != null ? String.valueOf(params.ttl()) : null)
+                .witness(params.witness())
+                .watchers(params.watchers())
+                .build();
+    }
+
+    private static ResolveResult deactivatedResult(String did, ValidatedEntry latest,
+                                                   ValidatedEntry genesis) {
+        String scid = genesis.entry().parameters().scid();
+        Parameters params = latest.effectiveParams();
+
+        ResolutionMetadata metadata = ResolutionMetadata.builder()
+                .versionId(latest.entry().versionId())
+                .versionTime(latest.entry().versionTime())
+                .created(genesis.entry().versionTime())
+                .updated(latest.entry().versionTime())
+                .scid(scid)
+                .portable(Boolean.TRUE.equals(params.portable()))
+                .deactivated(true)
+                .ttl(params.ttl() != null ? String.valueOf(params.ttl()) : null)
+                .witness(params.witness())
+                .watchers(params.watchers())
+                .build();
+
+        return new ResolveResult(did, null, metadata);
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private static boolean noVersionFilter(ResolveOptions options) {
+        return options.getVersionId() == null
+                && options.getVersionTime() == null
+                && options.getVersionNumber() == null;
+    }
+
+    private static ResolveResult errorResult(String did, String errorCode, String title, String detail) {
+        return new ResolveResult(did, null, ResolutionMetadata.error(errorCode, title, detail));
+    }
+
+    /**
+     * A validated log entry paired with the effective parameter state after that entry.
+     */
+    record ValidatedEntry(DidLogEntry entry, Parameters effectiveParams) {}
 }

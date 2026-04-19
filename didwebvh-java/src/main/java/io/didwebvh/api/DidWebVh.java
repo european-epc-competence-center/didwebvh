@@ -1,9 +1,11 @@
 package io.didwebvh.api;
 
+import io.didwebvh.model.DidLog;
 import io.didwebvh.operation.CreateOperation;
 import io.didwebvh.operation.DeactivateOperation;
 import io.didwebvh.operation.UpdateOperation;
 import io.didwebvh.resolve.HttpResolver;
+import io.didwebvh.resolve.LogBasedResolver;
 
 /**
  * Main entry point for the did:webvh Java library.
@@ -12,6 +14,7 @@ import io.didwebvh.resolve.HttpResolver;
  * <ul>
  *   <li>{@link #create} — generate a new DID with a genesis log entry</li>
  *   <li>{@link #resolve} — fetch and verify a DID over HTTPS</li>
+ *   <li>{@link #resolveFromLog} — verify a DID from a pre-fetched log (no network)</li>
  *   <li>{@link #update} — append an update entry to the log</li>
  *   <li>{@link #deactivate} — append a deactivation entry to the log</li>
  * </ul>
@@ -57,6 +60,21 @@ public final class DidWebVh {
      */
     public static ResolveResult resolve(String did, ResolveOptions options) {
         return new HttpResolver().resolve(did, options);
+    }
+
+    /**
+     * Resolves a DID from a pre-fetched {@link DidLog} without network access.
+     *
+     * <p>Use this when the log has been obtained through a non-HTTP channel
+     * (e.g. from a watcher, a local file, or an in-memory test fixture).
+     *
+     * @param did     the full DID string
+     * @param log     the pre-parsed DID log
+     * @param options resolution options including the verifier and optional version filters
+     * @return the resolution result; errors are encoded in {@link ResolveResult#metadata()}
+     */
+    public static ResolveResult resolveFromLog(String did, DidLog log, ResolveOptions options) {
+        return new LogBasedResolver().resolve(did, log, options);
     }
 
     // -------------------------------------------------------------------------
