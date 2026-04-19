@@ -63,7 +63,7 @@ io.didwebvh/
 ### Package Details
 
 **`api/`** — Public entry point. Consumers only need this package.
-- `DidWebVh` — four static methods: `create`, `resolve`, `update`, `deactivate`
+- `DidWebVh` — five static methods: `create`, `resolve`, `resolveFromLog`, `update`, `deactivate`
 - `CreateOptions`, `UpdateOptions`, `DeactivateOptions`, `ResolveOptions` — builder-style option objects
 - `CreateResult`, `UpdateResult`, `DeactivateResult`, `ResolveResult` — immutable result records
 
@@ -91,10 +91,10 @@ io.didwebvh/
 - `OperationSupport` (package-private) — effective `Parameters` from a `DidLog` via `Parameters.validate` chain; signer authorization vs active `updateKeys` / `nextKeyHashes` (shared by update/deactivate)
 
 **`resolve/`**
-- `DidResolver` interface
+- `DidResolver` interface — network-facing contract: `resolve(did, options)`
 - `LogFetcher` — `@FunctionalInterface` for HTTP I/O; injectable for testability (default uses `HttpClient`)
-- `LogBasedResolver` — resolves from in-memory `DidLog`, no network
-- `HttpResolver` — accepts `LogFetcher` via constructor injection; delegates validation to `LogBasedResolver`
+- `LogBasedResolver` — standalone class (not a `DidResolver`); core resolution engine with `resolve(did, log, options)`. Validates entry-by-entry via `LogValidator.validateEntry()`, applies version filters, handles deactivation, builds `ResolutionMetadata`. Never throws — errors in metadata.
+- `HttpResolver implements DidResolver` — URL transform → fetch → parse → delegate to `LogBasedResolver`
 - `DidUrlTransformer` — DID → HTTPS URL (IDNA normalization, percent-encoding, `.well-known` fallback)
 
 **`witness/`** — Optional spec feature, isolated.

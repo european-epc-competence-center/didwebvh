@@ -1,8 +1,8 @@
 # Implementation Status & Remaining Work
 
-## Overall Rating: ~60% spec coverage
+## Overall Rating: ~80% spec coverage
 
-The **controller side** (create, update, deactivate) is solid and well-tested. The **resolver side** is unimplemented. Witness integration is stubbed.
+All four DID operations (create, update, deactivate, resolve) are implemented and tested. Witness integration is stubbed.
 
 ## What's Done (Working & Tested)
 
@@ -10,6 +10,7 @@ The **controller side** (create, update, deactivate) is solid and well-tested. T
 |------|--------|-------|
 | Crypto primitives (JCS, multiformats, DI proofs) | **Complete** | Thorough tests incl. RFC 8785 vectors |
 | Models (DidLog, DidLogEntry, Parameters, proofs) | **Complete** | Immutable records, Jackson serialization |
+| ResolutionMetadata | **Complete** | Record + Builder pattern + `error()` factory |
 | JSONL parse/serialize | **Complete** | Round-trip tested |
 | Log chain validation (LogValidator) | **Complete** | SCID, entry hash, version number/time, DI proof vs updateKeys, pre-rotation |
 | CreateOperation | **Complete** | Full genesis flow, SCID generation, placeholder replacement |
@@ -17,64 +18,47 @@ The **controller side** (create, update, deactivate) is solid and well-tested. T
 | DeactivateOperation | **Complete** | Including pre-rotation guard |
 | DID → HTTPS URL (DidUrlTransformer) | **Complete** | IDNA, port encoding, well-known path |
 | Exception hierarchy | **Complete** | Maps to spec error codes |
-| Public API facade (DidWebVh) | **Partial** | create/update/deactivate work; resolve is broken |
+| LogBasedResolver | **Complete** | Entry-by-entry validation, version filters (versionId/versionTime/versionNumber), deactivation handling, error-to-metadata mapping |
+| HttpResolver | **Complete** | URL transform → fetch → parse → delegate to LogBasedResolver |
+| Public API facade (DidWebVh) | **Complete** | `create`, `resolve`, `resolveFromLog`, `update`, `deactivate` |
+
+## Architecture: Resolver Design
+
+- `LogBasedResolver` — standalone class (does NOT implement `DidResolver`); pure logic with `resolve(did, log, options)` signature
+- `HttpResolver implements DidResolver` — HTTP fetch + delegation to `LogBasedResolver`
+- `DidWebVh.resolve()` → `HttpResolver`; `DidWebVh.resolveFromLog()` → `LogBasedResolver`
+- Errors are never thrown from resolve methods; always encoded in `ResolveResult.metadata()`
+- Programming errors (null args, multiple version filters) throw `NullPointerException` / `IllegalArgumentException`
 
 ## What's NOT Done (Stubs / Missing)
 
 ### P0 — Core Spec Requirements
 
-1. **`LogBasedResolver.resolveFromLog()`** — the core resolution engine
-   - Validate log chain (delegate to LogValidator)
-   - Apply version filters: `?versionId=`, `?versionTime=`, `?versionNumber=`
-   - Build `ResolutionMetadata` from the validated log
-   - Handle deactivated DIDs (no document returned, metadata flag)
-   - Handle errors → `ResolveResult` with error metadata (not exceptions)
-   - **Spec §6.2** — MUST support `versionId` and `versionTime`; SHOULD support `versionNumber`
-
-2. **`HttpResolver.resolve()`** — HTTP fetch + delegation
-   - Transform DID → URL (DidUrlTransformer — done)
-   - HTTP GET `did.jsonl`
-   - Parse response → `DidLog`
-   - Delegate to `LogBasedResolver.resolveFromLog()`
-   - **Testability done** — `LogFetcher` interface + constructor injection in `HttpResolver`; default fetcher uses `HttpClient`
-
-3. **`WitnessValidator.validate()`** — witness proof verification
+1. **`WitnessValidator.validate()`** — witness proof verification
    - Verify witness proofs meet threshold
    - Verify each witness proof signature (they're `did:key` DIDs with `eddsa-jcs-2022`)
-   - Integrate into `LogValidator` or `LogBasedResolver`
+   - Integrate into `LogBasedResolver` validation loop
 
 ### P1 — Spec Compliance Gaps
 
-4. **Witness proofs on update** — `UpdateOptions.witnessProofs` exists but `UpdateOperation` never reads it
-5. **Witness file fetching** — `HttpResolver` should fetch `did-witness.json` when witnesses are configured
-6. **`ResolutionMetadata` population** — metadata values should be strings per DID Resolution spec (threshold, ttl)
-7. **DID URL path resolution** — implicit `#files` service (spec §6.5)
-8. **`/whois` resolution** — implicit `#whois` service (spec §6.6)
-9. **Parallel `did:web` publishing** — spec §6.7
+2. **Witness proofs on update** — `UpdateOptions.witnessProofs` exists but `UpdateOperation` never reads it
+3. **Witness file fetching** — `HttpResolver` should fetch `did-witness.json` when witnesses are configured
+4. **DID URL path resolution** — implicit `#files` service (spec §6.5)
+5. **`/whois` resolution** — implicit `#whois` service (spec §6.6)
+6. **Parallel `did:web` publishing** — spec §6.7
 
 ### P2 — Nice-to-Have / Future
 
-10. Watchers API integration
-11. DNS-over-HTTPS (RFC 8484)
-12. CORS header guidance
-13. `did:web` parallel document generation
-14. Method version dispatch (v0.5 compat like TS impl)
-
-## Resolver Testability — Best Practice
-
-### Recommended Java Approach
-
-**Implemented:** `LogFetcher` interface + constructor injection in `HttpResolver`. See `resolve/LogFetcher.java` and `resolve/HttpResolver.java`.
-
-Benefits:
-- No mocking framework needed — use lambdas in tests
-- `LogBasedResolver.resolveFromLog()` testable without HTTP at all
-- `HttpResolver` testable with injected `LogFetcher` that returns canned JSONL
-- Clean separation: fetch (I/O) vs validate (pure logic)
+7. Watchers API integration
+8. DNS-over-HTTPS (RFC 8484)
+9. CORS header guidance
+10. `did:web` parallel document generation
+11. Method version dispatch (v0.5 compat like TS impl)
 
 ## Test Coverage Assessment
 
-**Well-covered:** crypto, log parse/serialize/validate, create/update/deactivate operations, URL transformer
-**Not covered at all:** `DidWebVh.resolve()`, `HttpResolver`, `LogBasedResolver`, `WitnessValidator`, `WitnessProofCollection`, `DidNotFoundException`, `DidWebVhException`
+**Well-covered:** crypto, log parse/serialize/validate, create/update/deactivate operations, URL transformer, LogBasedResolver (17 tests: latest/versioned/deactivated/error cases), HttpResolver (5 tests: success/error/malformed via injected LogFetcher)
 
-**No mocking frameworks** in use — all tests use real crypto (BouncyCastle). No `src/test/resources/` fixtures.
+**Not covered:** `WitnessValidator`, `WitnessProofCollection`
+
+**No mocking frameworks** in use — all tests use real crypto (BouncyCastle). No `src/test/resources/` fixtures. Total: 227 tests.
