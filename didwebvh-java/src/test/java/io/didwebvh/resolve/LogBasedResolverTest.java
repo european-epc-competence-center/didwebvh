@@ -313,6 +313,19 @@ class LogBasedResolverTest {
         }
 
         @Test
+        void scidMismatch_returnsErrorMetadata() {
+            CreateResult created = createDid();
+            // Use a DID with a completely different SCID than what is in the log
+            String wrongDid = "did:webvh:tampered:" + DOMAIN;
+
+            ResolveResult result = resolver.resolve(wrongDid, created.log(), defaultOptions());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.metadata().problemDetails().detail()).contains("does not match SCID in log");
+        }
+
+        @Test
         void nullVerifier_throwsNullPointer() {
             CreateResult created = createDid();
             ResolveOptions options = ResolveOptions.builder().build();

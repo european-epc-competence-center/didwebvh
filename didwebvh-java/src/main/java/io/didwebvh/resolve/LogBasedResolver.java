@@ -4,6 +4,7 @@ import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
 import io.didwebvh.exception.DidNotFoundException;
 import io.didwebvh.exception.DidWebVhException;
+import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.log.LogValidator;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
@@ -78,9 +79,19 @@ public final class LogBasedResolver {
                     "No valid entries in the DID log");
         }
 
+        // Spec §resolve step 6.1he SCID in the DID being resolved
+        // MUST match the SCID declared in the genesis log entry.
+        // This prevents a server from returning a valid log for a different DID.
+        ValidatedEntry genesis = validEntries.get(0);
+        String scidFromDid = DidUrlTransformer.extractScid(did);
+        String scidFromLog = genesis.entry().parameters().scid();
+        if (!scidFromDid.equals(scidFromLog)) {
+            throw new LogValidationException(
+                    "SCID in DID '" + scidFromDid + "' does not match SCID in log '" + scidFromLog + "'");
+        }
+
         ValidatedEntry target = selectVersion(validEntries, options);
         ValidatedEntry latest = validEntries.get(validEntries.size() - 1);
-        ValidatedEntry genesis = validEntries.get(0);
 
         boolean currentlyDeactivated = latest.effectiveParams().isDeactivated();
         boolean isLatestQuery = noVersionFilter(options);

@@ -13,6 +13,7 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 | ResolutionMetadata | **Complete** | Record + Builder pattern + `error()` factory |
 | JSONL parse/serialize | **Complete** | Round-trip tested |
 | Log chain validation (LogValidator) | **Complete** | SCID, entry hash, version number/time, DI proof vs updateKeys, pre-rotation |
+| SCID-to-DID binding check (LogBasedResolver) | **Complete** | SCID extracted from DID string compared against genesis `parameters.scid` (spec §resolve step 6.1, matches TS ref-impl) |
 | CreateOperation | **Complete** | Full genesis flow, SCID generation, placeholder replacement |
 | UpdateOperation | **Complete** | Key rotation, pre-rotation, parameter delta |
 | DeactivateOperation | **Complete** | Including pre-rotation guard |
@@ -57,8 +58,8 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 
 ## Test Coverage Assessment
 
-**Well-covered:** crypto, log parse/serialize/validate, create/update/deactivate operations, URL transformer, LogBasedResolver (17 tests: latest/versioned/deactivated/error cases), HttpResolver (5 tests: success/error/malformed via injected LogFetcher)
+**Well-covered:** crypto, log parse/serialize/validate, create/update/deactivate operations, URL transformer, LogBasedResolver (18 tests: latest/versioned/deactivated/SCID-binding/error cases), HttpResolver (5 tests: success/error/malformed via injected LogFetcher)
 
 **Not covered:** `WitnessValidator`, `WitnessProofCollection`
 
-**No mocking frameworks** in use — all tests use real crypto (BouncyCastle). No `src/test/resources/` fixtures. Total: 227 tests.
+**Total: 228 tests.**
