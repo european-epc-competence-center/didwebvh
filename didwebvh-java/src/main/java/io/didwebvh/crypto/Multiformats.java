@@ -1,7 +1,6 @@
 package io.didwebvh.crypto;
 
 import io.didwebvh.DidWebVhConstants;
-import io.ipfs.multibase.Multibase;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -44,8 +43,7 @@ public final class Multiformats {
      */
     public static String base58btcEncode(byte[] bytes) {
         Objects.requireNonNull(bytes, "bytes");
-        String multibase = Multibase.encode(Multibase.Base.Base58BTC, bytes);
-        return multibase.substring(1); // strip the 'z' multibase prefix
+        return Base58Btc.encode(bytes);
     }
 
     /**
@@ -61,8 +59,8 @@ public final class Multiformats {
             throw new IllegalArgumentException("base58btc string must be non-empty");
         }
         try {
-            return Multibase.decode(DidWebVhConstants.MULTIBASE_BASE58BTC_PREFIX + encoded);
-        } catch (IllegalStateException | IllegalArgumentException e) {
+            return Base58Btc.decode(encoded);
+        } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid base58btc payload", e);
         }
     }
@@ -80,7 +78,7 @@ public final class Multiformats {
      */
     public static String multibaseEncode(byte[] bytes) {
         Objects.requireNonNull(bytes, "bytes");
-        return Multibase.encode(Multibase.Base.Base58BTC, bytes);
+        return DidWebVhConstants.MULTIBASE_BASE58BTC_PREFIX + Base58Btc.encode(bytes);
     }
 
     /**
@@ -100,8 +98,8 @@ public final class Multiformats {
                     "Expected base58btc multibase (prefix 'z'), got prefix '" + multibase.charAt(0) + "'");
         }
         try {
-            return Multibase.decode(multibase);
-        } catch (IllegalStateException | IllegalArgumentException e) {
+            return Base58Btc.decode(multibase.substring(1));
+        } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid multibase base58btc payload", e);
         }
     }
