@@ -73,7 +73,7 @@ Hash strings (SCID, entry hash) start with `Qm` (the natural base58btc encoding 
 
 | Concern | Choice |
 |---|---|
-| base58btc | [java-multibase](https://github.com/multiformats/java-multibase) via JitPack |
+| base58btc | `Base58Btc.java` — self-contained ~100-line encoder/decoder (Bitcoin alphabet, package-private in `crypto/`) |
 | SHA-256 | `java.security.MessageDigest` (JDK) |
 | Multihash envelope | Local 2-byte prefix helper (`0x12`, `0x20`) |
 

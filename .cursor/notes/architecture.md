@@ -56,7 +56,7 @@ io.didwebvh/
 | `com.fasterxml.jackson.core:jackson-databind` | JSON (de)serialization, `JsonNode` for DID docs |
 | `org.bouncycastle:bcprov-jdk18on` | Ed25519 signing/verification |
 | `io.github.erdtman:java-json-canonicalization` | RFC 8785 JCS (RFC reference implementation) |
-| `com.github.multiformats:java-multibase` (JitPack) | Multibase base58btc (`z…`) |
+| `Base58Btc` (local, package-private in `crypto/`) | base58btc encode/decode (Bitcoin alphabet) |
 | `java.security.MessageDigest` | SHA-256 (JDK, no artifact) |
 | `org.slf4j:slf4j-api` | Logging interface (no impl forced on consumers) |
 
