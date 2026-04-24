@@ -1,0 +1,209 @@
+[
+  {
+    "log": "short",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "created": "2000-01-01T12:01:00Z",
+      "updated": "2000-01-01T12:02:00Z",
+      "versionId": "2-QmVbPRGTHPBBeZwfbyRowyw62jbkq773AGBksF7KCZhJDC",
+      "versionNumber": 2,
+      "versionTime": "2000-01-01T12:02:00Z"
+    }
+  },
+  {
+    "log": "short",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionId=1-QmY1A5d4D4sHSdbzECHSra8PNMCUHkwcV6znv99bhfYi7x",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "created": "2000-01-01T12:01:00Z",
+      "updated": "2000-01-01T12:02:00Z",
+      "versionId": "1-QmY1A5d4D4sHSdbzECHSra8PNMCUHkwcV6znv99bhfYi7x",
+      "versionNumber": 1,
+      "versionTime": "2000-01-01T12:01:00Z"
+    }
+  },
+  {
+    "log": "short",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionNumber=1",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "created": "2000-01-01T12:01:00Z",
+      "updated": "2000-01-01T12:02:00Z",
+      "versionId": "1-QmY1A5d4D4sHSdbzECHSra8PNMCUHkwcV6znv99bhfYi7x",
+      "versionNumber": 1,
+      "versionTime": "2000-01-01T12:01:00Z"
+    }
+  },
+  {
+    "log": "short",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionNumber=0",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "notFound"
+    }
+  },
+  {
+    "log": "short",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionId=1-invalid",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "notFound"
+    }
+  },
+  {
+    "log": "short",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionNumber=1&versionId=2-QmVbPRGTHPBBeZwfbyRowyw62jbkq773AGBksF7KCZhJDC",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "notFound"
+    }
+  },
+  {
+    "log": "missing-proof",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "missing-proof",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example?versionId=1-QmW5r2XTfR9Fqdm1oNfMiPTKFuvSQLNKn3N3p3je4tu5Er",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "versionId": "1-QmW5r2XTfR9Fqdm1oNfMiPTKFuvSQLNKn3N3p3je4tu5Er",
+      "versionNumber": 1,
+      "versionTime": "2000-01-01T12:01:00Z"
+    }
+  },
+  {
+    "log": "missing-proof",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example?versionId=2-QmdS5oaXFvjQ1VLjNT8PkzqHWD3APgP5qt1ZgW1ScufHGZ",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "versionId": "2-QmdS5oaXFvjQ1VLjNT8PkzqHWD3APgP5qt1ZgW1ScufHGZ",
+      "versionNumber": 2
+    }
+  },
+  {
+    "log": "missing-proof",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example?versionId=3-QmSXTJZcmvJs4MefXQQveczDH9fZnBogEsbnRL56esaJSW",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "invalid-method",
+    "did_url": "did:webvh:QmUetsLi4QF9CDw1LBC5q4WJMwJ2Wwqy1UBxU1i2ZU91a6:domain.example",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "invalid-method",
+    "did_url": "did:webvh:QmUetsLi4QF9CDw1LBC5q4WJMwJ2Wwqy1UBxU1i2ZU91a6:domain.example?versionNumber=1",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "invalid-scid",
+    "did_url": "did:webvh:QmUetsLi4QF9CDw1LBC5q4WJMwJ2Wwqy1UBxU1i2ZU91a6:domain.example",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "invalid-scid",
+    "did_url": "did:webvh:QmUetsLi4QF9CDw1LBC5q4WJMwJ2Wwqy1UBxU1i2ZU91a6:domain.example?versionNumber=1",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "invalid-json",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "invalid-json",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example?versionId=1-QmW5r2XTfR9Fqdm1oNfMiPTKFuvSQLNKn3N3p3je4tu5Er",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "created": "2000-01-01T12:01:00Z",
+      "updated": "2000-01-01T12:02:00Z",
+      "versionId": "1-QmW5r2XTfR9Fqdm1oNfMiPTKFuvSQLNKn3N3p3je4tu5Er",
+      "versionNumber": 1,
+      "versionTime": "2000-01-01T12:01:00Z"
+    }
+  },
+  {
+    "log": "invalid-json",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example?versionNumber=2",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "created": "2000-01-01T12:01:00Z",
+      "updated": "2000-01-01T12:02:00Z",
+      "versionId": "2-QmdS5oaXFvjQ1VLjNT8PkzqHWD3APgP5qt1ZgW1ScufHGZ",
+      "versionNumber": 2,
+      "versionTime": "2000-01-01T12:02:00Z"
+    }
+  },
+  {
+    "log": "invalid-json",
+    "did_url": "did:webvh:QmXGyDkBtXD5x1nXFgE2JxY3g8dwpJSXS2kn3ZhXyP7XWj:domain.example?versionNumber=3",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "missing-witness",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  },
+  {
+    "log": "missing-witness",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionId=1-QmY1A5d4D4sHSdbzECHSra8PNMCUHkwcV6znv99bhfYi7x",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "created": "2000-01-01T12:01:00Z",
+      "updated": "2000-01-01T12:03:00Z",
+      "versionId": "1-QmY1A5d4D4sHSdbzECHSra8PNMCUHkwcV6znv99bhfYi7x",
+      "versionNumber": 1,
+      "versionTime": "2000-01-01T12:01:00Z"
+    }
+  },
+  {
+    "log": "missing-witness",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionNumber=2",
+    "status": "ok",
+    "didDocumentMetadata": {
+      "created": "2000-01-01T12:01:00Z",
+      "updated": "2000-01-01T12:03:00Z",
+      "versionId": "2-QmVbPRGTHPBBeZwfbyRowyw62jbkq773AGBksF7KCZhJDC",
+      "versionNumber": 2,
+      "versionTime": "2000-01-01T12:02:00Z"
+    }
+  },
+  {
+    "log": "missing-witness",
+    "did_url": "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionNumber=3",
+    "status": "error",
+    "didResolutionMetadata": {
+      "error": "invalidDid"
+    }
+  }
+]
