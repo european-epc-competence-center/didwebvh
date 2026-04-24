@@ -39,44 +39,6 @@ public final class WitnessValidator {
     }
 
     /**
-     * Validates that the witness proof collection satisfies the threshold requirement
-     * for the given log version.
-     *
-     * @param versionId       the {@code versionId} of the log entry being validated
-     * @param witnessParams   the active witness configuration (threshold + witness list)
-     * @param proofCollection the loaded {@code did-witness.json} content
-     * @throws LogValidationException if the threshold is not met
-     */
-    public void validate(
-            String versionId,
-            WitnessParameter witnessParams,
-            WitnessProofCollection proofCollection) {
-        log.trace("Validating witness proofs for versionId={}", versionId);
-
-        if (proofCollection == null || proofCollection.entries() == null) {
-            throw new LogValidationException(
-                    "Witness proofs required but no did-witness.json provided for versionId: " + versionId);
-        }
-
-        WitnessProofCollection.Entry matchingEntry = proofCollection.entries().stream()
-                .filter(e -> versionId.equals(e.versionId()))
-                .findFirst()
-                .orElseThrow(() -> new LogValidationException(
-                        "No witness proofs found for versionId: " + versionId));
-
-        int validCount = countValidProofs(matchingEntry, witnessParams);
-        int threshold = witnessParams.threshold() != null ? witnessParams.threshold() : 1;
-
-        if (validCount < threshold) {
-            throw new LogValidationException(
-                    "Witness threshold not met for versionId " + versionId
-                            + ": required " + threshold + " but got " + validCount);
-        }
-
-        log.trace("Witness validation passed for versionId={} ({}/{})", versionId, validCount, threshold);
-    }
-
-    /**
      * Determines the highest version number covered by valid witness proofs (the "frontier").
      *
      * <p>A valid witness proof for version N implies approval of all entries 1..N.
