@@ -14,9 +14,12 @@ import java.util.function.Function;
  * as the {@code verificationMethod} field, allowing resolvers to verify which
  * {@code updateKeys} entry authorized each log entry.
  *
- * <p>Use the {@link #create(String, Function)} factory for concise construction:
+ * <p>The verification method ID should be a {@code did:key} DID URL with fragment
+ * for interoperability with other implementations:
  * <pre>{@code
- * Signer signer = Signer.create(publicKeyMultibase, data -> ed25519Sign(privateKey, data));
+ * String multikey = "z6Mkr46vzpmne5FJTE1TgRHrWkoc5j9Kb1suMYtxkdvgMu15";
+ * String verificationMethodId = "did:key:" + multikey + "#" + multikey;
+ * Signer signer = Signer.create(verificationMethodId, data -> ed25519Sign(privateKey, data));
  * }</pre>
  */
 public interface Signer {
@@ -33,9 +36,10 @@ public interface Signer {
     /**
      * Returns the verification method identifier for the key held by this signer.
      *
-     * <p>Typically the multikey-encoded public key (e.g. {@code z6Mk...}) that appears
-     * in the log's {@code updateKeys} array. This value is embedded in every Data Integrity
-     * proof produced by this signer.
+     * <p>Should be a {@code did:key} DID URL with fragment (e.g.
+     * {@code did:key:z6Mk...#z6Mk...}) for interoperability. This value is embedded in
+     * every Data Integrity proof produced by this signer. Resolvers will extract the
+     * bare multikey and compare it against the {@code updateKeys} array.
      *
      * @return the verification method ID (never {@code null})
      */
@@ -44,7 +48,8 @@ public interface Signer {
     /**
      * Creates a {@code Signer} from a verification method ID and a signing function.
      *
-     * @param verificationMethodId the multikey-encoded public key or verification method URI
+     * @param verificationMethodId the verification method URI (recommended format:
+     *                            {@code did:key:z6Mk...#z6Mk...})
      * @param signFunction         the raw signing function ({@code data -> signature})
      * @return a new {@code Signer}
      */

@@ -1,5 +1,6 @@
 package io.didwebvh.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,6 +26,7 @@ public record WitnessParameter(
             @JsonProperty("id") String id
     ) {}
 
+    @JsonIgnore
     public boolean isEmpty() {
         return witnesses == null || witnesses.isEmpty();
     }

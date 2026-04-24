@@ -118,9 +118,11 @@ public final class DataIntegrity {
                     "Invalid proofValue encoding " + e.getMessage());
         }
 
+        String multikey = Multiformats.extractMultikey(proof.verificationMethod());
+
         boolean valid;
         try {
-            valid = verifier.verify(signature, transformedData, proof.verificationMethod());
+            valid = verifier.verify(signature, transformedData, multikey);
         } catch (IllegalArgumentException e) {
             throw new LogValidationException(
                     "Invalid verifier input: " + e.getMessage());

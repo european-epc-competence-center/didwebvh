@@ -214,7 +214,7 @@ class LogBasedResolverTest {
         }
 
         @Test
-        void multipleFilters_throwsIllegalArgument() {
+        void multipleFilters_returnsNotFoundError() {
             CreateResult created = createDid();
 
             ResolveOptions options = ResolveOptions.builder()
@@ -223,8 +223,10 @@ class LogBasedResolverTest {
                     .versionNumber(1)
                     .build();
 
-            assertThatThrownBy(() -> resolver.resolve(created.did(), created.log(), options))
-                    .isInstanceOf(IllegalArgumentException.class);
+            ResolveResult result = resolver.resolve(created.did(), created.log(), options);
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("notFound");
         }
     }
 

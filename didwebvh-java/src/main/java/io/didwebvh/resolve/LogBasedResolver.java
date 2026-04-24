@@ -79,9 +79,10 @@ public final class LogBasedResolver {
                     "No valid entries in the DID log");
         }
 
-        // Spec §resolve step 6.1he SCID in the DID being resolved
+        boolean logFullyValid = validEntries.size() == didLog.size() && didLog.isParsingComplete();
+
+        // Spec §resolve step 6.1: the SCID in the DID being resolved
         // MUST match the SCID declared in the genesis log entry.
-        // This prevents a server from returning a valid log for a different DID.
         ValidatedEntry genesis = validEntries.get(0);
         String scidFromDid = DidUrlTransformer.extractScid(did);
         String scidFromLog = genesis.entry().parameters().scid();
@@ -90,11 +91,22 @@ public final class LogBasedResolver {
                     "SCID in DID '" + scidFromDid + "' does not match SCID in log '" + scidFromLog + "'");
         }
 
-        ValidatedEntry target = selectVersion(validEntries, options);
+        validateFilters(options);
+
+        boolean isLatestQuery = noVersionFilter(options);
+
+        if (!logFullyValid && isLatestQuery) {
+            log.trace("Log not fully valid for DID {} — cannot resolve latest", did);
+            throw new LogValidationException(
+                    "Log validation failed: only " + validEntries.size() + " of "
+                            + didLog.size() + " entries are valid (parsingComplete="
+                            + didLog.isParsingComplete() + ")");
+        }
+
+        ValidatedEntry target = selectVersion(validEntries, options, didLog);
         ValidatedEntry latest = validEntries.get(validEntries.size() - 1);
 
         boolean currentlyDeactivated = latest.effectiveParams().isDeactivated();
-        boolean isLatestQuery = noVersionFilter(options);
 
         if (currentlyDeactivated && isLatestQuery) {
             log.trace("DID {} is deactivated, returning null document", did);
@@ -115,14 +127,16 @@ public final class LogBasedResolver {
         Objects.requireNonNull(didLog, "didLog must not be null");
         Objects.requireNonNull(options, "options must not be null");
         Objects.requireNonNull(options.getVerifier(), "options.verifier must not be null");
+    }
 
+    private static void validateFilters(ResolveOptions options) {
         int filterCount = 0;
         if (options.getVersionId() != null) filterCount++;
         if (options.getVersionTime() != null) filterCount++;
         if (options.getVersionNumber() != null) filterCount++;
         if (filterCount > 1) {
-            throw new IllegalArgumentException(
-                    "At most one version filter (versionId, versionTime, versionNumber) may be specified");
+            throw new DidNotFoundException(
+                    "Conflicting version filters: at most one of versionId, versionTime, versionNumber may be specified");
         }
     }
 
@@ -159,25 +173,35 @@ public final class LogBasedResolver {
     // Version selection
     // -------------------------------------------------------------------------
 
-    private static ValidatedEntry selectVersion(List<ValidatedEntry> validEntries, ResolveOptions options) {
+    private static ValidatedEntry selectVersion(List<ValidatedEntry> validEntries, ResolveOptions options,
+                                                DidLog fullLog) {
         if (options.getVersionId() != null) {
-            return findByVersionId(validEntries, options.getVersionId());
+            return findByVersionId(validEntries, options.getVersionId(), fullLog);
         }
         if (options.getVersionTime() != null) {
             return findByVersionTime(validEntries, options.getVersionTime());
         }
         if (options.getVersionNumber() != null) {
-            return findByVersionNumber(validEntries, options.getVersionNumber());
+            return findByVersionNumber(validEntries, options.getVersionNumber(), fullLog);
         }
         return validEntries.get(validEntries.size() - 1);
     }
 
-    private static ValidatedEntry findByVersionId(List<ValidatedEntry> entries, String versionId) {
-        return entries.stream()
+    private static ValidatedEntry findByVersionId(List<ValidatedEntry> entries, String versionId,
+                                                  DidLog fullLog) {
+        var match = entries.stream()
                 .filter(v -> versionId.equals(v.entry().versionId()))
-                .findFirst()
-                .orElseThrow(() -> new DidNotFoundException(
-                        "No entry matches versionId '" + versionId + "'"));
+                .findFirst();
+        if (match.isPresent()) {
+            return match.get();
+        }
+        boolean existsInFullLog = fullLog.entries().stream()
+                .anyMatch(e -> versionId.equals(e.versionId()));
+        if (existsInFullLog) {
+            throw new LogValidationException(
+                    "Entry with versionId '" + versionId + "' exists but failed validation");
+        }
+        throw new DidNotFoundException("No entry matches versionId '" + versionId + "'");
     }
 
     private static ValidatedEntry findByVersionTime(List<ValidatedEntry> entries, Instant versionTime) {
@@ -197,12 +221,27 @@ public final class LogBasedResolver {
         return match;
     }
 
-    private static ValidatedEntry findByVersionNumber(List<ValidatedEntry> entries, int versionNumber) {
-        return entries.stream()
+    private static ValidatedEntry findByVersionNumber(List<ValidatedEntry> entries, int versionNumber,
+                                                      DidLog fullLog) {
+        var match = entries.stream()
                 .filter(v -> v.entry().versionNumber() == versionNumber)
-                .findFirst()
-                .orElseThrow(() -> new DidNotFoundException(
-                        "No entry matches versionNumber " + versionNumber));
+                .findFirst();
+        if (match.isPresent()) {
+            return match.get();
+        }
+        boolean existsInFullLog = fullLog.entries().stream()
+                .anyMatch(e -> e.versionNumber() == versionNumber);
+        if (existsInFullLog) {
+            throw new LogValidationException(
+                    "Entry with versionNumber " + versionNumber + " exists but failed validation");
+        }
+        if (!fullLog.isParsingComplete() && !entries.isEmpty()
+                && versionNumber > entries.get(entries.size() - 1).entry().versionNumber()) {
+            throw new LogValidationException(
+                    "Entry with versionNumber " + versionNumber
+                            + " could not be parsed (log parsing incomplete)");
+        }
+        throw new DidNotFoundException("No entry matches versionNumber " + versionNumber);
     }
 
     // -------------------------------------------------------------------------
@@ -216,6 +255,7 @@ public final class LogBasedResolver {
 
         return ResolutionMetadata.builder()
                 .versionId(target.entry().versionId())
+                .versionNumber(target.entry().versionNumber())
                 .versionTime(target.entry().versionTime())
                 .created(genesis.entry().versionTime())
                 .updated(latest.entry().versionTime())
@@ -235,6 +275,7 @@ public final class LogBasedResolver {
 
         ResolutionMetadata metadata = ResolutionMetadata.builder()
                 .versionId(latest.entry().versionId())
+                .versionNumber(latest.entry().versionNumber())
                 .versionTime(latest.entry().versionTime())
                 .created(genesis.entry().versionTime())
                 .updated(latest.entry().versionTime())

@@ -338,7 +338,8 @@ public final class LogValidator {
 
         for (DataIntegrityProof proof : proofs) {
             validateProofFields(proof);
-            if (activeUpdateKeys == null || !activeUpdateKeys.contains(proof.verificationMethod())) {
+            String multikey = Multiformats.extractMultikey(proof.verificationMethod());
+            if (activeUpdateKeys == null || !activeUpdateKeys.contains(multikey)) {
                 throw new LogValidationException(
                         "Proof verificationMethod '" + proof.verificationMethod()
                                 + "' is not in active updateKeys: " + activeUpdateKeys);

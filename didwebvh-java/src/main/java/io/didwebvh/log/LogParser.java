@@ -35,9 +35,12 @@ public final class LogParser {
      * <p>Blank lines (empty or whitespace-only) are silently skipped to tolerate
      * trailing newlines, which are common in JSONL files.
      *
+     * <p>If a non-blank line fails to parse, parsing stops and only the successfully
+     * parsed entries are returned. This allows the resolver to still serve earlier
+     * valid versions from a partially corrupt log.
+     *
      * @param jsonl the raw content of {@code did.jsonl}
-     * @return the parsed log (may be empty if the input contains no non-blank lines)
-     * @throws LogValidationException if any non-blank line fails to parse
+     * @return the parsed log (may be empty if no lines could be parsed)
      */
     public static DidLog parse(String jsonl) {
         Objects.requireNonNull(jsonl, "jsonl must not be null");
@@ -45,6 +48,7 @@ public final class LogParser {
 
         String[] lines = jsonl.split("\n", -1);
         List<DidLogEntry> entries = new ArrayList<>();
+        boolean complete = true;
 
         for (int i = 0; i < lines.length; i++) {
             String line = lines[i].strip();
@@ -54,13 +58,15 @@ public final class LogParser {
             try {
                 entries.add(parseLine(line));
             } catch (LogValidationException e) {
-                throw new LogValidationException(
-                        "Failed to parse log entry at line " + (i + 1) + ": " + e.getMessage(), e);
+                log.trace("Stopped parsing at line {} ({}); returning {} entries parsed so far",
+                        i + 1, e.getMessage(), entries.size());
+                complete = false;
+                break;
             }
         }
 
-        log.trace("Parsed DID log with {} entries", entries.size());
-        return new DidLog(entries);
+        log.trace("Parsed DID log with {} entries (complete={})", entries.size(), complete);
+        return new DidLog(entries, complete);
     }
 
     /**

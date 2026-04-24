@@ -41,22 +41,26 @@ final class OperationSupport {
      * @throws IllegalArgumentException if the signer is not authorized
      */
     static void validateSigningKeyAuthorization(Signer signer, Parameters activeParams) {
-        String signerKey = signer.getVerificationMethodId();
+        String signerVerificationMethod = signer.getVerificationMethodId();
+        String signerMultikey = Multiformats.extractMultikey(signerVerificationMethod);
+        
         if (activeParams.isPreRotationActive()) {
-            String signerKeyHash = Multiformats.sha256Multihash(signerKey.getBytes(StandardCharsets.UTF_8));
+            String signerKeyHash = Multiformats.sha256Multihash(signerMultikey.getBytes(StandardCharsets.UTF_8));
             List<String> committed = activeParams.nextKeyHashes();
             if (committed == null || !committed.contains(signerKeyHash)) {
                 throw new IllegalArgumentException(
-                        "Signing key '" + signerKey + "' (hash: " + signerKeyHash
+                        "Signing key '" + signerVerificationMethod + "' (multikey: " + signerMultikey
+                                + ", hash: " + signerKeyHash
                                 + ") was not committed in the previous 'nextKeyHashes'. "
                                 + "When pre-rotation is active, you must sign with the "
                                 + "newly-revealed key whose hash was pre-committed.");
             }
         } else {
             List<String> activeKeys = activeParams.updateKeys();
-            if (activeKeys == null || !activeKeys.contains(signerKey)) {
+            if (activeKeys == null || !activeKeys.contains(signerMultikey)) {
                 throw new IllegalArgumentException(
-                        "Signing key '" + signerKey + "' is not in the active 'updateKeys': " + activeKeys);
+                        "Signing key '" + signerVerificationMethod + "' (multikey: " + signerMultikey
+                                + ") is not in the active 'updateKeys': " + activeKeys);
             }
         }
     }

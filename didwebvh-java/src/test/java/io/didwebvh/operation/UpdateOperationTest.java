@@ -258,7 +258,7 @@ class UpdateOperationTest {
             assertThat(proof.type()).isEqualTo("DataIntegrityProof");
             assertThat(proof.cryptosuite()).isEqualTo("eddsa-jcs-2022");
             assertThat(proof.proofPurpose()).isEqualTo("assertionMethod");
-            assertThat(proof.verificationMethod()).isEqualTo(keyA);
+            assertThat(proof.verificationMethod()).isEqualTo("did:key:" + keyA + "#" + keyA);
             assertThat(proof.proofValue()).startsWith("z");
         }
 

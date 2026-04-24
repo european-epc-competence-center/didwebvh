@@ -118,6 +118,7 @@ public final class CreateOperation {
 
             ResolutionMetadata metadata = new ResolutionMetadata(
                     versionId,
+                    1,
                     versionTime,
                     versionTime,
                     versionTime,

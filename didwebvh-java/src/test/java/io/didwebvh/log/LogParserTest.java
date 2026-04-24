@@ -129,13 +129,13 @@ class LogParserTest {
     }
 
     @Test
-    void parse_invalidLine_throwsWithLineNumber() {
+    void parse_invalidLine_stopsAndReturnsValidEntries() {
         String jsonl = "{\"versionId\":\"1-QmHash\",\"versionTime\":\"2025-01-23T04:12:36Z\"}\n"
                 + "broken json\n";
 
-        assertThatThrownBy(() -> LogParser.parse(jsonl))
-                .isInstanceOf(LogValidationException.class)
-                .hasMessageContaining("line 2");
+        DidLog log = LogParser.parse(jsonl);
+        assertThat(log.size()).isEqualTo(1);
+        assertThat(log.first().versionId()).isEqualTo("1-QmHash");
     }
 
     @Test

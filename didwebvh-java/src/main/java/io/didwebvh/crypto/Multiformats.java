@@ -177,6 +177,31 @@ public final class Multiformats {
     }
 
     /**
+     * Extracts the bare multikey from a verification method identifier.
+     *
+     * <p>Handles three formats:
+     * <ul>
+     *   <li>{@code "z6Mk..."} — bare multikey, returned as-is</li>
+     *   <li>{@code "did:key:z6Mk...#z6Mk..."} — DID URL with fragment, returns the fragment</li>
+     *   <li>{@code "did:key:z6Mk..."} — DID URL without fragment, returns the method-specific ID</li>
+     * </ul>
+     *
+     * @param verificationMethod the verification method identifier
+     * @return the bare multikey string (starts with {@code z})
+     */
+    public static String extractMultikey(String verificationMethod) {
+        Objects.requireNonNull(verificationMethod, "verificationMethod");
+        if (verificationMethod.startsWith("did:key:")) {
+            int fragmentIdx = verificationMethod.indexOf('#');
+            if (fragmentIdx >= 0) {
+                return verificationMethod.substring(fragmentIdx + 1);
+            }
+            return verificationMethod.substring("did:key:".length());
+        }
+        return verificationMethod;
+    }
+
+    /**
      * Decodes a multikey string to a raw Ed25519 public key.
      *
      * @param multikey the multikey string (must start with {@code z} and contain Ed25519 multicodec prefix)

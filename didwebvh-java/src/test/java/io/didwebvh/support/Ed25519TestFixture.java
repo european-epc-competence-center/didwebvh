@@ -50,8 +50,9 @@ public record Ed25519TestFixture(Signer signer, String publicKeyMultibase) {
         Ed25519PublicKeyParameters publicKey = (Ed25519PublicKeyParameters) keyPair.getPublic();
 
         String publicKeyMultibase = Multiformats.encodeEd25519Multikey(publicKey.getEncoded());
+        String verificationMethodId = "did:key:" + publicKeyMultibase + "#" + publicKeyMultibase;
 
-        Signer signer = Signer.create(publicKeyMultibase, data -> {
+        Signer signer = Signer.create(verificationMethodId, data -> {
             Ed25519Signer s = new Ed25519Signer();
             s.init(true, privateKey);
             s.update(data, 0, data.length);

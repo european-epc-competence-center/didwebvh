@@ -11,6 +11,7 @@ import java.util.List;
  */
 public record ResolutionMetadata(
         String versionId,
+        Integer versionNumber,
         String versionTime,
         String created,
         String updated,
@@ -45,10 +46,11 @@ public record ResolutionMetadata(
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("ResolutionMetadata {\n");
-        sb.append("  versionId:   ").append(versionId).append("\n");
-        sb.append("  versionTime: ").append(versionTime).append("\n");
-        sb.append("  created:     ").append(created).append("\n");
-        sb.append("  updated:     ").append(updated).append("\n");
+        sb.append("  versionId:     ").append(versionId).append("\n");
+        sb.append("  versionNumber: ").append(versionNumber).append("\n");
+        sb.append("  versionTime:   ").append(versionTime).append("\n");
+        sb.append("  created:       ").append(created).append("\n");
+        sb.append("  updated:       ").append(updated).append("\n");
         sb.append("  scid:        ").append(scid).append("\n");
         sb.append("  portable:    ").append(portable).append("\n");
         sb.append("  deactivated: ").append(deactivated).append("\n");
@@ -72,6 +74,7 @@ public record ResolutionMetadata(
 
     public static final class Builder {
         private String versionId;
+        private Integer versionNumber;
         private String versionTime;
         private String created;
         private String updated;
@@ -87,6 +90,7 @@ public record ResolutionMetadata(
         private Builder() {}
 
         public Builder versionId(String versionId) { this.versionId = versionId; return this; }
+        public Builder versionNumber(Integer versionNumber) { this.versionNumber = versionNumber; return this; }
         public Builder versionTime(String versionTime) { this.versionTime = versionTime; return this; }
         public Builder created(String created) { this.created = created; return this; }
         public Builder updated(String updated) { this.updated = updated; return this; }
@@ -101,7 +105,7 @@ public record ResolutionMetadata(
 
         public ResolutionMetadata build() {
             return new ResolutionMetadata(
-                    versionId, versionTime, created, updated, scid,
+                    versionId, versionNumber, versionTime, created, updated, scid,
                     portable, deactivated, ttl, witness, watchers,
                     error, problemDetails);
         }

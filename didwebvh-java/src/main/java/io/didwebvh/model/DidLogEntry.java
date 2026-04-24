@@ -1,5 +1,6 @@
 package io.didwebvh.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -40,6 +41,7 @@ public record DidLogEntry(
      * Returns the version number portion of the {@code versionId} (the integer before the {@code -}).
      * For example, {@code "3-QmXxx..."} → {@code 3}.
      */
+    @JsonIgnore
     public int versionNumber() {
         return Integer.parseInt(versionId.substring(0, versionId.indexOf('-')));
     }
@@ -47,6 +49,7 @@ public record DidLogEntry(
     /**
      * Returns the entry hash portion of the {@code versionId} (the base58btc multihash after the {@code -}).
      */
+    @JsonIgnore
     public String entryHash() {
         return versionId.substring(versionId.indexOf('-') + 1);
     }

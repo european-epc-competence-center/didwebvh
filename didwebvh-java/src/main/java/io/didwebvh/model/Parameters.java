@@ -1,5 +1,6 @@
 package io.didwebvh.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -101,6 +102,7 @@ public record Parameters(
     /**
      * Returns whether pre-rotation is currently active (nextKeyHashes is non-empty).
      */
+    @JsonIgnore
     public boolean isPreRotationActive() {
         return nextKeyHashes != null && !nextKeyHashes.isEmpty();
     }
@@ -108,6 +110,7 @@ public record Parameters(
     /**
      * Returns whether this DID is deactivated.
      */
+    @JsonIgnore
     public boolean isDeactivated() {
         return Boolean.TRUE.equals(deactivated);
     }

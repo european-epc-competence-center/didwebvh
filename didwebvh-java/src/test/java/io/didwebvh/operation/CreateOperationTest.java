@@ -258,7 +258,7 @@ class CreateOperationTest {
             assertThat(proof.type()).isEqualTo("DataIntegrityProof");
             assertThat(proof.cryptosuite()).isEqualTo("eddsa-jcs-2022");
             assertThat(proof.proofPurpose()).isEqualTo("assertionMethod");
-            assertThat(proof.verificationMethod()).isEqualTo(publicKeyMultibase);
+            assertThat(proof.verificationMethod()).isEqualTo("did:key:" + publicKeyMultibase + "#" + publicKeyMultibase);
             assertThat(proof.proofValue()).startsWith("z");
         }
 

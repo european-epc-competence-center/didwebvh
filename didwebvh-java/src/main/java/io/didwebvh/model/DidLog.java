@@ -15,9 +15,15 @@ import java.util.List;
 public final class DidLog {
 
     private final List<DidLogEntry> entries;
+    private final boolean parsingComplete;
 
     public DidLog(List<DidLogEntry> entries) {
+        this(entries, true);
+    }
+
+    public DidLog(List<DidLogEntry> entries, boolean parsingComplete) {
         this.entries = Collections.unmodifiableList(new ArrayList<>(entries));
+        this.parsingComplete = parsingComplete;
     }
 
     public static DidLog empty() {
@@ -26,6 +32,14 @@ public final class DidLog {
 
     public List<DidLogEntry> entries() {
         return entries;
+    }
+
+    /**
+     * Returns {@code true} if all lines in the source JSONL were successfully parsed.
+     * {@code false} means the parser stopped at a corrupt line and the log may be truncated.
+     */
+    public boolean isParsingComplete() {
+        return parsingComplete;
     }
 
     public boolean isEmpty() {

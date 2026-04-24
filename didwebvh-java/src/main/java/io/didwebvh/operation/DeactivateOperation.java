@@ -117,6 +117,7 @@ public final class DeactivateOperation {
             String scid = currentLog.first().parameters().scid();
             ResolutionMetadata metadata = new ResolutionMetadata(
                     versionId,
+                    finalEntry.versionNumber(),
                     versionTime,
                     genesisTime,
                     versionTime,
