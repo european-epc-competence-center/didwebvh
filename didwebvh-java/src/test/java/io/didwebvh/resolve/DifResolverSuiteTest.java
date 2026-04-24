@@ -13,8 +13,6 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,7 +40,6 @@ import static org.assertj.core.api.Assertions.fail;
  */
 class DifResolverSuiteTest {
 
-    private static final Logger log = LoggerFactory.getLogger(DifResolverSuiteTest.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String SUITE_JSON = "/dif-test-suite/resolver-suite.json";
     private static final String LOGS_BASE = "/dif-test-suite/logs/";
@@ -99,8 +96,6 @@ class DifResolverSuiteTest {
         }
 
         ResolveResult result = resolver.resolve(tc.did, didLog, optBuilder.build());
-
-        log.info("Test '{}': status={}, metadata={}", tc, result.isSuccess() ? "ok" : "error", result.metadata());
 
         if ("ok".equals(tc.expectedStatus)) {
             assertThat(result.document())
