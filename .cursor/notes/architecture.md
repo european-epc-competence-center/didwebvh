@@ -93,13 +93,13 @@ io.didwebvh/
 **`resolve/`**
 - `DidResolver` interface — network-facing contract: `resolve(did, options)`
 - `LogFetcher` — `@FunctionalInterface` for HTTP I/O; injectable for testability (default uses `HttpClient`)
-- `LogBasedResolver` — standalone class (not a `DidResolver`); core resolution engine with `resolve(did, log, options)`. Validates entry-by-entry via `LogValidator.validateEntry()`, applies version filters, handles deactivation, builds `ResolutionMetadata`. Never throws — errors in metadata.
-- `HttpResolver implements DidResolver` — URL transform → fetch → parse → delegate to `LogBasedResolver`
+- `LogBasedResolver` — standalone class (not a `DidResolver`); core resolution engine with `resolve(did, log, options)`. Validates entry-by-entry via `LogValidator.validateEntry()`, applies version filters, witness gating (via `WitnessValidator`), handles deactivation, builds `ResolutionMetadata`. Never throws — errors in metadata.
+- `HttpResolver implements DidResolver` — URL transform → fetch log → auto-fetch `did-witness.json` when witnesses detected → delegate to `LogBasedResolver`
 - `DidUrlTransformer` — DID → HTTPS URL (IDNA normalization, percent-encoding, `.well-known` fallback)
 
-**`witness/`** — Optional spec feature, isolated.
-- `WitnessProofCollection` — model for `did-witness.json`
-- `WitnessValidator` — threshold check, witness proof signature verification
+**`witness/`** — Optional spec feature, integrated into resolver chain.
+- `WitnessProofCollection` — model for `did-witness.json` (parse + record)
+- `WitnessValidator` — validates DI proofs against `did:key` witness DIDs, threshold check, "watermark" frontier calculation (`findApprovedFrontier`). Uses `ValidatedEntryView` interface to decouple from `LogBasedResolver` internals.
 
 **`exception/`** — Typed hierarchy; exception type determines which spec error code applies.
 - `DidWebVhException` (base)
@@ -116,6 +116,7 @@ io.didwebvh/
 4. **`Parameters.validate()` + `Parameters.diff()`** — encode the bulk of spec rules (pre-rotation, portable immutability, deactivation); used by operations and `LogValidator`
 5. **v1.0 only** — no spec version dispatch; add `method_versions/` subpackage later if needed
 6. **`HttpResolver` in `resolve/`** — same module; extract to separate Maven artifact if publishing to Maven Central
+7. **Two-phase resolution** — chain validation (`LogValidator`) and witness validation (`WitnessValidator`) are separate phases. Chain validates hashes/proofs/params. Witness gating determines which chain-valid entries are approved. `ResolveOptions.witnessProofs` carries the parsed `did-witness.json` content.
 
 ### Implementation Status
 

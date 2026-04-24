@@ -1,8 +1,8 @@
 # Implementation Status & Remaining Work
 
-## Overall Rating: ~80% spec coverage
+## Overall Rating: ~85% spec coverage
 
-All four DID operations (create, update, deactivate, resolve) are implemented and tested. Witness integration is stubbed.
+All four DID operations (create, update, deactivate, resolve) are implemented and tested. Witness validation during resolution is complete.
 
 ## What's Done (Working & Tested)
 
@@ -19,8 +19,10 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 | DeactivateOperation | **Complete** | Including pre-rotation guard |
 | DID → HTTPS URL (DidUrlTransformer) | **Complete** | IDNA, port encoding, well-known path |
 | Exception hierarchy | **Complete** | Maps to spec error codes |
-| LogBasedResolver | **Complete** | Entry-by-entry validation, version filters (versionId/versionTime/versionNumber), deactivation handling, error-to-metadata mapping |
-| HttpResolver | **Complete** | URL transform → fetch → parse → delegate to LogBasedResolver |
+| LogBasedResolver | **Complete** | Entry-by-entry validation, version filters (versionId/versionTime/versionNumber), deactivation handling, witness gating, error-to-metadata mapping |
+| HttpResolver | **Complete** | URL transform → fetch log → auto-fetch `did-witness.json` when witnesses configured → delegate to LogBasedResolver |
+| WitnessValidator | **Complete** | DI proof verification against `did:key` witness DIDs, threshold check, watermark frontier calculation |
+| WitnessProofCollection | **Complete** | Parse `did-witness.json`, model for witness proof entries |
 | Public API facade (DidWebVh) | **Complete** | `create`, `resolve`, `resolveFromLog`, `update`, `deactivate` |
 
 ## Architecture: Resolver Design
@@ -33,20 +35,12 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 
 ## What's NOT Done (Stubs / Missing)
 
-### P0 — Core Spec Requirements
-
-1. **`WitnessValidator.validate()`** — witness proof verification
-   - Verify witness proofs meet threshold
-   - Verify each witness proof signature (they're `did:key` DIDs with `eddsa-jcs-2022`)
-   - Integrate into `LogBasedResolver` validation loop
-
 ### P1 — Spec Compliance Gaps
 
-2. **Witness proofs on update** — `UpdateOptions.witnessProofs` exists but `UpdateOperation` never reads it
-3. **Witness file fetching** — `HttpResolver` should fetch `did-witness.json` when witnesses are configured
-4. **DID URL path resolution** — implicit `#files` service (spec §6.5)
-5. **`/whois` resolution** — implicit `#whois` service (spec §6.6)
-6. **Parallel `did:web` publishing** — spec §6.7
+1. **Witness proofs on update** — `UpdateOptions.witnessProofs` exists but `UpdateOperation` never reads it
+2. **DID URL path resolution** — implicit `#files` service (spec §6.5)
+3. **`/whois` resolution** — implicit `#whois` service (spec §6.6)
+4. **Parallel `did:web` publishing** — spec §6.7
 
 ### P2 — Nice-to-Have / Future
 
@@ -58,8 +52,6 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 
 ## Test Coverage Assessment
 
-**Well-covered:** crypto, log parse/serialize/validate, create/update/deactivate operations, URL transformer, LogBasedResolver (18 tests: latest/versioned/deactivated/SCID-binding/error cases), HttpResolver (5 tests: success/error/malformed via injected LogFetcher)
+**Well-covered:** crypto, log parse/serialize/validate, create/update/deactivate operations, URL transformer, LogBasedResolver, HttpResolver, WitnessValidator (via DIF resolver interop suite — threshold/watermark/missing-witness scenarios)
 
-**Not covered:** `WitnessValidator`, `WitnessProofCollection`
-
-**Total: 228 tests.**
+**Total: 273 tests.**
