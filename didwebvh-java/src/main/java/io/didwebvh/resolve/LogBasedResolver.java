@@ -10,6 +10,8 @@ import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
 import io.didwebvh.model.ResolutionMetadata;
+import io.didwebvh.model.WitnessParameter;
+import io.didwebvh.witness.WitnessValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,6 +107,8 @@ public final class LogBasedResolver {
 
         ValidatedEntry target = selectVersion(validEntries, options, didLog);
         ValidatedEntry latest = validEntries.get(validEntries.size() - 1);
+
+        validateWitnessProofs(validEntries, target, latest, isLatestQuery, options);
 
         boolean currentlyDeactivated = latest.effectiveParams().isDeactivated();
 
@@ -291,6 +295,47 @@ public final class LogBasedResolver {
     }
 
     // -------------------------------------------------------------------------
+    // Witness validation
+    // -------------------------------------------------------------------------
+
+    /**
+     * Checks that the target version is covered by valid witness proofs when witnesses
+     * are configured. Uses the "watermark" rule: a valid proof for version N implies
+     * approval of all entries 1..N.
+     */
+    private static void validateWitnessProofs(
+            List<ValidatedEntry> validEntries,
+            ValidatedEntry target,
+            ValidatedEntry latest,
+            boolean isLatestQuery,
+            ResolveOptions options) {
+
+        WitnessParameter witnessConfig = latest.effectiveParams().witness();
+        if (witnessConfig == null || witnessConfig.isEmpty()) {
+            return;
+        }
+
+        List<WitnessValidator.ValidatedEntryView> views = validEntries.stream()
+                .map(v -> (WitnessValidator.ValidatedEntryView) v)
+                .toList();
+
+        WitnessValidator witnessValidator = new WitnessValidator(options.getVerifier());
+        int frontier = witnessValidator.findApprovedFrontier(views, options.getWitnessProofs());
+
+        if (isLatestQuery && latest.entry().versionNumber() > frontier) {
+            throw new LogValidationException(
+                    "Latest log entry (version " + latest.entry().versionNumber()
+                            + ") lacks required witness proofs (frontier=" + frontier + ")");
+        }
+
+        if (target.entry().versionNumber() > frontier) {
+            throw new LogValidationException(
+                    "Requested version " + target.entry().versionNumber()
+                            + " lacks required witness proofs (frontier=" + frontier + ")");
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -307,5 +352,22 @@ public final class LogBasedResolver {
     /**
      * A validated log entry paired with the effective parameter state after that entry.
      */
-    record ValidatedEntry(DidLogEntry entry, Parameters effectiveParams) {}
+    record ValidatedEntry(DidLogEntry entry, Parameters effectiveParams)
+            implements WitnessValidator.ValidatedEntryView {
+
+        @Override
+        public String versionId() {
+            return entry.versionId();
+        }
+
+        @Override
+        public int versionNumber() {
+            return entry.versionNumber();
+        }
+
+        @Override
+        public WitnessParameter effectiveWitness() {
+            return effectiveParams.witness();
+        }
+    }
 }

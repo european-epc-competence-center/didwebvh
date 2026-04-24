@@ -6,7 +6,9 @@ import io.didwebvh.exception.DidNotFoundException;
 import io.didwebvh.exception.DidWebVhException;
 import io.didwebvh.log.LogParser;
 import io.didwebvh.model.DidLog;
+import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.ResolutionMetadata;
+import io.didwebvh.witness.WitnessProofCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +86,10 @@ public final class HttpResolver implements DidResolver {
             String logUrl = DidUrlTransformer.toLogUrl(did);
             String body = logFetcher.fetch(logUrl);
             DidLog didLog = LogParser.parse(body);
-            ResolveResult result = delegate.resolve(did, didLog, options);
+
+            ResolveOptions enrichedOptions = enrichWithWitnessProofs(did, didLog, options);
+
+            ResolveResult result = delegate.resolve(did, didLog, enrichedOptions);
             log.trace("Finished resolve for DID: {} success={}", did, result.isSuccess());
             return result;
         } catch (IOException e) {
@@ -99,6 +104,37 @@ public final class HttpResolver implements DidResolver {
             log.trace("Resolution error for DID {}: {}", did, e.getMessage());
             return new ResolveResult(did, null,
                     ResolutionMetadata.error("invalidDid", "Invalid DID", e.getMessage()));
+        }
+    }
+
+    /**
+     * If any log entry declares witnesses, fetches {@code did-witness.json} and attaches
+     * the parsed proofs to a copy of the options. Returns the original options unchanged
+     * if no witnesses are configured or the witness file cannot be fetched.
+     */
+    private ResolveOptions enrichWithWitnessProofs(String did, DidLog didLog, ResolveOptions options) {
+        if (options.getWitnessProofs() != null) {
+            return options;
+        }
+
+        boolean hasWitnesses = didLog.entries().stream()
+                .map(DidLogEntry::parameters)
+                .anyMatch(p -> p != null && p.witness() != null && !p.witness().isEmpty());
+
+        if (!hasWitnesses) {
+            return options;
+        }
+
+        try {
+            String witnessUrl = DidUrlTransformer.toWitnessUrl(did);
+            log.trace("Fetching witness proofs from: {}", witnessUrl);
+            String witnessBody = logFetcher.fetch(witnessUrl);
+            WitnessProofCollection witnessProofs = WitnessProofCollection.parse(witnessBody);
+            log.trace("Loaded {} witness proof entries", witnessProofs.entries().size());
+            return options.toBuilder().witnessProofs(witnessProofs).build();
+        } catch (IOException e) {
+            log.trace("Could not fetch witness file for DID {}: {}", did, e.getMessage());
+            return options;
         }
     }
 

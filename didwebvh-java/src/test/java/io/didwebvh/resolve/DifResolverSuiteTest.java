@@ -9,7 +9,7 @@ import io.didwebvh.log.LogParser;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.ResolutionMetadata;
 import io.didwebvh.support.Ed25519TestFixture;
-import org.junit.jupiter.api.Assumptions;
+import io.didwebvh.witness.WitnessProofCollection;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -34,25 +34,13 @@ import static org.assertj.core.api.Assertions.fail;
  * <p>Each test case specifies a log directory, a DID URL (possibly with query
  * parameters like {@code ?versionId=...} or {@code ?versionNumber=...}), and
  * expected outcome (status + metadata assertions).
- *
- * <p>Witness validation is not yet implemented — test cases that require it
- * are documented but skipped.
  */
 class DifResolverSuiteTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String SUITE_JSON = "/dif-test-suite/resolver-suite.json";
     private static final String LOGS_BASE = "/dif-test-suite/logs/";
-
-    /**
-     * Test cases that require witness validation (not yet implemented).
-     * Identified by their DID URL to keep the skip logic transparent.
-     */
-    private static final Set<String> WITNESS_DEPENDENT_TESTS = Set.of(
-            // missing-witness: latest resolution and versionNumber=3 require witness validation
-            "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example[missing-witness]",
-            "did:webvh:QmcASXkJMnprWNJCbyJ5394tCv8JDfrGptUmbCBoy4UtHE:domain.example?versionNumber=3[missing-witness]"
-    );
+    private static final String WITNESS_FILENAME = "did-witness.json";
 
     private static LogBasedResolver resolver;
     private static List<TestCase> allTestCases;
@@ -78,10 +66,6 @@ class DifResolverSuiteTest {
     @ParameterizedTest(name = "[{index}] {0}")
     @MethodSource("testCases")
     void resolverSuiteTest(TestCase tc) throws IOException {
-        String skipKey = tc.didUrl + "[" + tc.logName + "]";
-        Assumptions.assumeFalse(WITNESS_DEPENDENT_TESTS.contains(skipKey),
-                "Witness validation not implemented — skipping: " + tc);
-
         String jsonl = loadResource(LOGS_BASE + tc.logName + "/did.jsonl");
         DidLog didLog = LogParser.parse(jsonl);
 
@@ -93,6 +77,11 @@ class DifResolverSuiteTest {
         }
         if (tc.versionNumber != null) {
             optBuilder.versionNumber(tc.versionNumber);
+        }
+
+        WitnessProofCollection witnessProofs = loadWitnessProofs(tc.logName);
+        if (witnessProofs != null) {
+            optBuilder.witnessProofs(witnessProofs);
         }
 
         ResolveResult result = resolver.resolve(tc.did, didLog, optBuilder.build());
@@ -219,6 +208,17 @@ class DifResolverSuiteTest {
                 fail("Test resource not found: " + path);
             }
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private static WitnessProofCollection loadWitnessProofs(String logName) throws IOException {
+        String path = LOGS_BASE + logName + "/" + WITNESS_FILENAME;
+        try (InputStream is = DifResolverSuiteTest.class.getResourceAsStream(path)) {
+            if (is == null) {
+                return null;
+            }
+            String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+            return WitnessProofCollection.parse(json);
         }
     }
 

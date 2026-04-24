@@ -1,6 +1,7 @@
 package io.didwebvh.api;
 
 import io.didwebvh.crypto.Verifier;
+import io.didwebvh.witness.WitnessProofCollection;
 
 import java.time.Instant;
 
@@ -32,20 +33,39 @@ public final class ResolveOptions {
     /** Return the version with this version number (the integer prefix of {@code versionId}). */
     private final Integer versionNumber;
 
+    /** Pre-loaded witness proofs from {@code did-witness.json}; {@code null} when not available. */
+    private final WitnessProofCollection witnessProofs;
+
     private ResolveOptions(Builder builder) {
         this.verifier = builder.verifier;
         this.versionId = builder.versionId;
         this.versionTime = builder.versionTime;
         this.versionNumber = builder.versionNumber;
+        this.witnessProofs = builder.witnessProofs;
     }
 
     public Verifier getVerifier() { return verifier; }
     public String getVersionId() { return versionId; }
     public Instant getVersionTime() { return versionTime; }
     public Integer getVersionNumber() { return versionNumber; }
+    public WitnessProofCollection getWitnessProofs() { return witnessProofs; }
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    /**
+     * Returns a new {@link Builder} pre-populated with this instance's values.
+     * Useful for creating a copy with one or two fields changed (e.g. adding witness proofs).
+     */
+    public Builder toBuilder() {
+        Builder b = new Builder();
+        b.verifier = this.verifier;
+        b.versionId = this.versionId;
+        b.versionTime = this.versionTime;
+        b.versionNumber = this.versionNumber;
+        b.witnessProofs = this.witnessProofs;
+        return b;
     }
 
     public static final class Builder {
@@ -53,6 +73,7 @@ public final class ResolveOptions {
         private String versionId;
         private Instant versionTime;
         private Integer versionNumber;
+        private WitnessProofCollection witnessProofs;
 
         private Builder() {}
 
@@ -73,6 +94,11 @@ public final class ResolveOptions {
 
         public Builder versionNumber(int versionNumber) {
             this.versionNumber = versionNumber;
+            return this;
+        }
+
+        public Builder witnessProofs(WitnessProofCollection witnessProofs) {
+            this.witnessProofs = witnessProofs;
             return this;
         }
 
