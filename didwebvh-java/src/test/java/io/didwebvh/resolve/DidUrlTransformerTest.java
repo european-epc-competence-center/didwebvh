@@ -145,4 +145,42 @@ class DidUrlTransformerTest {
         assertThatThrownBy(() -> DidUrlTransformer.extractScid("did:webvh:"))
                 .isInstanceOf(InvalidDidException.class);
     }
+
+    // -------------------------------------------------------------------------
+    // extractFragment / stripFragment
+    // -------------------------------------------------------------------------
+
+    @Test
+    void extractFragment_withFragment_returnsFragmentIncludingHash() {
+        assertThat(DidUrlTransformer.extractFragment("did:webvh:" + SCID + ":example.com#key-1"))
+                .isEqualTo("#key-1");
+    }
+
+    @Test
+    void extractFragment_noFragment_returnsNull() {
+        assertThat(DidUrlTransformer.extractFragment("did:webvh:" + SCID + ":example.com"))
+                .isNull();
+    }
+
+    @Test
+    void extractFragment_null_returnsNull() {
+        assertThat(DidUrlTransformer.extractFragment(null)).isNull();
+    }
+
+    @Test
+    void stripFragment_withFragment_removesHashAndTrailer() {
+        String base = "did:webvh:" + SCID + ":example.com";
+        assertThat(DidUrlTransformer.stripFragment(base + "#key-1")).isEqualTo(base);
+    }
+
+    @Test
+    void stripFragment_noFragment_returnsUnchanged() {
+        String did = "did:webvh:" + SCID + ":example.com";
+        assertThat(DidUrlTransformer.stripFragment(did)).isEqualTo(did);
+    }
+
+    @Test
+    void stripFragment_null_returnsNull() {
+        assertThat(DidUrlTransformer.stripFragment(null)).isNull();
+    }
 }

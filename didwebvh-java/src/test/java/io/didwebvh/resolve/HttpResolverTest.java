@@ -156,4 +156,62 @@ class HttpResolverTest {
             assertThat(result.metadata().error()).isEqualTo("invalidDid");
         }
     }
+
+    // -------------------------------------------------------------------------
+    // Fragment (DID URL) resolution
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class FragmentResolution {
+
+        @Test
+        void resolveWithFragment_returnsVerificationMethodNode() {
+            CreateResult created = createDid();
+            String scid = created.log().first().parameters().scid();
+            String didBase = "did:webvh:" + scid + ":" + DOMAIN;
+            String vmId = didBase + "#key-1";
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", didBase);
+            ObjectNode vm = MAPPER.createObjectNode();
+            vm.put("id", vmId);
+            vm.put("type", "Multikey");
+            vm.put("controller", didBase);
+            vm.put("publicKeyMultibase", fixture.publicKeyMultibase());
+            doc.putArray("verificationMethod").add(vm);
+
+            UpdateResult updated = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(doc)
+                            .signer(fixture.signer())
+                            .build());
+
+            String jsonl = LogSerializer.serialize(updated.log());
+            DidResolver resolver = new HttpResolver(url -> jsonl);
+
+            ResolveResult result = resolver.resolve(didBase + "#key-1", defaultOptions());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.did()).isEqualTo(didBase + "#key-1");
+            assertThat(result.document().path("id").asText()).isEqualTo(vmId);
+            assertThat(result.document().path("publicKeyMultibase").asText())
+                    .isEqualTo(fixture.publicKeyMultibase());
+            // The full document is not returned — only the matched VM node
+            assertThat(result.document().has("verificationMethod")).isFalse();
+        }
+
+        @Test
+        void resolveWithUnknownFragment_returnsNotFound() {
+            CreateResult created = createDid();
+            String jsonl = LogSerializer.serialize(created.log());
+            DidResolver resolver = new HttpResolver(url -> jsonl);
+
+            ResolveResult result = resolver.resolve(created.did() + "#nonexistent", defaultOptions());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("notFound");
+        }
+    }
 }
