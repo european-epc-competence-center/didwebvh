@@ -328,12 +328,14 @@ class LogBasedResolverTest {
         }
 
         @Test
-        void nullVerifier_throwsNullPointer() {
+        void nullVerifier_usesDefaultVerifier_andSucceeds() {
             CreateResult created = createDid();
             ResolveOptions options = ResolveOptions.builder().build();
 
-            assertThatThrownBy(() -> resolver.resolve(created.did(), created.log(), options))
-                    .isInstanceOf(NullPointerException.class);
+            ResolveResult result = resolver.resolve(created.did(), created.log(), options);
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.document()).isNotNull();
         }
 
         @Test
