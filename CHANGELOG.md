@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `DefaultVerifier`: built-in Ed25519 verifier using Bouncy Castle; used automatically when no custom `Verifier` is supplied in `ResolveOptions`
 - `LogFetcher` interface: injectable I/O boundary for HTTP resolution; `HttpResolver` accepts a custom fetcher via constructor injection for testability (default uses `java.net.http.HttpClient`)
 - `CreateOperation`: genesis log entry creation following spec §6.1 (SCID generation, entry hash, Data Integrity proof, placeholder replacement)
 - `UpdateOperation`: append a signed update entry to the log (document changes; optional `updateKeys` / `nextKeyHashes` / witness / watchers inherited from the previous entry when omitted); exposed as `DidWebVh#update`

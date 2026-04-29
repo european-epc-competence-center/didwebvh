@@ -54,8 +54,7 @@ public final class DidWebVh {
      * Resolves a DID by fetching {@code did.jsonl} over HTTPS.
      *
      * @param did     the full DID string (e.g. {@code did:webvh:{SCID}:example.com})
-     * @param options resolution options including the verifier and optional version filters;
-     *                supply only a verifier for the latest version
+     * @param options resolution options including an optional verifier and optional version filters
      * @return the resolution result; errors are encoded in {@link ResolveResult#metadata()}
      */
     public static ResolveResult resolve(String did, ResolveOptions options) {
@@ -70,7 +69,7 @@ public final class DidWebVh {
      *
      * @param did     the full DID string
      * @param log     the pre-parsed DID log
-     * @param options resolution options including the verifier and optional version filters
+     * @param options resolution options including an optional verifier and optional version filters
      * @return the resolution result; errors are encoded in {@link ResolveResult#metadata()}
      */
     public static ResolveResult resolveFromLog(String did, DidLog log, ResolveOptions options) {

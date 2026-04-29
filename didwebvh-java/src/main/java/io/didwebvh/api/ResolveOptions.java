@@ -8,13 +8,14 @@ import java.time.Instant;
 /**
  * Options for {@link DidWebVh#resolve}.
  *
- * <p>{@code verifier} is required. All version filter fields are optional; when all
- * are absent, the latest valid version of the DID document is returned.
+ * <p>All version filter fields are optional; when all are absent, the latest valid
+ * version of the DID document is returned. A {@code verifier} is optional — when
+ * omitted, the built-in {@link io.didwebvh.crypto.DefaultVerifier} is used.
  *
  * <p>Example:
  * <pre>{@code
  * var options = ResolveOptions.builder()
- *     .verifier(verifier)
+ *     .verifier(verifier) // optional: override the default verifier
  *     .versionNumber(3)   // optional: resolve a specific version
  *     .build();
  * }</pre>
@@ -44,7 +45,9 @@ public final class ResolveOptions {
         this.witnessProofs = builder.witnessProofs;
     }
 
-    public Verifier getVerifier() { return verifier; }
+    public Verifier getVerifier() {
+        return verifier != null ? verifier : io.didwebvh.crypto.DefaultVerifier.instance();
+    }
     public String getVersionId() { return versionId; }
     public Instant getVersionTime() { return versionTime; }
     public Integer getVersionNumber() { return versionNumber; }

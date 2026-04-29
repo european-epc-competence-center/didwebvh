@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.crypto.DataIntegrity;
+import io.didwebvh.crypto.DefaultVerifier;
 import io.didwebvh.crypto.JcsCanonicalizer;
 import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.crypto.Verifier;
@@ -51,10 +52,13 @@ public final class LogValidator {
     private final Verifier verifier;
 
     /**
-     * @param verifier the verifier used to check Data Integrity proofs on each entry
+     * Creates a validator with the given verifier.
+     *
+     * @param verifier the verifier used to check Data Integrity proofs on each entry;
+     *                 if {@code null}, the built-in {@link DefaultVerifier} is used
      */
     public LogValidator(Verifier verifier) {
-        this.verifier = verifier;
+        this.verifier = verifier != null ? verifier : DefaultVerifier.instance();
     }
 
     /**

@@ -143,7 +143,6 @@ public final class LogBasedResolver {
         Objects.requireNonNull(did, "did must not be null");
         Objects.requireNonNull(didLog, "didLog must not be null");
         Objects.requireNonNull(options, "options must not be null");
-        Objects.requireNonNull(options.getVerifier(), "options.verifier must not be null");
     }
 
     private static void validateFilters(ResolveOptions options) {

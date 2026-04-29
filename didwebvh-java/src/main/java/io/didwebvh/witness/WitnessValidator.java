@@ -3,6 +3,7 @@ package io.didwebvh.witness;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.crypto.DataIntegrity;
+import io.didwebvh.crypto.DefaultVerifier;
 import io.didwebvh.crypto.Verifier;
 import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.WitnessParameter;
@@ -34,8 +35,14 @@ public final class WitnessValidator {
 
     private final Verifier verifier;
 
+    /**
+     * Creates a witness validator with the given verifier.
+     *
+     * @param verifier the verifier used to check witness Data Integrity proofs;
+     *                 if {@code null}, the built-in {@link DefaultVerifier} is used
+     */
     public WitnessValidator(Verifier verifier) {
-        this.verifier = verifier;
+        this.verifier = verifier != null ? verifier : DefaultVerifier.instance();
     }
 
     /**
