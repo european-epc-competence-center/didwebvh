@@ -169,6 +169,35 @@ public final class DidUrlTransformer {
     }
 
     /**
+     * Extracts the fragment from a DID URL — the substring starting with {@code #}.
+     *
+     * <p>Example: {@code did:webvh:{SCID}:example.com#key-1} → {@code "#key-1"}.
+     *
+     * @param didUrl the DID URL string (may include a fragment)
+     * @return the fragment including the leading {@code #}, or {@code null} if absent
+     */
+    public static String extractFragment(String didUrl) {
+        if (didUrl == null) return null;
+        int idx = didUrl.indexOf('#');
+        return idx >= 0 ? didUrl.substring(idx) : null;
+    }
+
+    /**
+     * Strips the fragment (and leading {@code #}) from a DID URL.
+     * Returns the input unchanged if no fragment is present.
+     *
+     * <p>Example: {@code did:webvh:{SCID}:example.com#key-1} → {@code did:webvh:{SCID}:example.com}.
+     *
+     * @param didUrl the DID URL string (may include a fragment)
+     * @return the DID URL without the fragment
+     */
+    public static String stripFragment(String didUrl) {
+        if (didUrl == null) return null;
+        int idx = didUrl.indexOf('#');
+        return idx >= 0 ? didUrl.substring(0, idx) : didUrl;
+    }
+
+    /**
      * Validates that the DID string starts with the expected {@code did:webvh:} prefix.
      * @param did the full DID string to validate
      * @throws InvalidDidException if the prefix is missing or null
