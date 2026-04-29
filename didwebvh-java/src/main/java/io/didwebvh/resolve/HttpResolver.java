@@ -80,8 +80,11 @@ public final class HttpResolver implements DidResolver {
     }
 
     @Override
-    public ResolveResult resolve(String did, ResolveOptions options) {
-        log.trace("Received resolve request for DID: {}", did);
+    public ResolveResult resolve(String didUrl, ResolveOptions options) {
+        log.trace("Received resolve request for DID: {}", didUrl);
+        // Strip any fragment before URL transformation; fragment dereferencing is handled
+        // by LogBasedResolver after the document is resolved.
+        String did = DidUrlTransformer.stripFragment(didUrl);
         try {
             String logUrl = DidUrlTransformer.toLogUrl(did);
             String body = logFetcher.fetch(logUrl);
@@ -89,20 +92,21 @@ public final class HttpResolver implements DidResolver {
 
             ResolveOptions enrichedOptions = enrichWithWitnessProofs(did, didLog, options);
 
-            ResolveResult result = delegate.resolve(did, didLog, enrichedOptions);
-            log.trace("Finished resolve for DID: {} success={}", did, result.isSuccess());
+            // Pass the original didUrl (fragment intact) so LogBasedResolver can dereference it.
+            ResolveResult result = delegate.resolve(didUrl, didLog, enrichedOptions);
+            log.trace("Finished resolve for DID: {} success={}", didUrl, result.isSuccess());
             return result;
         } catch (IOException e) {
-            log.trace("HTTP fetch failed for DID {}: {}", did, e.getMessage());
-            return new ResolveResult(did, null,
+            log.trace("HTTP fetch failed for DID {}: {}", didUrl, e.getMessage());
+            return new ResolveResult(didUrl, null,
                     ResolutionMetadata.error("notFound", "Not Found", e.getMessage()));
         } catch (DidNotFoundException e) {
-            log.trace("DID not found {}: {}", did, e.getMessage());
-            return new ResolveResult(did, null,
+            log.trace("DID not found {}: {}", didUrl, e.getMessage());
+            return new ResolveResult(didUrl, null,
                     ResolutionMetadata.error("notFound", "Not Found", e.getMessage()));
         } catch (DidWebVhException e) {
-            log.trace("Resolution error for DID {}: {}", did, e.getMessage());
-            return new ResolveResult(did, null,
+            log.trace("Resolution error for DID {}: {}", didUrl, e.getMessage());
+            return new ResolveResult(didUrl, null,
                     ResolutionMetadata.error("invalidDid", "Invalid DID", e.getMessage()));
         }
     }

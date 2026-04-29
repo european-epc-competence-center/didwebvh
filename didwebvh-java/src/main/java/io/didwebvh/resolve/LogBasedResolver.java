@@ -1,5 +1,6 @@
 package io.didwebvh.resolve;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
 import io.didwebvh.exception.DidNotFoundException;
@@ -75,6 +76,11 @@ public final class LogBasedResolver {
     // -------------------------------------------------------------------------
 
     private ResolveResult doResolve(String did, DidLog didLog, ResolveOptions options) {
+        // Strip fragment early; base DID is used for SCID extraction and URL operations.
+        // The original `did` (which may carry a fragment) is preserved for the result.
+        String fragment = DidUrlTransformer.extractFragment(did);
+        String baseDid = DidUrlTransformer.stripFragment(did);
+
         List<ValidatedEntry> validEntries = validateLog(didLog, options);
         if (validEntries.isEmpty()) {
             return errorResult(did, ERROR_INVALID_DID, "Invalid DID",
@@ -86,7 +92,7 @@ public final class LogBasedResolver {
         // Spec §resolve step 6.1: the SCID in the DID being resolved
         // MUST match the SCID declared in the genesis log entry.
         ValidatedEntry genesis = validEntries.get(0);
-        String scidFromDid = DidUrlTransformer.extractScid(did);
+        String scidFromDid = DidUrlTransformer.extractScid(baseDid);
         String scidFromLog = genesis.entry().parameters().scid();
         if (!scidFromDid.equals(scidFromLog)) {
             throw new LogValidationException(
@@ -118,8 +124,15 @@ public final class LogBasedResolver {
         }
 
         ResolutionMetadata metadata = buildMetadata(target, latest, genesis, currentlyDeactivated);
+
+        JsonNode document = target.entry().state();
+        if (fragment != null) {
+            log.trace("Dereferencing fragment '{}' from DID document for {}", fragment, did);
+            document = FragmentDereferencer.dereference(document, fragment);
+        }
+
         log.trace("Successfully resolved DID {} at version {}", did, target.entry().versionId());
-        return new ResolveResult(did, target.entry().state(), metadata);
+        return new ResolveResult(did, document, metadata);
     }
 
     // -------------------------------------------------------------------------
