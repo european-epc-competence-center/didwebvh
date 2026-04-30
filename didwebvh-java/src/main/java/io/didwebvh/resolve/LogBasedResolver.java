@@ -18,7 +18,9 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -114,7 +116,7 @@ public final class LogBasedResolver {
         ValidatedEntry target = selectVersion(validEntries, options, didLog);
         ValidatedEntry latest = validEntries.get(validEntries.size() - 1);
 
-        validateWitnessProofs(validEntries, target, latest, isLatestQuery, options);
+        validateWitnessProofs(validEntries, target, isLatestQuery, options);
 
         boolean currentlyDeactivated = latest.effectiveParams().isDeactivated();
 
@@ -311,65 +313,63 @@ public final class LogBasedResolver {
     // -------------------------------------------------------------------------
 
     /**
-     * Checks that the target version is covered by valid witness proofs when witnesses
-     * are configured. Uses the "watermark" rule: a valid proof for version N implies
-     * approval of all entries 1..N.
+     * Validates that all witness epochs are satisfied for the requested version.
+     *
+     * <h3>Epoch-based model</h3>
+     * <p>A "witness epoch" is a (WitnessParameter, lastVersion) pair. The active witness
+     * config for entry {@code i} is:
+     * <ul>
+     *   <li>Genesis (i=0): the genesis entry's own effective witness config.</li>
+     *   <li>Later entries (i&gt;0): the <em>previous</em> entry's effective witness config,
+     *       because a new witness parameter only becomes active after publication.</li>
+     * </ul>
+     * <p>Each distinct config is mapped to the highest version number it governed. Every
+     * epoch must independently pass its threshold check before the DID is considered valid.
+     *
+     * <h3>atVersion semantics</h3>
+     * <p>When resolving a historical version V, only epochs whose {@code lastVersion <= V}
+     * are checked. This prevents a historical lookup from being blocked by an epoch that
+     * covers entries published after the requested version.
      */
     private static void validateWitnessProofs(
             List<ValidatedEntry> validEntries,
             ValidatedEntry target,
-            ValidatedEntry latest,
             boolean isLatestQuery,
             ResolveOptions options) {
 
-        // Determine the highest version number that had active witnesses.
-        // An entry is witnessed using the config active BEFORE it is published:
-        // genesis uses its own config; later entries use the previous entry's config.
-        int lastWitnessedVersion = 0;
+        // Build the witness epoch map:
+        //   key   = distinct WitnessParameter (config)
+        //   value = highest version number governed by that config
+        //
+        // Genesis entry uses its own config; later entries use the previous entry's config.
+        Map<WitnessParameter, Integer> witnessEpochs = new LinkedHashMap<>();
         for (int i = 0; i < validEntries.size(); i++) {
-            WitnessParameter activeWitness = (i == 0)
+            WitnessParameter activeConfig = (i == 0)
                     ? validEntries.get(0).effectiveParams().witness()
                     : validEntries.get(i - 1).effectiveParams().witness();
-            if (activeWitness != null && !activeWitness.isEmpty()) {
-                lastWitnessedVersion = validEntries.get(i).entry().versionNumber();
+            if (activeConfig != null && !activeConfig.isEmpty()) {
+                int versionNumber = validEntries.get(i).entry().versionNumber();
+                // Update to the highest version governed by this config
+                witnessEpochs.merge(activeConfig, versionNumber, Math::max);
             }
         }
 
-        if (lastWitnessedVersion == 0) {
+        if (witnessEpochs.isEmpty()) {
             return; // no entry ever required witnessing
         }
 
-        List<WitnessValidator.ValidatedEntryView> views = validEntries.stream()
-                .map(v -> (WitnessValidator.ValidatedEntryView) v)
+        // Collect all valid versionIds in order (index 0 = version 1, index N-1 = version N)
+        List<String> versionIds = validEntries.stream()
+                .map(v -> v.entry().versionId())
                 .toList();
 
+        // atVersion: the highest version number we need to validate.
+        // For a latest-version query this is effectively unbounded.
+        // For a historical query we only check epochs up to the target version.
+        int atVersion = isLatestQuery ? Integer.MAX_VALUE : target.entry().versionNumber();
+
         WitnessValidator witnessValidator = new WitnessValidator(options.getVerifier());
-        int frontier = witnessValidator.findApprovedFrontier(views, options.getWitnessProofs());
-
-        if (isLatestQuery && lastWitnessedVersion > frontier) {
-            throw new LogValidationException(
-                    "Latest witnessed log entry (version " + lastWitnessedVersion
-                            + ") lacks required witness proofs (frontier=" + frontier + ")");
-        }
-
-        int targetLastWitnessedVersion = 0;
-        for (int i = 0; i < validEntries.size(); i++) {
-            if (validEntries.get(i).entry().versionNumber() == target.entry().versionNumber()) {
-                WitnessParameter activeWitness = (i == 0)
-                        ? validEntries.get(0).effectiveParams().witness()
-                        : validEntries.get(i - 1).effectiveParams().witness();
-                if (activeWitness != null && !activeWitness.isEmpty()) {
-                    targetLastWitnessedVersion = target.entry().versionNumber();
-                }
-                break;
-            }
-        }
-
-        if (targetLastWitnessedVersion > frontier) {
-            throw new LogValidationException(
-                    "Requested version " + target.entry().versionNumber()
-                            + " lacks required witness proofs (frontier=" + frontier + ")");
-        }
+        witnessValidator.verifyEpochs(witnessEpochs, versionIds, options.getWitnessProofs(), atVersion);
     }
 
     // -------------------------------------------------------------------------

@@ -11,22 +11,35 @@ import io.didwebvh.model.proof.DataIntegrityProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
  * Validates witness proofs during DID log resolution.
  *
- * <p>Validation rules (spec §8.2):
- * <ul>
- *   <li>The number of valid witness proofs for a given {@code versionId} must meet or
- *       exceed the {@code threshold} defined in {@link WitnessParameter}.</li>
- *   <li>Each proof must be a valid {@code eddsa-jcs-2022} Data Integrity proof
- *       signed by a key from one of the listed witness DIDs ({@code did:key} only).</li>
- *   <li>Proofs with a {@code versionId} not yet present in the log MUST be ignored.</li>
- *   <li>A valid witness proof for version N implies approval of ALL prior entries (watermark).</li>
- * </ul>
+ * <h3>Witness epoch model (spec §8.2)</h3>
+ * <p>A "witness epoch" is a (WitnessParameter, lastVersion) pair, where {@code lastVersion}
+ * is the highest version number that was governed by that particular witness configuration.
+ * Genesis uses its own config; each subsequent entry is governed by the <em>previous</em>
+ * entry's effective config (the new config only becomes active after publication).
+ *
+ * <p>For the log to be valid, <strong>every epoch</strong> must independently satisfy its
+ * own threshold: at least {@code threshold} distinct witnesses listed in that epoch's
+ * {@link WitnessParameter} must each have a valid proof for some version N' where
+ * {@code N' >= lastVersion}. This is the watermark rule: a proof for version N' implies
+ * approval of all entries 1..N'.
+ *
+ * <h3>Historical-version queries</h3>
+ * <p>When resolving a historical version V, only epochs whose {@code lastVersion <= V} are
+ * checked. This matches the Python reference's {@code at_version} mechanism.
+ *
+ * <h3>Thread safety</h3>
+ * <p>Instances are stateless after construction and safe for concurrent use.
+ *
+ * @see LogValidationException
  */
 public final class WitnessValidator {
 
@@ -46,107 +59,174 @@ public final class WitnessValidator {
     }
 
     /**
-     * Determines the highest version number covered by valid witness proofs (the "frontier").
+     * Verifies that all witness epochs are satisfied by the supplied proof collection.
      *
-     * <p>A valid witness proof for version N implies approval of all entries 1..N.
-     * Proofs for versionIds not present in {@code validEntries} are ignored per spec.
+     * <p>An epoch is satisfied when at least {@code threshold} distinct witnesses from that
+     * epoch's {@link WitnessParameter} each have a cryptographically valid proof for some
+     * version N' with {@code N' >= epochLastVersion}. The versionId of that proof entry
+     * must match the actual log entry at position N' (anti-forgery / watermark check).
      *
-     * @param validEntries    chain-validated log entries paired with their effective params
-     * @param proofCollection the loaded {@code did-witness.json}, may be {@code null}
-     * @return the highest approved version number, or 0 if no entries are covered
+     * <p>Only epochs whose {@code lastVersion <= atVersion} are checked. Pass
+     * {@code Integer.MAX_VALUE} (or the total log length) when resolving the latest version.
+     *
+     * @param witnessEpochs   map from each distinct witness config to the highest version
+     *                        number it governed; built by {@code LogBasedResolver}
+     * @param versionIds      ordered list of all valid versionIds in the log (index 0 = v1)
+     * @param proofCollection the loaded {@code did-witness.json}; may be {@code null}
+     * @param atVersion       only check epochs with {@code lastVersion <= atVersion};
+     *                        use {@link Integer#MAX_VALUE} for a latest-version query
+     * @throws LogValidationException if any required epoch is not satisfied
      */
-    public int findApprovedFrontier(
-            List<ValidatedEntryView> validEntries,
-            WitnessProofCollection proofCollection) {
-        log.trace("Computing witness frontier for {} validated entries", validEntries.size());
+    public void verifyEpochs(
+            Map<WitnessParameter, Integer> witnessEpochs,
+            List<String> versionIds,
+            WitnessProofCollection proofCollection,
+            int atVersion) {
 
-        if (proofCollection == null || proofCollection.entries() == null) {
-            return 0;
+        if (witnessEpochs == null || witnessEpochs.isEmpty()) {
+            return; // nothing to check
         }
 
-        int frontier = 0;
+        // Pre-validate: build the "validated" map once.
+        // validated[witnessDid][versionNumber] = versionId
+        // — for each witness DID that has a cryptographically valid proof,
+        //   map the version number to its versionId so we can apply the watermark check.
+        Map<String, Map<Integer, String>> validated = buildValidatedMap(proofCollection, versionIds);
 
-        for (WitnessProofCollection.Entry proofEntry : proofCollection.entries()) {
-            int idx = -1;
-            for (int i = 0; i < validEntries.size(); i++) {
-                if (validEntries.get(i).versionId().equals(proofEntry.versionId())) {
-                    idx = i;
-                    break;
+        log.trace("Built validated witness map: {} distinct witness DIDs with valid proofs",
+                validated.size());
+
+        for (Map.Entry<WitnessParameter, Integer> epochEntry : witnessEpochs.entrySet()) {
+            WitnessParameter config = epochEntry.getKey();
+            int epochLastVersion = epochEntry.getValue();
+
+            // Skip epochs that are beyond the version we are checking
+            if (epochLastVersion > atVersion) {
+                continue;
+            }
+
+            int threshold = config.threshold() != null ? config.threshold() : 1;
+            if (threshold == 0) {
+                // Threshold 0 means witnessing is disabled for this epoch
+                continue;
+            }
+
+            int satisfiedCount = 0;
+            for (WitnessParameter.WitnessEntry witnessEntry : config.witnesses()) {
+                String witnessDid = witnessEntry.id();
+                Map<Integer, String> witnessProofs = validated.get(witnessDid);
+                if (witnessProofs == null) {
+                    log.trace("No valid proof from witness {} for epoch requiring v>={}", witnessDid, epochLastVersion);
+                    continue;
+                }
+
+                // Watermark check: does this witness have a valid proof for any N' >= epochLastVersion,
+                // where the versionId at position N' matches the actual log?
+                boolean covers = false;
+                for (Map.Entry<Integer, String> proofAt : witnessProofs.entrySet()) {
+                    int proofVersion = proofAt.getKey();
+                    String proofVersionId = proofAt.getValue();
+                    if (proofVersion >= epochLastVersion
+                            && proofVersion <= versionIds.size()
+                            && versionIds.get(proofVersion - 1).equals(proofVersionId)) {
+                        covers = true;
+                        break;
+                    }
+                }
+
+                if (covers) {
+                    satisfiedCount++;
+                    log.trace("Witness {} satisfies epoch (lastVersion={}, threshold={})",
+                            witnessDid, epochLastVersion, threshold);
                 }
             }
 
-            if (idx < 0) {
-                log.trace("Ignoring witness proof for unknown versionId: {}", proofEntry.versionId());
-                continue;
-            }
-
-            // Use the witness config active during publication of this entry:
-            // genesis entry uses its own config, all others use the previous entry's config.
-            WitnessParameter witnessParams = (idx == 0)
-                    ? validEntries.get(0).effectiveWitness()
-                    : validEntries.get(idx - 1).effectiveWitness();
-            if (witnessParams == null || witnessParams.isEmpty()) {
-                continue;
-            }
-
-            int validCount = countValidProofs(proofEntry, witnessParams);
-            int threshold = witnessParams.threshold() != null ? witnessParams.threshold() : 1;
-
-            if (validCount >= threshold) {
-                int versionNumber = validEntries.get(idx).versionNumber();
-                frontier = Math.max(frontier, versionNumber);
-                log.trace("Witness frontier advanced to {} (proof for {})", frontier, proofEntry.versionId());
+            if (satisfiedCount < threshold) {
+                log.trace("Epoch lastVersion={} threshold={} only has {}/{} valid witnesses",
+                        epochLastVersion, threshold, satisfiedCount, config.witnesses().size());
+                throw new LogValidationException(
+                        "Witness epoch (lastVersion=" + epochLastVersion
+                                + ") requires threshold=" + threshold
+                                + " but only " + satisfiedCount + " witness(es) provided valid proofs");
             }
         }
 
-        log.trace("Final witness frontier: {}", frontier);
-        return frontier;
+        log.trace("All {} witness epoch(s) satisfied", witnessEpochs.size());
     }
 
     /**
-     * Counts valid, distinct witness proofs in a proof entry.
+     * Builds the "validated" map from the proof collection.
+     *
+     * <p>The result maps each witness DID to a map of {versionNumber → versionId} for all
+     * entries where that witness provided a cryptographically valid proof. Only proof entries
+     * whose versionId exists in the valid log ({@code versionIds}) are considered.
+     *
+     * @param proofCollection the raw proof collection; may be {@code null}
+     * @param versionIds      ordered versionIds from the validated log (index 0 = version 1)
+     * @return map from witnessDid → {versionNumber → versionId}; never {@code null}
      */
-    private int countValidProofs(WitnessProofCollection.Entry proofEntry, WitnessParameter witnessParams) {
-        List<DataIntegrityProof> proofs = proofEntry.proof();
-        if (proofs == null || proofs.isEmpty()) {
-            return 0;
+    private Map<String, Map<Integer, String>> buildValidatedMap(
+            WitnessProofCollection proofCollection,
+            List<String> versionIds) {
+
+        Map<String, Map<Integer, String>> validated = new HashMap<>();
+
+        if (proofCollection == null || proofCollection.entries() == null) {
+            return validated;
         }
 
-        Set<String> authorizedDids = new HashSet<>();
-        for (WitnessParameter.WitnessEntry w : witnessParams.witnesses()) {
-            authorizedDids.add(w.id());
+        // Build a fast lookup: versionId → versionNumber (only for entries in the valid log)
+        Map<String, Integer> versionIdToNumber = new HashMap<>();
+        for (int i = 0; i < versionIds.size(); i++) {
+            versionIdToNumber.put(versionIds.get(i), i + 1); // 1-indexed
         }
 
-        JsonNode entryNode = MAPPER.valueToTree(proofEntry);
-
-        Set<String> seenWitnesses = new HashSet<>();
-        int validCount = 0;
-
-        for (DataIntegrityProof proof : proofs) {
-            String witnessDid = extractBaseDid(proof.verificationMethod());
-            if (!authorizedDids.contains(witnessDid)) {
-                log.trace("Witness proof from unauthorized DID: {}", witnessDid);
-                continue;
-            }
-            if (!seenWitnesses.add(witnessDid)) {
-                log.trace("Duplicate witness proof from: {}", witnessDid);
+        for (WitnessProofCollection.Entry proofEntry : proofCollection.entries()) {
+            String versionId = proofEntry.versionId();
+            Integer versionNumber = versionIdToNumber.get(versionId);
+            if (versionNumber == null) {
+                log.trace("Ignoring witness proof for versionId not in valid log: {}", versionId);
                 continue;
             }
 
-            try {
-                DataIntegrity.verifyProof(entryNode, proof, verifier);
-                validCount++;
-            } catch (LogValidationException e) {
-                log.trace("Witness proof verification failed for {}: {}", witnessDid, e.getMessage());
+            List<DataIntegrityProof> proofs = proofEntry.proof();
+            if (proofs == null || proofs.isEmpty()) {
+                continue;
+            }
+
+            JsonNode entryNode = MAPPER.valueToTree(proofEntry);
+            Set<String> seenWitnesses = new HashSet<>();
+
+            for (DataIntegrityProof proof : proofs) {
+                String witnessDid = extractBaseDid(proof.verificationMethod());
+                if (witnessDid.isEmpty()) {
+                    continue;
+                }
+                if (!seenWitnesses.add(witnessDid)) {
+                    log.trace("Duplicate witness proof from {} for versionId {}", witnessDid, versionId);
+                    continue;
+                }
+
+                try {
+                    DataIntegrity.verifyProof(entryNode, proof, verifier);
+                    // Proof is valid: record witnessDid → versionNumber → versionId
+                    validated.computeIfAbsent(witnessDid, k -> new HashMap<>())
+                             .put(versionNumber, versionId);
+                    log.trace("Valid witness proof: {} for versionId {} (v{})",
+                            witnessDid, versionId, versionNumber);
+                } catch (LogValidationException e) {
+                    log.trace("Witness proof crypto verification failed for {} @ {}: {}",
+                            witnessDid, versionId, e.getMessage());
+                }
             }
         }
 
-        return validCount;
+        return validated;
     }
 
     /**
      * Extracts the base DID from a verification method URI.
-     * E.g. {@code did:key:z6Mk...#z6Mk...} returns {@code did:key:z6Mk...}.
+     * E.g. {@code did:key:z6Mk...#z6Mk...} → {@code did:key:z6Mk...}.
      */
     private static String extractBaseDid(String verificationMethod) {
         if (verificationMethod == null) return "";
