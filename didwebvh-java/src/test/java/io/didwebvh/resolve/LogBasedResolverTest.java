@@ -3,12 +3,16 @@ package io.didwebvh.resolve;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.didwebvh.api.*;
+import io.didwebvh.crypto.DataIntegrity;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
+import io.didwebvh.model.WitnessParameter;
+import io.didwebvh.model.proof.DataIntegrityProof;
 import io.didwebvh.operation.CreateOperation;
 import io.didwebvh.operation.DeactivateOperation;
 import io.didwebvh.operation.UpdateOperation;
 import io.didwebvh.support.Ed25519TestFixture;
+import io.didwebvh.witness.WitnessProofCollection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -353,14 +357,126 @@ class LogBasedResolverTest {
                     .isInstanceOf(NullPointerException.class);
         }
 
-        @Test
-        void errorResultContainsProblemDetails() {
-            ResolveResult result = resolver.resolve("did:webvh:abc:example.com",
-                    DidLog.empty(), defaultOptions());
+    @Test
+    void errorResultContainsProblemDetails() {
+        ResolveResult result = resolver.resolve("did:webvh:abc:example.com",
+                DidLog.empty(), defaultOptions());
 
-            assertThat(result.metadata().problemDetails()).isNotNull();
-            assertThat(result.metadata().problemDetails().type()).isEqualTo("about:blank");
-            assertThat(result.metadata().problemDetails().detail()).isNotBlank();
+        assertThat(result.metadata().problemDetails()).isNotNull();
+        assertThat(result.metadata().problemDetails().type()).isEqualTo("about:blank");
+        assertThat(result.metadata().problemDetails().detail()).isNotBlank();
+    }
+    }
+
+    // -------------------------------------------------------------------------
+    // Witness deactivation
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class WitnessDeactivation {
+
+        private Ed25519TestFixture witnessFixture;
+
+        @BeforeEach
+        void setUpWitness() {
+            witnessFixture = Ed25519TestFixture.generate();
+        }
+
+        private WitnessParameter witnessConfig() {
+            return new WitnessParameter(1, List.of(
+                    new WitnessParameter.WitnessEntry("did:key:" + witnessFixture.publicKeyMultibase())));
+        }
+
+        private WitnessProofCollection.Entry createWitnessProof(String versionId) {
+            String vmId = "did:key:" + witnessFixture.publicKeyMultibase() + "#" + witnessFixture.publicKeyMultibase();
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.put("versionId", versionId);
+            DataIntegrityProof proof = DataIntegrity.createProof(doc, vmId, witnessFixture.signer());
+            return new WitnessProofCollection.Entry(versionId, List.of(proof));
+        }
+
+        @Test
+        void resolve_withWitnessDeactivation_succeedsWhenProofProvided() {
+            CreateResult created = createDidWithWitness();
+            String scid = scidFrom(created.log());
+            UpdateResult updated = updateWithWitnessOff(created.log(), scid);
+
+            String versionId2 = updated.log().latest().versionId();
+            WitnessProofCollection witnessProofs = new WitnessProofCollection(List.of(
+                    createWitnessProof(versionId2)));
+
+            ResolveOptions options = ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(witnessProofs)
+                    .build();
+
+            ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.document()).isNotNull();
+        }
+
+        @Test
+        void resolve_withWitnessDeactivation_failsWhenProofMissing() {
+            CreateResult created = createDidWithWitness();
+            String scid = scidFrom(created.log());
+            UpdateResult updated = updateWithWitnessOff(created.log(), scid);
+
+            ResolveOptions options = ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .build();
+
+            ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+
+        @Test
+        void resolve_historicalVersionBeforeDeactivation_succeedsWhenProofProvided() {
+            CreateResult created = createDidWithWitness();
+            String scid = scidFrom(created.log());
+            UpdateResult updated = updateWithWitnessOff(created.log(), scid);
+
+            String versionId2 = updated.log().latest().versionId();
+            WitnessProofCollection witnessProofs = new WitnessProofCollection(List.of(
+                    createWitnessProof(versionId2)));
+
+            ResolveOptions options = ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(witnessProofs)
+                    .versionNumber(1)
+                    .build();
+
+            ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.document()).isNotNull();
+        }
+
+        private CreateResult createDidWithWitness() {
+            return CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .witness(witnessConfig())
+                            .build());
+        }
+
+        private UpdateResult updateWithWitnessOff(DidLog log, String scid) {
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            doc.put("updated", "true");
+            return UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(log)
+                            .updatedDocument(doc)
+                            .signer(fixture.signer())
+                            .witness(new WitnessParameter(null, null))
+                            .build());
         }
     }
 }
