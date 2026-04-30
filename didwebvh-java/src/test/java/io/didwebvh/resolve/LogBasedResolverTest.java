@@ -16,6 +16,8 @@ import io.didwebvh.witness.WitnessProofCollection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LogBasedResolverTest {
 
+    private static final Logger log = LoggerFactory.getLogger(LogBasedResolverTest.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String DOMAIN = "example.com";
 
@@ -76,6 +79,22 @@ class LogBasedResolverTest {
 
     private String scidFrom(DidLog log) {
         return log.first().parameters().scid();
+    }
+
+    private String didFrom(DidLog log) {
+        return "did:webvh:" + scidFrom(log) + ":" + DOMAIN;
+    }
+
+    /**
+     * Creates a single witness proof entry for the given versionId, signed by {@code witness}.
+     * This is the format expected inside {@code did-witness.json}.
+     */
+    private WitnessProofCollection.Entry proofFrom(Ed25519TestFixture witness, String versionId) {
+        String vmId = "did:key:" + witness.publicKeyMultibase() + "#" + witness.publicKeyMultibase();
+        ObjectNode doc = MAPPER.createObjectNode();
+        doc.put("versionId", versionId);
+        DataIntegrityProof proof = DataIntegrity.createProof(doc, vmId, witness.signer());
+        return new WitnessProofCollection.Entry(versionId, List.of(proof));
     }
 
     // -------------------------------------------------------------------------
@@ -369,6 +388,230 @@ class LogBasedResolverTest {
     }
 
     // -------------------------------------------------------------------------
+    // Witness epoch transitions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Tests the epoch-based witness verification model (spec §8.2).
+     *
+     * <p>When the witness configuration changes mid-log, every distinct config epoch must
+     * independently satisfy its own threshold. A proof from the <em>new</em> witness set
+     * is not sufficient to cover entries that were governed by the <em>old</em> witness set.
+     *
+     * <p>The log built by {@link #buildThreeEntryLog()} has this shape:
+     * <pre>
+     * Entry 1 (v1): parameters.witness = {A, threshold:1}
+     *               active config for v1 = A  (genesis uses its own config)
+     *
+     * Entry 2 (v2): parameters.witness = {B, threshold:1}
+     *               active config for v2 = A  (B only becomes active AFTER this entry is published)
+     *
+     * Entry 3 (v3): parameters.witness = {}   (witnesses turned off)
+     *               active config for v3 = B  (B became active after v2 was published)
+     * </pre>
+     *
+     * <p>This produces two epochs:
+     * <ul>
+     *   <li>Epoch A: {@code lastVersion=2}. A witness from config A must have signed v&ge;2.</li>
+     *   <li>Epoch B: {@code lastVersion=3}. A witness from config B must have signed v&ge;3.</li>
+     * </ul>
+     *
+     * <p>Both epochs must pass independently. B signing v3 does NOT cover epoch A,
+     * because B is not listed in config A.
+     */
+    @Nested
+    class WitnessEpochTransition {
+
+        private Ed25519TestFixture witnessA;
+        private Ed25519TestFixture witnessB;
+
+        @BeforeEach
+        void setUpWitnesses() {
+            witnessA = Ed25519TestFixture.generate();
+            witnessB = Ed25519TestFixture.generate();
+        }
+
+        private WitnessParameter configA() {
+            return new WitnessParameter(1, List.of(
+                    new WitnessParameter.WitnessEntry("did:key:" + witnessA.publicKeyMultibase())));
+        }
+
+        private WitnessParameter configB() {
+            return new WitnessParameter(1, List.of(
+                    new WitnessParameter.WitnessEntry("did:key:" + witnessB.publicKeyMultibase())));
+        }
+
+        /**
+         * Builds the three-entry log described in the class-level javadoc.
+         *
+         * @return log whose entries are [v1: witness=A, v2: witness=B, v3: witness=off]
+         */
+        private DidLog buildThreeEntryLog() {
+            // v1: genesis, witness config = A
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .witness(configA())
+                            .build());
+
+            String scid = scidFrom(created.log());
+
+            // v2: switch witness config to B (A is still active for this entry)
+            ObjectNode doc2 = MAPPER.createObjectNode();
+            doc2.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc2.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            UpdateResult updated2 = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(doc2)
+                            .signer(fixture.signer())
+                            .witness(configB())
+                            .build());
+
+            // v3: turn witnesses off (B is still active for this entry)
+            ObjectNode doc3 = MAPPER.createObjectNode();
+            doc3.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc3.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            UpdateResult updated3 = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(updated2.log())
+                            .updatedDocument(doc3)
+                            .signer(fixture.signer())
+                            .witness(new WitnessParameter(null, null))
+                            .build());
+
+            return updated3.log();
+        }
+
+        @Test
+        void succeedsWhenBothEpochsAreSatisfied() {
+            DidLog log = buildThreeEntryLog();
+            String versionId2 = log.entries().get(1).versionId(); // v2
+            String versionId3 = log.entries().get(2).versionId(); // v3
+
+            // Epoch A (lastVersion=2): A signs v2 → covers v2 ≥ 2 ✓
+            // Epoch B (lastVersion=3): B signs v3 → covers v3 ≥ 3 ✓
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessA, versionId2),
+                    proofFrom(witnessB, versionId3)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .build());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.document()).isNotNull();
+        }
+
+        @Test
+        void failsWhenOnlyNewWitnessSignsButOldEpochIsUnsatisfied() {
+            // Security regression test: the original bug allowed an attacker who controlled
+            // witness B to turn off witnesses (v3) and have B sign v3. The old single-frontier
+            // check would pass because frontier=3 >= lastWitnessedVersion=3. The epoch-based
+            // check correctly rejects this because epoch A (lastVersion=2) has no proof from A.
+            DidLog log = buildThreeEntryLog();
+            String versionId3 = log.entries().get(2).versionId();
+
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessB, versionId3)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .build());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+
+        @Test
+        void failsWhenOnlyOldEpochSatisfiedButNewEpochMissing() {
+            // A signs v2 (epoch A satisfied) but B never signs anything.
+            // Epoch B (lastVersion=3) is not satisfied → must fail.
+            DidLog log = buildThreeEntryLog();
+            String versionId2 = log.entries().get(1).versionId();
+
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessA, versionId2)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .build());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+
+        @Test
+        void failsWhenNoProofsProvided() {
+            DidLog log = buildThreeEntryLog();
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .build());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+
+        @Test
+        void historicalVersion1_requiresNoProofBecauseNoEpochApplies() {
+            // The full log has epoch A (lastVersion=2) and epoch B (lastVersion=3).
+            // When resolving v1 (atVersion=1), both epochs have lastVersion > 1 and are
+            // skipped entirely. No epochs apply, so no proofs are required.
+            DidLog log = buildThreeEntryLog();
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .versionNumber(1)
+                    .build());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.metadata().versionNumber()).isEqualTo(1);
+        }
+
+        @Test
+        void historicalVersion2_succeedsWhenEpochASatisfied() {
+            // Resolving v2 (atVersion=2):
+            //   Epoch A: lastVersion=2 ≤ 2 → checked. A must have signed v≥2.
+            //   Epoch B: lastVersion=3 > 2 → skipped.
+            DidLog log = buildThreeEntryLog();
+            String versionId2 = log.entries().get(1).versionId();
+
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessA, versionId2)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .versionNumber(2)
+                    .build());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.metadata().versionNumber()).isEqualTo(2);
+        }
+
+        @Test
+        void historicalVersion2_failsWhenEpochAProofMissing() {
+            // Resolving v2 (atVersion=2): epoch A (lastVersion=2) is checked but no proofs given.
+            DidLog log = buildThreeEntryLog();
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .versionNumber(2)
+                    .build());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Witness deactivation
     // -------------------------------------------------------------------------
 
@@ -387,30 +630,21 @@ class LogBasedResolverTest {
                     new WitnessParameter.WitnessEntry("did:key:" + witnessFixture.publicKeyMultibase())));
         }
 
-        private WitnessProofCollection.Entry createWitnessProof(String versionId) {
-            String vmId = "did:key:" + witnessFixture.publicKeyMultibase() + "#" + witnessFixture.publicKeyMultibase();
-            ObjectNode doc = MAPPER.createObjectNode();
-            doc.put("versionId", versionId);
-            DataIntegrityProof proof = DataIntegrity.createProof(doc, vmId, witnessFixture.signer());
-            return new WitnessProofCollection.Entry(versionId, List.of(proof));
-        }
-
         @Test
         void resolve_withWitnessDeactivation_succeedsWhenProofProvided() {
             CreateResult created = createDidWithWitness();
             String scid = scidFrom(created.log());
             UpdateResult updated = updateWithWitnessOff(created.log(), scid);
 
+            // Epoch A (lastVersion=2): witness signs v2, covering v2 ≥ 2 ✓
             String versionId2 = updated.log().latest().versionId();
             WitnessProofCollection witnessProofs = new WitnessProofCollection(List.of(
-                    createWitnessProof(versionId2)));
+                    proofFrom(witnessFixture, versionId2)));
 
-            ResolveOptions options = ResolveOptions.builder()
+            ResolveResult result = resolver.resolve(created.did(), updated.log(), ResolveOptions.builder()
                     .verifier(Ed25519TestFixture.verifier())
                     .witnessProofs(witnessProofs)
-                    .build();
-
-            ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
+                    .build());
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.document()).isNotNull();
@@ -422,11 +656,9 @@ class LogBasedResolverTest {
             String scid = scidFrom(created.log());
             UpdateResult updated = updateWithWitnessOff(created.log(), scid);
 
-            ResolveOptions options = ResolveOptions.builder()
+            ResolveResult result = resolver.resolve(created.did(), updated.log(), ResolveOptions.builder()
                     .verifier(Ed25519TestFixture.verifier())
-                    .build();
-
-            ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
+                    .build());
 
             assertThat(result.isSuccess()).isFalse();
             assertThat(result.metadata().error()).isEqualTo("invalidDid");
@@ -438,17 +670,16 @@ class LogBasedResolverTest {
             String scid = scidFrom(created.log());
             UpdateResult updated = updateWithWitnessOff(created.log(), scid);
 
+            // Provide a proof for v2 so the epoch is satisfied, then resolve the earlier v1.
             String versionId2 = updated.log().latest().versionId();
             WitnessProofCollection witnessProofs = new WitnessProofCollection(List.of(
-                    createWitnessProof(versionId2)));
+                    proofFrom(witnessFixture, versionId2)));
 
-            ResolveOptions options = ResolveOptions.builder()
+            ResolveResult result = resolver.resolve(created.did(), updated.log(), ResolveOptions.builder()
                     .verifier(Ed25519TestFixture.verifier())
                     .witnessProofs(witnessProofs)
                     .versionNumber(1)
-                    .build();
-
-            ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
+                    .build());
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.document()).isNotNull();

@@ -34,7 +34,7 @@ import java.util.Set;
  *
  * <h3>Historical-version queries</h3>
  * <p>When resolving a historical version V, only epochs whose {@code lastVersion <= V} are
- * checked. This matches the Python reference's {@code at_version} mechanism.
+ * checked.
  *
  * <h3>Thread safety</h3>
  * <p>Instances are stateless after construction and safe for concurrent use.
@@ -232,15 +232,5 @@ public final class WitnessValidator {
         if (verificationMethod == null) return "";
         int fragmentIdx = verificationMethod.indexOf('#');
         return fragmentIdx >= 0 ? verificationMethod.substring(0, fragmentIdx) : verificationMethod;
-    }
-
-    /**
-     * A minimal view of a validated log entry, used to decouple
-     * {@code WitnessValidator} from {@code LogBasedResolver}'s internal record.
-     */
-    public interface ValidatedEntryView {
-        String versionId();
-        int versionNumber();
-        WitnessParameter effectiveWitness();
     }
 }

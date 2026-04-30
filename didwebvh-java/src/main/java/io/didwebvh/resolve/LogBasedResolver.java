@@ -387,24 +387,9 @@ public final class LogBasedResolver {
     }
 
     /**
-     * A validated log entry paired with the effective parameter state after that entry.
+     * A validated log entry paired with the effective (fully-merged) parameter state
+     * produced after applying that entry. The raw {@code entry} contains only the
+     * delta fields; {@code effectiveParams} contains the complete resolved state.
      */
-    record ValidatedEntry(DidLogEntry entry, Parameters effectiveParams)
-            implements WitnessValidator.ValidatedEntryView {
-
-        @Override
-        public String versionId() {
-            return entry.versionId();
-        }
-
-        @Override
-        public int versionNumber() {
-            return entry.versionNumber();
-        }
-
-        @Override
-        public WitnessParameter effectiveWitness() {
-            return effectiveParams.witness();
-        }
-    }
+    record ValidatedEntry(DidLogEntry entry, Parameters effectiveParams) {}
 }
