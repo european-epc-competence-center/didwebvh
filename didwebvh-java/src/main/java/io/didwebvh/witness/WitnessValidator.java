@@ -67,17 +67,24 @@ public final class WitnessValidator {
         int frontier = 0;
 
         for (WitnessProofCollection.Entry proofEntry : proofCollection.entries()) {
-            ValidatedEntryView matched = validEntries.stream()
-                    .filter(v -> proofEntry.versionId().equals(v.versionId()))
-                    .findFirst()
-                    .orElse(null);
+            int idx = -1;
+            for (int i = 0; i < validEntries.size(); i++) {
+                if (validEntries.get(i).versionId().equals(proofEntry.versionId())) {
+                    idx = i;
+                    break;
+                }
+            }
 
-            if (matched == null) {
+            if (idx < 0) {
                 log.trace("Ignoring witness proof for unknown versionId: {}", proofEntry.versionId());
                 continue;
             }
 
-            WitnessParameter witnessParams = matched.effectiveWitness();
+            // Use the witness config active during publication of this entry:
+            // genesis entry uses its own config, all others use the previous entry's config.
+            WitnessParameter witnessParams = (idx == 0)
+                    ? validEntries.get(0).effectiveWitness()
+                    : validEntries.get(idx - 1).effectiveWitness();
             if (witnessParams == null || witnessParams.isEmpty()) {
                 continue;
             }
@@ -86,7 +93,7 @@ public final class WitnessValidator {
             int threshold = witnessParams.threshold() != null ? witnessParams.threshold() : 1;
 
             if (validCount >= threshold) {
-                int versionNumber = matched.versionNumber();
+                int versionNumber = validEntries.get(idx).versionNumber();
                 frontier = Math.max(frontier, versionNumber);
                 log.trace("Witness frontier advanced to {} (proof for {})", frontier, proofEntry.versionId());
             }

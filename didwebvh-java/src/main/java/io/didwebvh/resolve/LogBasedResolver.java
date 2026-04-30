@@ -322,9 +322,21 @@ public final class LogBasedResolver {
             boolean isLatestQuery,
             ResolveOptions options) {
 
-        WitnessParameter witnessConfig = latest.effectiveParams().witness();
-        if (witnessConfig == null || witnessConfig.isEmpty()) {
-            return;
+        // Determine the highest version number that had active witnesses.
+        // An entry is witnessed using the config active BEFORE it is published:
+        // genesis uses its own config; later entries use the previous entry's config.
+        int lastWitnessedVersion = 0;
+        for (int i = 0; i < validEntries.size(); i++) {
+            WitnessParameter activeWitness = (i == 0)
+                    ? validEntries.get(0).effectiveParams().witness()
+                    : validEntries.get(i - 1).effectiveParams().witness();
+            if (activeWitness != null && !activeWitness.isEmpty()) {
+                lastWitnessedVersion = validEntries.get(i).entry().versionNumber();
+            }
+        }
+
+        if (lastWitnessedVersion == 0) {
+            return; // no entry ever required witnessing
         }
 
         List<WitnessValidator.ValidatedEntryView> views = validEntries.stream()
@@ -334,13 +346,26 @@ public final class LogBasedResolver {
         WitnessValidator witnessValidator = new WitnessValidator(options.getVerifier());
         int frontier = witnessValidator.findApprovedFrontier(views, options.getWitnessProofs());
 
-        if (isLatestQuery && latest.entry().versionNumber() > frontier) {
+        if (isLatestQuery && lastWitnessedVersion > frontier) {
             throw new LogValidationException(
-                    "Latest log entry (version " + latest.entry().versionNumber()
+                    "Latest witnessed log entry (version " + lastWitnessedVersion
                             + ") lacks required witness proofs (frontier=" + frontier + ")");
         }
 
-        if (target.entry().versionNumber() > frontier) {
+        int targetLastWitnessedVersion = 0;
+        for (int i = 0; i < validEntries.size(); i++) {
+            if (validEntries.get(i).entry().versionNumber() == target.entry().versionNumber()) {
+                WitnessParameter activeWitness = (i == 0)
+                        ? validEntries.get(0).effectiveParams().witness()
+                        : validEntries.get(i - 1).effectiveParams().witness();
+                if (activeWitness != null && !activeWitness.isEmpty()) {
+                    targetLastWitnessedVersion = target.entry().versionNumber();
+                }
+                break;
+            }
+        }
+
+        if (targetLastWitnessedVersion > frontier) {
             throw new LogValidationException(
                     "Requested version " + target.entry().versionNumber()
                             + " lacks required witness proofs (frontier=" + frontier + ")");
