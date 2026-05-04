@@ -16,8 +16,8 @@ import io.didwebvh.witness.WitnessProofCollection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LogBasedResolverTest {
 
-    private static final Logger log = LoggerFactory.getLogger(LogBasedResolverTest.class);
+    //private static final Logger log = LoggerFactory.getLogger(LogBasedResolverTest.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String DOMAIN = "example.com";
 
@@ -608,6 +608,137 @@ class LogBasedResolverTest {
 
             assertThat(result.isSuccess()).isFalse();
             assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Witness activation from empty
+    // -------------------------------------------------------------------------
+
+    /**
+     * Tests the spec rule that when witnesses are activated from an empty state
+     * ({@code {}} → non-empty), the change is <em>immediately active</em> — the
+     * same log entry that introduces the witnesses must itself be witnessed.
+     *
+     * <p>Log shape:
+     * <pre>
+     * Entry 1 (v1): parameters.witness = {}   (no witnesses)
+     * Entry 2 (v2): parameters.witness = {W, threshold:1}
+     *               active config for v2 = W  (activation from empty is immediate)
+     * </pre>
+     *
+     * <p>This produces one epoch:
+     * <ul>
+     *   <li>Epoch W: {@code lastVersion=2}. Witness W must have signed v≥2.</li>
+     * </ul>
+     */
+    @Nested
+    class WitnessActivationFromEmpty {
+
+        private Ed25519TestFixture witnessFixture;
+
+        @BeforeEach
+        void setUpWitness() {
+            witnessFixture = Ed25519TestFixture.generate();
+        }
+
+        private WitnessParameter witnessConfig() {
+            return new WitnessParameter(1, List.of(
+                    new WitnessParameter.WitnessEntry("did:key:" + witnessFixture.publicKeyMultibase())));
+        }
+
+        /**
+         * Builds a two-entry log: v1 has no witnesses, v2 activates witnesses.
+         */
+        private DidLog buildTwoEntryLogWithActivation() {
+            // v1: genesis, no witnesses
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .build());
+
+            String scid = scidFrom(created.log());
+
+            // v2: activate witnesses (config becomes active immediately for this entry)
+            ObjectNode doc2 = MAPPER.createObjectNode();
+            doc2.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc2.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            UpdateResult updated = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(doc2)
+                            .signer(fixture.signer())
+                            .witness(witnessConfig())
+                            .build());
+
+            return updated.log();
+        }
+
+        @Test
+        void succeedsWhenWitnessProofProvidedForActivationEntry() {
+            DidLog log = buildTwoEntryLogWithActivation();
+            String versionId2 = log.entries().get(1).versionId(); // v2
+
+            // Epoch W (lastVersion=2): W signs v2 → covers v2 ≥ 2 ✓
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessFixture, versionId2)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .build());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.document()).isNotNull();
+        }
+
+        @Test
+        void failsWhenNoWitnessProofProvidedForActivationEntry() {
+            DidLog log = buildTwoEntryLogWithActivation();
+
+            // No proofs given — epoch W (lastVersion=2) is unsatisfied → must fail
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .build());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+
+        @Test
+        void historicalVersion1_requiresNoProofBecauseNoEpochApplies() {
+            DidLog log = buildTwoEntryLogWithActivation();
+
+            // Epoch W has lastVersion=2. When resolving v1 (atVersion=1),
+            // lastVersion > atVersion so the epoch is skipped.
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .versionNumber(1)
+                    .build());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.metadata().versionNumber()).isEqualTo(1);
+        }
+
+        @Test
+        void historicalVersion2_succeedsWhenProofProvided() {
+            DidLog log = buildTwoEntryLogWithActivation();
+            String versionId2 = log.entries().get(1).versionId();
+
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessFixture, versionId2)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .versionNumber(2)
+                    .build());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.metadata().versionNumber()).isEqualTo(2);
         }
     }
 

@@ -320,8 +320,10 @@ public final class LogBasedResolver {
      * config for entry {@code i} is:
      * <ul>
      *   <li>Genesis (i=0): the genesis entry's own effective witness config.</li>
-     *   <li>Later entries (i&gt;0): the <em>previous</em> entry's effective witness config,
-     *       because a new witness parameter only becomes active after publication.</li>
+     *   <li>Later entries (i&gt;0): normally the <em>previous</em> entry's effective witness
+     *       config, because a new witness parameter only becomes active after publication.
+     *       when witnesses are activated from an empty state ({@code {}} → non-empty),
+     *       the change is <em>immediately active</em> for that same entry per the spec.</li>
      * </ul>
      * <p>Each distinct config is mapped to the highest version number it governed. Every
      * epoch must independently pass its threshold check before the DID is considered valid.
@@ -344,12 +346,24 @@ public final class LogBasedResolver {
         // Genesis entry uses its own config; later entries use the previous entry's config.
         Map<WitnessParameter, Integer> witnessEpochs = new LinkedHashMap<>();
         for (int i = 0; i < validEntries.size(); i++) {
-            WitnessParameter activeConfig = (i == 0)
-                    ? validEntries.get(0).effectiveParams().witness()
-                    : validEntries.get(i - 1).effectiveParams().witness();
+            WitnessParameter activeConfig;
+            if (i == 0) {
+                activeConfig = validEntries.get(0).effectiveParams().witness();
+            } else {
+                WitnessParameter prevConfig = validEntries.get(i - 1).effectiveParams().witness();
+                WitnessParameter currConfig = validEntries.get(i).effectiveParams().witness();
+                boolean wasEmpty = (prevConfig == null || prevConfig.isEmpty());
+                boolean nowActive = (currConfig != null && !currConfig.isEmpty());
+                if (wasEmpty && nowActive) {
+                    // Spec: when witness is updated from {}, the change is immediately active
+                    activeConfig = currConfig;
+                } else {
+                    // Spec: new witness lists take effect after the new log entry is published
+                    activeConfig = prevConfig;
+                }
+            }
             if (activeConfig != null && !activeConfig.isEmpty()) {
                 int versionNumber = validEntries.get(i).entry().versionNumber();
-                // Update to the highest version governed by this config
                 witnessEpochs.merge(activeConfig, versionNumber, Math::max);
             }
         }
