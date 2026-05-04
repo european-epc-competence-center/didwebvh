@@ -12,6 +12,7 @@ import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
 import io.didwebvh.model.ResolutionMetadata;
 import io.didwebvh.model.WitnessParameter;
+import io.didwebvh.witness.WitnessEpoch;
 import io.didwebvh.witness.WitnessValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -316,22 +317,20 @@ public final class LogBasedResolver {
      * Validates that all witness epochs are satisfied for the requested version.
      *
      * <h3>Epoch-based model</h3>
-     * <p>A "witness epoch" is a (WitnessParameter, lastVersion) pair. The active witness
-     * config for entry {@code i} is:
+     * <p>A "witness epoch" is a contiguous run of log entries governed by the same active
+     * witness configuration. The active witness config for entry {@code i} is:
      * <ul>
      *   <li>Genesis (i=0): the genesis entry's own effective witness config.</li>
      *   <li>Later entries (i&gt;0): normally the <em>previous</em> entry's effective witness
      *       config, because a new witness parameter only becomes active after publication.
-     *       when witnesses are activated from an empty state ({@code {}} → non-empty),
+     *       When witnesses are activated from an empty state ({@code {}} → non-empty),
      *       the change is <em>immediately active</em> for that same entry per the spec.</li>
      * </ul>
-     * <p>Each distinct config is mapped to the highest version number it governed. Every
-     * epoch must independently pass its threshold check before the DID is considered valid.
      *
-     * <h3>atVersion semantics</h3>
-     * <p>When resolving a historical version V, only epochs whose {@code lastVersion <= V}
-     * are checked. This prevents a historical lookup from being blocked by an epoch that
-     * covers entries published after the requested version.
+     * <p>Each epoch tracks {@code firstVersion} (where the config started) and
+     * {@code lastVersion} (the final entry it governed). For a query at version {@code V},
+     * an epoch applies if {@code firstVersion <= V}, and the resolver checks for a proof
+     * at {@code N' >= min(lastVersion, V)}.
      */
     private static void validateWitnessProofs(
             List<ValidatedEntry> validEntries,
@@ -339,12 +338,33 @@ public final class LogBasedResolver {
             boolean isLatestQuery,
             ResolveOptions options) {
 
-        // Build the witness epoch map:
-        //   key   = distinct WitnessParameter (config)
-        //   value = highest version number governed by that config
-        //
-        // Genesis entry uses its own config; later entries use the previous entry's config.
-        Map<WitnessParameter, Integer> witnessEpochs = new LinkedHashMap<>();
+        List<WitnessEpoch> witnessEpochs = buildWitnessEpochs(validEntries);
+        if (witnessEpochs.isEmpty()) {
+            return; // no entry ever required witnessing
+        }
+
+        List<String> versionIds = validEntries.stream()
+                .map(v -> v.entry().versionId())
+                .toList();
+
+        int atVersion = isLatestQuery ? Integer.MAX_VALUE : target.entry().versionNumber();
+
+        WitnessValidator witnessValidator = new WitnessValidator(options.getVerifier());
+        witnessValidator.verifyEpochs(witnessEpochs, versionIds, options.getWitnessProofs(), atVersion);
+    }
+
+    /**
+     * Builds a list of {@link WitnessEpoch} objects from the validated log entries.
+     *
+     * <p>Walks the log entry-by-entry, determining the active witness config for each entry.
+     * A new epoch is started whenever the active config changes (including activation
+     * from empty, deactivation, or a mid-log swap).
+     */
+    private static List<WitnessEpoch> buildWitnessEpochs(List<ValidatedEntry> validEntries) {
+        List<WitnessEpoch> epochs = new ArrayList<>();
+        WitnessParameter currentConfig = null;
+        int currentFirst = -1;
+
         for (int i = 0; i < validEntries.size(); i++) {
             WitnessParameter activeConfig;
             if (i == 0) {
@@ -362,28 +382,39 @@ public final class LogBasedResolver {
                     activeConfig = prevConfig;
                 }
             }
-            if (activeConfig != null && !activeConfig.isEmpty()) {
-                int versionNumber = validEntries.get(i).entry().versionNumber();
-                witnessEpochs.merge(activeConfig, versionNumber, Math::max);
+
+            int versionNumber = validEntries.get(i).entry().versionNumber();
+            boolean activeNow = activeConfig != null && !activeConfig.isEmpty();
+
+            if (activeNow) {
+                if (currentConfig == null) {
+                    // Start a new epoch
+                    currentConfig = activeConfig;
+                    currentFirst = versionNumber;
+                } else if (!currentConfig.equals(activeConfig)) {
+                    // Config changed — finalize previous epoch, start new one
+                    epochs.add(new WitnessEpoch(currentConfig, currentFirst, versionNumber - 1));
+                    currentConfig = activeConfig;
+                    currentFirst = versionNumber;
+                }
+                // else: same config, epoch continues
+            } else {
+                if (currentConfig != null) {
+                    // Witnessing turned off — finalize previous epoch
+                    epochs.add(new WitnessEpoch(currentConfig, currentFirst, versionNumber - 1));
+                    currentConfig = null;
+                    currentFirst = -1;
+                }
             }
         }
 
-        if (witnessEpochs.isEmpty()) {
-            return; // no entry ever required witnessing
+        // Finalize the last open epoch (if any)
+        if (currentConfig != null) {
+            int lastVersion = validEntries.get(validEntries.size() - 1).entry().versionNumber();
+            epochs.add(new WitnessEpoch(currentConfig, currentFirst, lastVersion));
         }
 
-        // Collect all valid versionIds in order (index 0 = version 1, index N-1 = version N)
-        List<String> versionIds = validEntries.stream()
-                .map(v -> v.entry().versionId())
-                .toList();
-
-        // atVersion: the highest version number we need to validate.
-        // For a latest-version query this is effectively unbounded.
-        // For a historical query we only check epochs up to the target version.
-        int atVersion = isLatestQuery ? Integer.MAX_VALUE : target.entry().versionNumber();
-
-        WitnessValidator witnessValidator = new WitnessValidator(options.getVerifier());
-        witnessValidator.verifyEpochs(witnessEpochs, versionIds, options.getWitnessProofs(), atVersion);
+        return epochs;
     }
 
     // -------------------------------------------------------------------------

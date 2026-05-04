@@ -412,8 +412,8 @@ class LogBasedResolverTest {
      *
      * <p>This produces two epochs:
      * <ul>
-     *   <li>Epoch A: {@code lastVersion=2}. A witness from config A must have signed v&ge;2.</li>
-     *   <li>Epoch B: {@code lastVersion=3}. A witness from config B must have signed v&ge;3.</li>
+     *   <li>Epoch A: {@code [1, 2]}. A witness from config A must have signed v&ge;min(2,V).</li>
+     *   <li>Epoch B: {@code [3, 3]}. A witness from config B must have signed v&ge;3.</li>
      * </ul>
      *
      * <p>Both epochs must pass independently. B signing v3 does NOT cover epoch A,
@@ -560,10 +560,9 @@ class LogBasedResolverTest {
         }
 
         @Test
-        void historicalVersion1_requiresNoProofBecauseNoEpochApplies() {
-            // The full log has epoch A (lastVersion=2) and epoch B (lastVersion=3).
-            // When resolving v1 (atVersion=1), both epochs have lastVersion > 1 and are
-            // skipped entirely. No epochs apply, so no proofs are required.
+        void historicalVersion1_failsWhenEpochCoversV1ButNoProof() {
+            // Epoch A covers [1, 2]. When resolving v1 (atVersion=1), the epoch applies
+            // because firstVersion=1 <= 1. No proofs given → must fail.
             DidLog log = buildThreeEntryLog();
 
             ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
@@ -571,8 +570,79 @@ class LogBasedResolverTest {
                     .versionNumber(1)
                     .build());
 
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+
+        @Test
+        void historicalVersion1_succeedsWhenProofProvided() {
+            // Epoch A covers [1, 2]. Witness A signs v2 → watermark covers v1.
+            DidLog log = buildThreeEntryLog();
+            String versionId2 = log.entries().get(1).versionId(); // v2
+
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessA, versionId2)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .versionNumber(1)
+                    .build());
+
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.metadata().versionNumber()).isEqualTo(1);
+        }
+
+        @Test
+        void historicalVersion2_watermarkFromV3CoversV2() {
+            // Build a 3-entry log where witness A stays active for all entries.
+            // Query v2 with only a proof for v3 → watermark from v3 covers v2.
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .witness(configA())
+                            .build());
+
+            String scid = scidFrom(created.log());
+
+            ObjectNode doc2 = MAPPER.createObjectNode();
+            doc2.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc2.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            UpdateResult updated2 = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(doc2)
+                            .signer(fixture.signer())
+                            .build());
+
+            ObjectNode doc3 = MAPPER.createObjectNode();
+            doc3.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc3.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            UpdateResult updated3 = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(updated2.log())
+                            .updatedDocument(doc3)
+                            .signer(fixture.signer())
+                            .build());
+
+            DidLog log = updated3.log();
+            String versionId3 = log.entries().get(2).versionId(); // v3
+
+            // Only proof for v3 — watermark must cover v2
+            WitnessProofCollection proofs = new WitnessProofCollection(List.of(
+                    proofFrom(witnessA, versionId3)));
+
+            ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .witnessProofs(proofs)
+                    .versionNumber(2)
+                    .build());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.metadata().versionNumber()).isEqualTo(2);
         }
 
         @Test
@@ -629,7 +699,7 @@ class LogBasedResolverTest {
      *
      * <p>This produces one epoch:
      * <ul>
-     *   <li>Epoch W: {@code lastVersion=2}. Witness W must have signed v≥2.</li>
+     *   <li>Epoch W: {@code [2, 2]}. Witness W must have signed v&ge;2.</li>
      * </ul>
      */
     @Nested
@@ -712,8 +782,8 @@ class LogBasedResolverTest {
         void historicalVersion1_requiresNoProofBecauseNoEpochApplies() {
             DidLog log = buildTwoEntryLogWithActivation();
 
-            // Epoch W has lastVersion=2. When resolving v1 (atVersion=1),
-            // lastVersion > atVersion so the epoch is skipped.
+            // Epoch W starts at firstVersion=2. When resolving v1 (atVersion=1),
+            // firstVersion > atVersion so the epoch is skipped — v1 had no witnesses.
             ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
                     .verifier(Ed25519TestFixture.verifier())
                     .versionNumber(1)
