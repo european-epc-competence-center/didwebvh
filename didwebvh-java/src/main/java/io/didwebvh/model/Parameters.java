@@ -149,6 +149,10 @@ public record Parameters(
         if (updateKeys == null || updateKeys.isEmpty()) {
             throw new LogValidationException("Genesis entry must contain at least one 'updateKeys' entry");
         }
+        // Validate witness config if present in genesis
+        if (witness != null && !witness.isEmpty()) {
+            witness.validate();
+        }
     }
 
     private void validateTransition(Parameters previous) {
@@ -187,6 +191,11 @@ public record Parameters(
         // Once deactivated, no further entries are valid (LogValidator enforces this, but double-check)
         if (Boolean.TRUE.equals(previous.deactivated)) {
             throw new LogValidationException("DID is already deactivated; no further entries are valid");
+        }
+
+        // Validate witness config whenever it is being changed in this entry
+        if (witness != null && !witness.isEmpty()) {
+            witness.validate();
         }
     }
 
