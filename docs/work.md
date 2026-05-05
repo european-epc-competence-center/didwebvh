@@ -15,12 +15,7 @@ The library targets `did:webvh` v1.0.
 4. **`versionTime` strictness** — `LogValidator` allows equal timestamps; spec requires strictly greater
 5. **IDNA2008 compliance** — `DidUrlTransformer` uses Java's `IDN.toASCII` (IDNA2003); spec requires IDNA2008 (RFC 9233)
 
-### P2 — API / Usability Gaps
-
-1. **`ttl` parameter not exposed in `UpdateOptions`** — cannot change TTL via update
-2. **`deactivated` parameter not exposed in `UpdateOptions`** — must use `DeactivateOperation`
-
-### P3 — Future Enhancements
+### P2 — Future Enhancements
 
 - Watchers API integration
 - DNS-over-HTTPS (RFC 8484)
