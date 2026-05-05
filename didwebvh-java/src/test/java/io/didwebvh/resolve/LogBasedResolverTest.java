@@ -77,6 +77,38 @@ class LogBasedResolverTest {
                         .build());
     }
 
+    /**
+     * Creates a portable DID (portable=true in genesis parameters).
+     * Such DIDs may later change their document "id" to a new domain.
+     */
+    private CreateResult createPortableDid() {
+        return CreateOperation.create(
+                CreateOptions.builder()
+                        .domain(DOMAIN)
+                        .initialDocument(initialDocument())
+                        .updateKeys(List.of(fixture.publicKeyMultibase()))
+                        .signer(fixture.signer())
+                        .portable(true)
+                        .build());
+    }
+
+    /**
+     * Moves a portable DID to a new domain by appending an update entry whose
+     * document "id" points to the new domain.
+     */
+    private UpdateResult moveDid(DidLog log, String scid, String newDomain) {
+        ObjectNode doc = MAPPER.createObjectNode();
+        doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+        doc.put("id", "did:webvh:" + scid + ":" + newDomain);
+        doc.putArray("alsoKnownAs").add("did:webvh:" + scid + ":" + DOMAIN);
+        return UpdateOperation.update(
+                UpdateOptions.builder()
+                        .log(log)
+                        .updatedDocument(doc)
+                        .signer(fixture.signer())
+                        .build());
+    }
+
     private String scidFrom(DidLog log) {
         return log.first().parameters().scid();
     }
@@ -385,6 +417,107 @@ class LogBasedResolverTest {
         assertThat(result.metadata().problemDetails().type()).isEqualTo("about:blank");
         assertThat(result.metadata().problemDetails().detail()).isNotBlank();
     }
+    }
+
+    // -------------------------------------------------------------------------
+    // Portability — DID identity and move validation (spec §9)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class Portability {
+
+        /**
+         * A portable DID may be moved to a new domain. Resolving the new DID
+         * should succeed and return the latest document with the new id.
+         */
+        @Test
+        void resolveMovedPortableDid_succeeds() {
+            CreateResult created = createPortableDid();
+            String scid = scidFrom(created.log());
+            UpdateResult moved = moveDid(created.log(), scid, "newdomain.com");
+            String newDid = "did:webvh:" + scid + ":newdomain.com";
+
+            ResolveResult result = resolver.resolve(newDid, moved.log(), defaultOptions());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.document().get("id").asText()).isEqualTo(newDid);
+        }
+
+        /**
+         * A non-portable DID may NOT be moved. The per-entry portability check
+         * in LogValidator rejects the log before LogBasedResolver ever reaches
+         * the DID identity check.
+         */
+        @Test
+        void resolveNonPortableMovedDid_fails() {
+            CreateResult created = createDid();  // non-portable by default
+            String scid = scidFrom(created.log());
+
+            // Manually build a moved document (UpdateOperation allows it)
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
+            UpdateResult moved = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(movedDoc)
+                            .signer(fixture.signer())
+                            .build());
+
+            ResolveResult result = resolver.resolve(
+                    "did:webvh:" + scid + ":newdomain.com", moved.log(), defaultOptions());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+        }
+
+        /**
+         * After a portable DID is moved, resolving the OLD DID (latest) still
+         * succeeds because the log-level check finds v1 with the old id.
+         * The caller gets the latest document (with the new id), which
+         * informs them the DID has moved.
+         */
+        @Test
+        void resolveOldDidAfterMove_succeedsBecauseLogLevelCheck() {
+            CreateResult created = createPortableDid();
+            String scid = scidFrom(created.log());
+            UpdateResult moved = moveDid(created.log(), scid, "newdomain.com");
+            String oldDid = "did:webvh:" + scid + ":" + DOMAIN;
+
+            ResolveResult result = resolver.resolve(oldDid, moved.log(), defaultOptions());
+
+            // Log-level check: v1 had id=oldDid → passes
+            assertThat(result.isSuccess()).isTrue();
+            // Latest document has the new id
+            assertThat(result.document().get("id").asText())
+                    .isEqualTo("did:webvh:" + scid + ":newdomain.com");
+        }
+
+        /**
+         * Historical query of a moved portable DID: version 1 has the old
+         * document id, but the resolved DID is the new one. The log-level
+         * "at least one version" check passes because v2 has the new id.
+         */
+        @Test
+        void historicalVersionOfMovedPortableDid_succeeds() {
+            CreateResult created = createPortableDid();
+            String scid = scidFrom(created.log());
+            UpdateResult moved = moveDid(created.log(), scid, "newdomain.com");
+            String newDid = "did:webvh:" + scid + ":newdomain.com";
+
+            ResolveOptions options = ResolveOptions.builder()
+                    .verifier(Ed25519TestFixture.verifier())
+                    .versionNumber(1)
+                    .build();
+
+            ResolveResult result = resolver.resolve(newDid, moved.log(), options);
+
+            // Log-level check: v2 has id=newDid → passes
+            assertThat(result.isSuccess()).isTrue();
+            // Target is v1, which still has the old id
+            assertThat(result.document().get("id").asText())
+                    .isEqualTo("did:webvh:" + scid + ":" + DOMAIN);
+        }
     }
 
     // -------------------------------------------------------------------------

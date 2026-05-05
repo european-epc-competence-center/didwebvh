@@ -271,6 +271,80 @@ class LogValidatorTest {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Portability — per-entry document id change validation
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class Portability {
+
+        /**
+         * Non-portable DIDs may NOT change their document "id" across entries.
+         * If the controller tries to move a non-portable DID to a new domain,
+         * the per-entry portability check must reject the log.
+         */
+        @Test
+        void nonPortableDid_documentIdChange_rejected() {
+            // 1. Create a standard (non-portable) DID at example.com
+            CreateResult created = createDid();
+            String scid = created.metadata().scid();
+
+            // 2. Build an update whose document id points to a new domain
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
+
+            // 3. Append the move entry (UpdateOperation does not enforce portability)
+            UpdateResult moved = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(movedDoc)
+                            .signer(fixture.signer())
+                            .build());
+
+            // 4. Validation must reject because portable was false in entry 1
+            assertThatThrownBy(() -> validator.validate(moved.log()))
+                    .isInstanceOf(LogValidationException.class)
+                    .hasMessageContaining("portable");
+        }
+
+        /**
+         * Portable DIDs MAY change their document "id" across entries.
+         * The per-entry check should accept the move because genesis set
+         * portable=true.
+         */
+        @Test
+        void portableDid_documentIdChange_accepted() {
+            // 1. Create a portable DID at example.com
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .portable(true)
+                            .build());
+            String scid = created.metadata().scid();
+
+            // 2. Build an update whose document id points to a new domain
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
+
+            // 3. Append the move entry
+            UpdateResult moved = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(movedDoc)
+                            .signer(fixture.signer())
+                            .build());
+
+            // 4. Validation must accept both entries
+            int valid = validator.validate(moved.log());
+            assertThat(valid).isEqualTo(2);
+        }
+    }
+
     @Nested
     class ValidateEntryApi {
 
