@@ -133,6 +133,24 @@ public final class LogValidator {
         }
         Parameters newEffective = entry.parameters().validate(activeParams);
 
+        // Per-entry portability check.
+        // If the DID document "id" changed from the previous entry, the
+        // previous entry's effective parameters MUST have portable=true.
+        // This prevents a non-portable DID from being silently "moved"
+        // to a new domain — only DIDs explicitly created with portable=true
+        // may change their document id across entries.
+        if (previous != null) {
+            String prevDocId = previous.state().path("id").asText(null);
+            String currDocId = entry.state().path("id").asText(null);
+            if (prevDocId != null && !prevDocId.equals(currDocId)) {
+                if (!Boolean.TRUE.equals(activeParams.portable())) {
+                    throw new LogValidationException(
+                            "DID document id changed from '" + prevDocId + "' to '" + currDocId
+                                    + "' but 'portable' is not true");
+                }
+            }
+        }
+
         // Which updateKeys authorize (sign) this entry's proof depends on whether pre-rotation is in effect:
         //   Genesis:          no previous state → the entry's own keys bootstrap trust
         //   Pre-rotation on:  the new keys were pre-committed via nextKeyHashes; they are now revealed

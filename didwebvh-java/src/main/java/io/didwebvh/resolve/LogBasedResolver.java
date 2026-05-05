@@ -124,6 +124,17 @@ public final class LogBasedResolver {
             return deactivatedResult(did, latest, genesis);
         }
 
+        // The spec requires that the DID being resolved matches the top-level 
+        // "id" in AT LEAST ONE version of the DIDDoc.
+        // Validity check: it answers "is this log associated with the DID 
+        // I'm trying to resolve?"
+        boolean didIdFound = validEntries.stream()
+                .anyMatch(v -> baseDid.equals(v.entry().state().path("id").asText(null)));
+        if (!didIdFound) {
+            throw new LogValidationException(
+                    "DID '" + baseDid + "' does not match any document id in the valid log");
+        }
+
         ResolutionMetadata metadata = buildMetadata(target, latest, genesis, currentlyDeactivated);
 
         JsonNode document = target.entry().state();
