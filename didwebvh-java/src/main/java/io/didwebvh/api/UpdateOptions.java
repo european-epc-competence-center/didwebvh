@@ -71,6 +71,12 @@ public final class UpdateOptions {
      */
     private final List<String> watchers;
 
+    /**
+     * New time-to-live in seconds; supply only when changing ttl.
+     * {@code null} means the current ttl remains unchanged.
+     */
+    private final Integer ttl;
+
     private UpdateOptions(Builder builder) {
         this.log = builder.log;
         this.updatedDocument = builder.updatedDocument;
@@ -79,6 +85,7 @@ public final class UpdateOptions {
         this.nextKeyHashes = builder.nextKeyHashes;
         this.witness = builder.witness;
         this.watchers = builder.watchers;
+        this.ttl = builder.ttl;
     }
 
     public DidLog getLog() { return log; }
@@ -88,6 +95,7 @@ public final class UpdateOptions {
     public List<String> getNextKeyHashes() { return nextKeyHashes; }
     public WitnessParameter getWitness() { return witness; }
     public List<String> getWatchers() { return watchers; }
+    public Integer getTtl() { return ttl; }
 
     public static Builder builder() {
         return new Builder();
@@ -101,6 +109,7 @@ public final class UpdateOptions {
         private List<String> nextKeyHashes;
         private WitnessParameter witness;
         private List<String> watchers;
+        private Integer ttl;  // null → inherit current value
 
         private Builder() {}
 
@@ -136,6 +145,11 @@ public final class UpdateOptions {
 
         public Builder watchers(List<String> watchers) {
             this.watchers = watchers;
+            return this;
+        }
+
+        public Builder ttl(Integer ttl) {
+            this.ttl = ttl;
             return this;
         }
 

@@ -62,6 +62,12 @@ public final class CreateOptions {
     /** Watcher URLs; {@code null} or empty means no watchers. */
     private final List<String> watchers;
 
+    /**
+     * Time-to-live in seconds for caching the resolved DID. {@code null} means the
+     * spec default ({@value io.didwebvh.DidWebVhConstants#DEFAULT_TTL_SECONDS}) is used.
+     */
+    private final Integer ttl;
+
     private CreateOptions(Builder builder) {
         this.domain = builder.domain;
         this.initialDocument = builder.initialDocument;
@@ -71,6 +77,7 @@ public final class CreateOptions {
         this.nextKeyHashes = builder.nextKeyHashes;
         this.witness = builder.witness;
         this.watchers = builder.watchers;
+        this.ttl = builder.ttl;
     }
 
     public String getDomain() { return domain; }
@@ -81,6 +88,7 @@ public final class CreateOptions {
     public List<String> getNextKeyHashes() { return nextKeyHashes; }
     public WitnessParameter getWitness() { return witness; }
     public List<String> getWatchers() { return watchers; }
+    public Integer getTtl() { return ttl; }
 
     public static Builder builder() {
         return new Builder();
@@ -95,6 +103,7 @@ public final class CreateOptions {
         private List<String> nextKeyHashes = List.of();
         private WitnessParameter witness;
         private List<String> watchers;
+        private Integer ttl;  // null → use spec default
 
         private Builder() {}
 
@@ -135,6 +144,11 @@ public final class CreateOptions {
 
         public Builder watchers(List<String> watchers) {
             this.watchers = watchers;
+            return this;
+        }
+
+        public Builder ttl(Integer ttl) {
+            this.ttl = ttl;
             return this;
         }
 

@@ -193,7 +193,7 @@ public final class UpdateOperation {
                 options.getNextKeyHashes() != null ? options.getNextKeyHashes() : active.nextKeyHashes(),
                 active.portable(),
                 active.deactivated(),
-                active.ttl(),
+                options.getTtl() != null ? options.getTtl() : active.ttl(),
                 options.getWitness() != null ? options.getWitness() : active.witness(),
                 options.getWatchers() != null ? options.getWatchers() : active.watchers());
     }

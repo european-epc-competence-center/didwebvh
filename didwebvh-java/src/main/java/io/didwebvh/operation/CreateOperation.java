@@ -68,7 +68,7 @@ public final class CreateOperation {
                     hasContent(options.getNextKeyHashes()) ? List.copyOf(options.getNextKeyHashes()) : null,
                     options.isPortable() ? Boolean.TRUE : null,
                     null,
-                    null,
+                    options.getTtl(),
                     options.getWitness(),
                     hasContent(options.getWatchers()) ? List.copyOf(options.getWatchers()) : null);
 
@@ -125,7 +125,9 @@ public final class CreateOperation {
                     scid,
                     options.isPortable(),
                     false,
-                    String.valueOf(DidWebVhConstants.DEFAULT_TTL_SECONDS),
+                    String.valueOf(finalEntry.parameters().ttl() != null
+                            ? finalEntry.parameters().ttl()
+                            : DidWebVhConstants.DEFAULT_TTL_SECONDS),
                     options.getWitness(),
                     options.getWatchers(),
                     null,
