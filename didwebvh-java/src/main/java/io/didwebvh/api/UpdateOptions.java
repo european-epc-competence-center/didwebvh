@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.WitnessParameter;
-import io.didwebvh.witness.WitnessProofCollection;
 
 import java.util.List;
 
@@ -72,12 +71,6 @@ public final class UpdateOptions {
      */
     private final List<String> watchers;
 
-    /**
-     * Pre-collected witness proofs for this update, required when witnesses are configured.
-     * The {@code did-witness.json} file must be published before the new {@code did.jsonl} entry.
-     */
-    private final WitnessProofCollection witnessProofs;
-
     private UpdateOptions(Builder builder) {
         this.log = builder.log;
         this.updatedDocument = builder.updatedDocument;
@@ -86,7 +79,6 @@ public final class UpdateOptions {
         this.nextKeyHashes = builder.nextKeyHashes;
         this.witness = builder.witness;
         this.watchers = builder.watchers;
-        this.witnessProofs = builder.witnessProofs;
     }
 
     public DidLog getLog() { return log; }
@@ -96,7 +88,6 @@ public final class UpdateOptions {
     public List<String> getNextKeyHashes() { return nextKeyHashes; }
     public WitnessParameter getWitness() { return witness; }
     public List<String> getWatchers() { return watchers; }
-    public WitnessProofCollection getWitnessProofs() { return witnessProofs; }
 
     public static Builder builder() {
         return new Builder();
@@ -110,7 +101,6 @@ public final class UpdateOptions {
         private List<String> nextKeyHashes;
         private WitnessParameter witness;
         private List<String> watchers;
-        private WitnessProofCollection witnessProofs;
 
         private Builder() {}
 
@@ -146,11 +136,6 @@ public final class UpdateOptions {
 
         public Builder watchers(List<String> watchers) {
             this.watchers = watchers;
-            return this;
-        }
-
-        public Builder witnessProofs(WitnessProofCollection witnessProofs) {
-            this.witnessProofs = witnessProofs;
             return this;
         }
 
