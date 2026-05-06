@@ -86,11 +86,15 @@ public record Parameters(
      */
     public Parameters diff(Parameters previous) {
         Objects.requireNonNull(previous, "previous must not be null for diff");
+        boolean preRot = previous.isPreRotationActive();
+
         return new Parameters(
                 Objects.equals(method, previous.method) ? null : method,
                 null, // scid never appears in a diff
-                Objects.equals(updateKeys, previous.updateKeys) ? null : updateKeys,
-                Objects.equals(nextKeyHashes, previous.nextKeyHashes) ? null : nextKeyHashes,
+                // If pre-rotation is active and updateKeys are unchanged, omit them from the diff to avoid redundancy 
+                // (they must be present in every entry while pre-rotation is active, so no need to include them if they haven't changed)
+                (!preRot && Objects.equals(updateKeys, previous.updateKeys)) ? null : updateKeys,
+                (!preRot && Objects.equals(nextKeyHashes, previous.nextKeyHashes)) ? null : nextKeyHashes,
                 Objects.equals(portable, previous.portable) ? null : portable,
                 Objects.equals(deactivated, previous.deactivated) ? null : deactivated,
                 Objects.equals(ttl, previous.ttl) ? null : ttl,

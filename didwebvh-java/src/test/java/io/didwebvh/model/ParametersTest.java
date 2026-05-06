@@ -259,6 +259,27 @@ class ParametersTest {
     }
 
     @Test
+    void diff_preRotationActive_preservesKeysEvenWhenUnchanged() {
+        Parameters prev = new Parameters(
+                DidWebVhConstants.METHOD_V1_0, SCID, List.of(KEY1),
+                List.of(KEY1_HASH), null, null, null, null, null).validate(null);
+        assertThat(prev.isPreRotationActive()).isTrue();
+
+        // Same values — but diff must still emit them because pre-rotation is active
+        Parameters same = new Parameters(
+                prev.method(), null, prev.updateKeys(), prev.nextKeyHashes(),
+                prev.portable(), prev.deactivated(), prev.ttl(),
+                prev.witness(), prev.watchers());
+
+        Parameters delta = same.diff(prev);
+        assertThat(delta.updateKeys()).containsExactly(KEY1);
+        assertThat(delta.nextKeyHashes()).containsExactly(KEY1_HASH);
+        // Other unchanged fields are still stripped
+        assertThat(delta.method()).isNull();
+        assertThat(delta.portable()).isNull();
+    }
+
+    @Test
     void diff_scidNeverIncluded() {
         // Even if scid values somehow differ, diff must not emit scid
         Parameters with = new Parameters(DidWebVhConstants.METHOD_V1_0, SCID, List.of(KEY1),

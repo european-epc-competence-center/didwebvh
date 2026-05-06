@@ -19,7 +19,6 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 ### P2 — Code Quality & Architecture
 
 1. **Consolidate ObjectMapper instances** — nearly every class creates its own `ObjectMapper`; use a shared/configured instance (or make injectable)
-2. **Refine pre-rotation delta logic** — `UpdateOperation` manually forces `updateKeys`/`nextKeyHashes` back into the delta after `diff()` strips them; improve `diff()` or the parameter model to handle pre-rotation presence requirements naturally
 
 ### P3 — Future Enhancements
 
