@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.CreateOptions;
+import io.didwebvh.util.JsonMapper;
 import io.didwebvh.api.CreateResult;
 import io.didwebvh.crypto.DataIntegrity;
 import io.didwebvh.crypto.JcsCanonicalizer;
@@ -41,7 +42,7 @@ import java.util.Objects;
 public final class CreateOperation {
 
     private static final Logger log = LoggerFactory.getLogger(CreateOperation.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private CreateOperation() {}
 

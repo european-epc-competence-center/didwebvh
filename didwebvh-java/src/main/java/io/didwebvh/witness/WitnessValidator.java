@@ -8,6 +8,7 @@ import io.didwebvh.crypto.Verifier;
 import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.WitnessParameter;
 import io.didwebvh.model.proof.DataIntegrityProof;
+import io.didwebvh.util.JsonMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,7 @@ import java.util.Map;
 public final class WitnessValidator {
 
     private static final Logger log = LoggerFactory.getLogger(WitnessValidator.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private final Verifier verifier;
 

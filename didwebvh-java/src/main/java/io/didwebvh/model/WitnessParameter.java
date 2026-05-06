@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.exception.LogValidationException;
+import io.didwebvh.util.JsonMapper;
 
 import java.util.HashSet;
 import java.util.List;
@@ -32,8 +33,7 @@ public record WitnessParameter(
         @JsonProperty("witnesses") List<WitnessEntry> witnesses
 ) {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper()
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     /** A single witness entry (did:key DID). */
     @JsonIgnoreProperties(ignoreUnknown = true)

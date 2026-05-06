@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.DeactivateOptions;
+import io.didwebvh.util.JsonMapper;
 import io.didwebvh.api.DeactivateResult;
 import io.didwebvh.crypto.DataIntegrity;
 import io.didwebvh.crypto.JcsCanonicalizer;
@@ -39,7 +40,7 @@ import java.util.Objects;
 public final class DeactivateOperation {
 
     private static final Logger log = LoggerFactory.getLogger(DeactivateOperation.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private DeactivateOperation() {}
 

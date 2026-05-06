@@ -2,6 +2,7 @@ package io.didwebvh.crypto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.didwebvh.util.JsonMapper;
 import org.erdtman.jcs.JsonCanonicalizer;
 
 import java.io.IOException;
@@ -22,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 public final class JcsCanonicalizer {
 
     /** Thread-safe after construction; shared across all callers. */
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private JcsCanonicalizer() {}
 

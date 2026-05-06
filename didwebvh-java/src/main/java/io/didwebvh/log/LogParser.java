@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.DidLog;
+import io.didwebvh.util.JsonMapper;
 import io.didwebvh.model.DidLogEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,7 @@ public final class LogParser {
 
     private static final Logger log = LoggerFactory.getLogger(LogParser.class);
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private LogParser() {}
 

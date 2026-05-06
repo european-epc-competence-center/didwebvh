@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.exception.LogValidationException;
+import io.didwebvh.util.JsonMapper;
 import io.didwebvh.model.proof.DataIntegrityProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ public final class DataIntegrity {
 
     private static final Logger log = LoggerFactory.getLogger(DataIntegrity.class);
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private DataIntegrity() {}
 

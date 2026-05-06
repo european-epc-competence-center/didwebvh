@@ -10,6 +10,7 @@ import io.didwebvh.crypto.JcsCanonicalizer;
 import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.crypto.Verifier;
 import io.didwebvh.exception.LogValidationException;
+import io.didwebvh.util.JsonMapper;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
@@ -47,7 +48,7 @@ import java.util.List;
 public final class LogValidator {
 
     private static final Logger log = LoggerFactory.getLogger(LogValidator.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private final Verifier verifier;
 

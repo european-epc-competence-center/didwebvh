@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.model.proof.DataIntegrityProof;
+import io.didwebvh.util.JsonMapper;
 
 import java.util.List;
 
@@ -28,7 +29,7 @@ import java.util.List;
  */
 public record WitnessProofCollection(List<Entry> entries) {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     /**
      * Parses the JSON array format of {@code did-witness.json} into a

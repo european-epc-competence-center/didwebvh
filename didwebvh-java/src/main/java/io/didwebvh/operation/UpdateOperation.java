@@ -3,6 +3,7 @@ package io.didwebvh.operation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.DidWebVhConstants;
+import io.didwebvh.util.JsonMapper;
 import io.didwebvh.api.UpdateOptions;
 import io.didwebvh.api.UpdateResult;
 import io.didwebvh.crypto.DataIntegrity;
@@ -45,7 +46,7 @@ import java.util.Objects;
 public final class UpdateOperation {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateOperation.class);
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private UpdateOperation() {}
 

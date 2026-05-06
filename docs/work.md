@@ -16,10 +16,6 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 6. **Reject unknown parameters** — `Parameters` uses `@JsonIgnoreProperties(ignoreUnknown = true)`; spec requires the `parameters` object to only include defined properties
 7. **IDNA2008 compliance** — `DidUrlTransformer` uses Java's `IDN.toASCII` (IDNA2003); spec requires IDNA2008 (RFC 9233)
 
-### P2 — Code Quality & Architecture
-
-1. **Consolidate ObjectMapper instances** — nearly every class creates its own `ObjectMapper`; use a shared/configured instance (or make injectable)
-
 ### P3 — Future Enhancements
 
 - Watchers API integration
