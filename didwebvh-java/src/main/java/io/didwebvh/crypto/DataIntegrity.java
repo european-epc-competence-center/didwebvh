@@ -54,12 +54,18 @@ public final class DataIntegrity {
 
         String created = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
 
-        ObjectNode options = buildProofOptions(
+        // Build a preliminary proof record without the proofValue.
+        // Jackson's @JsonInclude(NON_NULL) omits the null proofValue, giving us the exact
+        // proof-options node that verification will later reconstruct.
+        DataIntegrityProof preliminary = new DataIntegrityProof(
                 DidWebVhConstants.PROOF_TYPE,
                 DidWebVhConstants.CRYPTOSUITE,
                 verificationMethodId,
                 created,
-                DidWebVhConstants.PROOF_PURPOSE);
+                DidWebVhConstants.PROOF_PURPOSE,
+                null,
+                null);
+        JsonNode options = MAPPER.valueToTree(preliminary);
 
         byte[] signingInput = prepareSigningInput(unsecuredDocument, options);
         byte[] signature = signer.sign(signingInput);
@@ -102,12 +108,11 @@ public final class DataIntegrity {
                 : document;
 
         // Per spec §3.3.2 step 2: proofOptions = proof without proofValue
-        ObjectNode proofOptions = buildProofOptions(
-                proof.type(),
-                proof.cryptosuite(),
-                proof.verificationMethod(),
-                proof.created(),
-                proof.proofPurpose());
+        // Serialize the proof object (Jackson omits null fields because of @JsonInclude(NON_NULL))
+        // and strip the proofValue property so the canonicalized options match exactly what was signed.
+        JsonNode proofNode = MAPPER.valueToTree(proof);
+        ObjectNode proofOptions = (ObjectNode) proofNode.deepCopy();
+        proofOptions.remove("proofValue");
 
         byte[] transformedData = prepareSigningInput(unsecuredDocument, proofOptions);
 
@@ -159,21 +164,6 @@ public final class DataIntegrity {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
-
-    private static ObjectNode buildProofOptions(
-            String type,
-            String cryptosuite,
-            String verificationMethod,
-            String created,
-            String proofPurpose) {
-        ObjectNode node = MAPPER.createObjectNode();
-        node.put("type", type);
-        node.put("cryptosuite", cryptosuite);
-        node.put("verificationMethod", verificationMethod);
-        node.put("created", created);
-        node.put("proofPurpose", proofPurpose);
-        return node;
-    }
 
     private static byte[] sha256(byte[] input) {
         try {
