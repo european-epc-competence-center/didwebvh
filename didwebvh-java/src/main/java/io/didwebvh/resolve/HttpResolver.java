@@ -7,6 +7,7 @@ import io.didwebvh.exception.DidWebVhException;
 import io.didwebvh.log.LogParser;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
+import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.ResolutionMetadata;
 import io.didwebvh.witness.WitnessProofCollection;
 import org.slf4j.Logger;
@@ -98,15 +99,15 @@ public final class HttpResolver implements DidResolver {
             return result;
         } catch (IOException e) {
             log.trace("HTTP fetch failed for DID {}: {}", didUrl, e.getMessage());
-            return new ResolveResult(didUrl, null,
+            return new ResolveResult(didUrl, null, DidDocumentMetadata.EMPTY,
                     ResolutionMetadata.error("notFound", "Not Found", e.getMessage()));
         } catch (DidNotFoundException e) {
             log.trace("DID not found {}: {}", didUrl, e.getMessage());
-            return new ResolveResult(didUrl, null,
+            return new ResolveResult(didUrl, null, DidDocumentMetadata.EMPTY,
                     ResolutionMetadata.error("notFound", "Not Found", e.getMessage()));
         } catch (DidWebVhException e) {
             log.trace("Resolution error for DID {}: {}", didUrl, e.getMessage());
-            return new ResolveResult(didUrl, null,
+            return new ResolveResult(didUrl, null, DidDocumentMetadata.EMPTY,
                     ResolutionMetadata.error("invalidDid", "Invalid DID", e.getMessage()));
         }
     }

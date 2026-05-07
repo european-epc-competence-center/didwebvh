@@ -73,7 +73,7 @@ class HttpResolverTest {
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.did()).isEqualTo(created.did());
             assertThat(result.document()).isNotNull();
-            assertThat(result.metadata().scid()).isEqualTo(
+            assertThat(result.documentMetadata().scid()).isEqualTo(
                     created.log().first().parameters().scid());
         }
 
@@ -108,7 +108,7 @@ class HttpResolverTest {
             ResolveResult result = resolver.resolve(created.did(), options);
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionId()).isEqualTo(created.log().first().versionId());
+            assertThat(result.documentMetadata().versionId()).isEqualTo(created.log().first().versionId());
             assertThat(result.document()).isEqualTo(created.document());
         }
     }
@@ -129,8 +129,8 @@ class HttpResolverTest {
             ResolveResult result = resolver.resolve(created.did(), defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("notFound");
-            assertThat(result.metadata().problemDetails()).isNotNull();
+            assertThat(result.resolutionMetadata().error()).isEqualTo("notFound");
+            assertThat(result.resolutionMetadata().problemDetails()).isNotNull();
         }
 
         @Test
@@ -142,7 +142,7 @@ class HttpResolverTest {
             ResolveResult result = resolver.resolve(created.did(), defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -153,7 +153,7 @@ class HttpResolverTest {
             ResolveResult result = resolver.resolve("did:web:not-webvh", defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
     }
 
@@ -211,7 +211,7 @@ class HttpResolverTest {
             ResolveResult result = resolver.resolve(created.did() + "#nonexistent", defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("notFound");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("notFound");
         }
     }
 }

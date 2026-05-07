@@ -13,7 +13,7 @@ import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
-import io.didwebvh.model.ResolutionMetadata;
+import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.proof.DataIntegrityProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,7 +117,7 @@ public final class CreateOperation {
 
             DidLog didLog = DidLog.empty().append(finalEntry);
 
-            ResolutionMetadata metadata = new ResolutionMetadata(
+            DidDocumentMetadata metadata = new DidDocumentMetadata(
                     versionId,
                     1,
                     versionTime,
@@ -130,9 +130,7 @@ public final class CreateOperation {
                             ? finalEntry.parameters().ttl()
                             : DidWebVhConstants.DEFAULT_TTL_SECONDS),
                     options.getWitness(),
-                    options.getWatchers(),
-                    null,
-                    null);
+                    options.getWatchers());
 
             log.trace("Successfully created DID: {}", did);
             return new CreateResult(did, finalEntry.state(), metadata, didLog);

@@ -21,7 +21,7 @@ public interface DidResolver {
      * @param did     the full DID string (e.g. {@code did:webvh:{SCID}:example.com})
      * @param options resolution options (version filters, etc.)
      * @return the resolution result; never {@code null}; errors are encoded in
-     *         {@link ResolveResult#metadata()}
+     *         {@link ResolveResult#resolutionMetadata()}
      */
     ResolveResult resolve(String did, ResolveOptions options);
 }

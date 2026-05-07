@@ -10,6 +10,7 @@ import io.didwebvh.log.LogValidator;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
+import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.ResolutionMetadata;
 import io.didwebvh.model.WitnessParameter;
 import io.didwebvh.witness.WitnessEpoch;
@@ -33,7 +34,7 @@ import java.util.Objects;
  * {@link DidResolver} contract.
  *
  * <p>Resolution never throws exceptions to the caller. All errors are encoded in
- * {@link ResolveResult#metadata()} per the DID Resolution spec.
+ * {@link ResolveResult#resolutionMetadata()} per the DID Resolution spec.
  *
  * @see HttpResolver
  */
@@ -53,7 +54,7 @@ public final class LogBasedResolver {
      * @param didLog  the pre-parsed log (must be non-empty)
      * @param options resolution options including the verifier and optional version filters
      * @return the resolution result; never {@code null}; errors are in
-     *         {@link ResolveResult#metadata()}, never thrown
+     *         {@link ResolveResult#resolutionMetadata()}, never thrown
      */
     public ResolveResult resolve(String did, DidLog didLog, ResolveOptions options) {
         log.trace("Received resolve request for DID: {}", did);
@@ -135,7 +136,8 @@ public final class LogBasedResolver {
                     "DID '" + baseDid + "' does not match any document id in the valid log");
         }
 
-        ResolutionMetadata metadata = buildMetadata(target, latest, genesis, currentlyDeactivated);
+        DidDocumentMetadata documentMetadata = buildMetadata(target, latest, genesis, currentlyDeactivated);
+        ResolutionMetadata resolutionMetadata = ResolutionMetadata.success(did);
 
         JsonNode document = target.entry().state();
         if (fragment != null) {
@@ -144,7 +146,7 @@ public final class LogBasedResolver {
         }
 
         log.trace("Successfully resolved DID {} at version {}", did, target.entry().versionId());
-        return new ResolveResult(did, document, metadata);
+        return new ResolveResult(did, document, documentMetadata, resolutionMetadata);
     }
 
     // -------------------------------------------------------------------------
@@ -276,19 +278,19 @@ public final class LogBasedResolver {
     // Metadata building
     // -------------------------------------------------------------------------
 
-    private static ResolutionMetadata buildMetadata(ValidatedEntry target, ValidatedEntry latest,
-                                                    ValidatedEntry genesis, boolean currentlyDeactivated) {
+    private static DidDocumentMetadata buildMetadata(ValidatedEntry target, ValidatedEntry latest,
+                                                     ValidatedEntry genesis, boolean currentlyDeactivated) {
         Parameters params = target.effectiveParams();
         String scid = genesis.entry().parameters().scid();
 
-        return ResolutionMetadata.builder()
+        return DidDocumentMetadata.builder()
                 .versionId(target.entry().versionId())
                 .versionNumber(target.entry().versionNumber())
                 .versionTime(target.entry().versionTime())
                 .created(genesis.entry().versionTime())
                 .updated(latest.entry().versionTime())
                 .scid(scid)
-                .portable(Boolean.TRUE.equals(params.portable()))
+                .portable(params.portable())
                 .deactivated(currentlyDeactivated)
                 .ttl(params.ttl() != null ? String.valueOf(params.ttl()) : null)
                 .witness(params.witness())
@@ -301,21 +303,23 @@ public final class LogBasedResolver {
         String scid = genesis.entry().parameters().scid();
         Parameters params = latest.effectiveParams();
 
-        ResolutionMetadata metadata = ResolutionMetadata.builder()
+        DidDocumentMetadata documentMetadata = DidDocumentMetadata.builder()
                 .versionId(latest.entry().versionId())
                 .versionNumber(latest.entry().versionNumber())
                 .versionTime(latest.entry().versionTime())
                 .created(genesis.entry().versionTime())
                 .updated(latest.entry().versionTime())
                 .scid(scid)
-                .portable(Boolean.TRUE.equals(params.portable()))
+                .portable(params.portable())
                 .deactivated(true)
                 .ttl(params.ttl() != null ? String.valueOf(params.ttl()) : null)
                 .witness(params.witness())
                 .watchers(params.watchers())
                 .build();
 
-        return new ResolveResult(did, null, metadata);
+        ResolutionMetadata resolutionMetadata = ResolutionMetadata.success(did);
+
+        return new ResolveResult(did, null, documentMetadata, resolutionMetadata);
     }
 
     // -------------------------------------------------------------------------
@@ -437,7 +441,8 @@ public final class LogBasedResolver {
     }
 
     private static ResolveResult errorResult(String did, String errorCode, String title, String detail) {
-        return new ResolveResult(did, null, ResolutionMetadata.error(errorCode, title, detail));
+        return new ResolveResult(did, null, DidDocumentMetadata.EMPTY,
+                ResolutionMetadata.error(errorCode, title, detail));
     }
 
     /**

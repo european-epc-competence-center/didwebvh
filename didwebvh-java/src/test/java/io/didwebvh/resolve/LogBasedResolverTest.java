@@ -144,10 +144,10 @@ class LogBasedResolverTest {
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.did()).isEqualTo(created.did());
             assertThat(result.document()).isNotNull();
-            assertThat(result.metadata().versionId()).isEqualTo(created.log().latest().versionId());
-            assertThat(result.metadata().scid()).isEqualTo(scidFrom(created.log()));
-            assertThat(result.metadata().deactivated()).isFalse();
-            assertThat(result.metadata().error()).isNull();
+            assertThat(result.documentMetadata().versionId()).isEqualTo(created.log().latest().versionId());
+            assertThat(result.documentMetadata().scid()).isEqualTo(scidFrom(created.log()));
+            assertThat(result.documentMetadata().deactivated()).isFalse();
+            assertThat(result.resolutionMetadata().error()).isNull();
         }
 
         @Test
@@ -160,9 +160,9 @@ class LogBasedResolverTest {
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.document()).isNotNull();
-            assertThat(result.metadata().versionId()).isEqualTo(updated.log().latest().versionId());
-            assertThat(result.metadata().created()).isEqualTo(created.log().first().versionTime());
-            assertThat(result.metadata().updated()).isEqualTo(updated.log().latest().versionTime());
+            assertThat(result.documentMetadata().versionId()).isEqualTo(updated.log().latest().versionId());
+            assertThat(result.documentMetadata().created()).isEqualTo(created.log().first().versionTime());
+            assertThat(result.documentMetadata().updated()).isEqualTo(updated.log().latest().versionTime());
         }
 
         @Test
@@ -173,8 +173,8 @@ class LogBasedResolverTest {
 
             ResolveResult result = resolver.resolve(created.did(), updated.log(), defaultOptions());
 
-            assertThat(result.metadata().created()).isEqualTo(created.log().first().versionTime());
-            assertThat(result.metadata().updated()).isEqualTo(updated.log().latest().versionTime());
+            assertThat(result.documentMetadata().created()).isEqualTo(created.log().first().versionTime());
+            assertThat(result.documentMetadata().updated()).isEqualTo(updated.log().latest().versionTime());
         }
     }
 
@@ -200,7 +200,7 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionId()).isEqualTo(genesisVersionId);
+            assertThat(result.documentMetadata().versionId()).isEqualTo(genesisVersionId);
         }
 
         @Test
@@ -217,7 +217,7 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionId()).isEqualTo(created.log().first().versionId());
+            assertThat(result.documentMetadata().versionId()).isEqualTo(created.log().first().versionId());
         }
 
         @Test
@@ -234,7 +234,7 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(created.did(), updated.log(), options);
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionId()).isEqualTo(updated.log().latest().versionId());
+            assertThat(result.documentMetadata().versionId()).isEqualTo(updated.log().latest().versionId());
         }
 
         @Test
@@ -250,7 +250,7 @@ class LogBasedResolverTest {
 
             assertThat(result.isSuccess()).isFalse();
             assertThat(result.document()).isNull();
-            assertThat(result.metadata().error()).isEqualTo("notFound");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("notFound");
         }
 
         @Test
@@ -265,7 +265,7 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(created.did(), created.log(), options);
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("notFound");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("notFound");
         }
 
         @Test
@@ -281,7 +281,7 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(created.did(), created.log(), options);
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("notFound");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("notFound");
         }
     }
 
@@ -305,8 +305,8 @@ class LogBasedResolverTest {
 
             assertThat(result.isSuccess()).isFalse();
             assertThat(result.document()).isNull();
-            assertThat(result.metadata().deactivated()).isTrue();
-            assertThat(result.metadata().error()).isNull();
+            assertThat(result.documentMetadata().deactivated()).isTrue();
+            assertThat(result.resolutionMetadata().error()).isNull();
         }
 
         @Test
@@ -327,7 +327,7 @@ class LogBasedResolverTest {
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.document()).isNotNull();
-            assertThat(result.metadata().deactivated()).isTrue();
+            assertThat(result.documentMetadata().deactivated()).isTrue();
         }
     }
 
@@ -344,7 +344,7 @@ class LogBasedResolverTest {
                     DidLog.empty(), defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -366,7 +366,7 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(created.did(), tamperedLog, defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -378,8 +378,8 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(wrongDid, created.log(), defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
-            assertThat(result.metadata().problemDetails().detail()).contains("does not match SCID in log");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().problemDetails().detail()).contains("does not match SCID in log");
         }
 
         @Test
@@ -413,9 +413,10 @@ class LogBasedResolverTest {
         ResolveResult result = resolver.resolve("did:webvh:abc:example.com",
                 DidLog.empty(), defaultOptions());
 
-        assertThat(result.metadata().problemDetails()).isNotNull();
-        assertThat(result.metadata().problemDetails().type()).isEqualTo("about:blank");
-        assertThat(result.metadata().problemDetails().detail()).isNotBlank();
+        assertThat(result.resolutionMetadata().problemDetails()).isNotNull();
+        assertThat(result.resolutionMetadata().problemDetails().type())
+                .isEqualTo("https://www.w3.org/ns/did#INVALID_DID");
+        assertThat(result.resolutionMetadata().problemDetails().detail()).isNotBlank();
     }
     }
 
@@ -468,7 +469,7 @@ class LogBasedResolverTest {
                     "did:webvh:" + scid + ":newdomain.com", moved.log(), defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         /**
@@ -658,7 +659,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -677,7 +678,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -689,7 +690,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -704,7 +705,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -723,7 +724,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionNumber()).isEqualTo(1);
+            assertThat(result.documentMetadata().versionNumber()).isEqualTo(1);
         }
 
         @Test
@@ -775,7 +776,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionNumber()).isEqualTo(2);
+            assertThat(result.documentMetadata().versionNumber()).isEqualTo(2);
         }
 
         @Test
@@ -796,7 +797,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionNumber()).isEqualTo(2);
+            assertThat(result.documentMetadata().versionNumber()).isEqualTo(2);
         }
 
         @Test
@@ -810,7 +811,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
     }
 
@@ -908,7 +909,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test
@@ -923,7 +924,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionNumber()).isEqualTo(1);
+            assertThat(result.documentMetadata().versionNumber()).isEqualTo(1);
         }
 
         @Test
@@ -941,7 +942,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.metadata().versionNumber()).isEqualTo(2);
+            assertThat(result.documentMetadata().versionNumber()).isEqualTo(2);
         }
     }
 
@@ -995,7 +996,7 @@ class LogBasedResolverTest {
                     .build());
 
             assertThat(result.isSuccess()).isFalse();
-            assertThat(result.metadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
         }
 
         @Test

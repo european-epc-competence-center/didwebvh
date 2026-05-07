@@ -7,6 +7,7 @@ import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
 import io.didwebvh.log.LogParser;
 import io.didwebvh.model.DidLog;
+import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.ResolutionMetadata;
 import io.didwebvh.support.Ed25519TestFixture;
 import io.didwebvh.witness.WitnessProofCollection;
@@ -90,12 +91,12 @@ class DifResolverSuiteTest {
             assertThat(result.document())
                     .as("Expected successful resolution for: %s", tc)
                     .isNotNull();
-            assertDocumentMetadata(tc, result.metadata());
+            assertDocumentMetadata(tc, result.documentMetadata());
         } else {
             assertThat(result.document())
                     .as("Expected error resolution for: %s", tc)
                     .isNull();
-            assertResolutionMetadata(tc, result.metadata());
+            assertResolutionMetadata(tc, result.resolutionMetadata());
         }
     }
 
@@ -103,7 +104,7 @@ class DifResolverSuiteTest {
     // Metadata assertions — only checks fields present in the expected output
     // -------------------------------------------------------------------------
 
-    private void assertDocumentMetadata(TestCase tc, ResolutionMetadata actual) {
+    private void assertDocumentMetadata(TestCase tc, DidDocumentMetadata actual) {
         Map<String, Object> expected = tc.expectedDocumentMetadata;
         if (expected == null) return;
 

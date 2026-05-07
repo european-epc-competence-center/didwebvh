@@ -12,7 +12,7 @@ import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
-import io.didwebvh.model.ResolutionMetadata;
+import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.proof.DataIntegrityProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +126,7 @@ public final class UpdateOperation {
 
             String genesisTime = currentLog.first().versionTime();
             String scid = currentLog.first().parameters().scid();
-            ResolutionMetadata metadata = new ResolutionMetadata(
+            DidDocumentMetadata metadata = new DidDocumentMetadata(
                     versionId,
                     finalEntry.versionNumber(),
                     versionTime,
@@ -139,9 +139,7 @@ public final class UpdateOperation {
                             ? newEffective.ttl()
                             : DidWebVhConstants.DEFAULT_TTL_SECONDS),
                     newEffective.witness(),
-                    newEffective.watchers(),
-                    null,
-                    null);
+                    newEffective.watchers());
 
             log.trace("Successfully updated DID log, new versionId={}", versionId);
             return new UpdateResult(
