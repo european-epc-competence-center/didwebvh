@@ -145,7 +145,7 @@ public final class LogBasedResolver {
         // mutating the cached log entry state (which may be reused elsewhere).
         JsonNode document = target.entry().state().deepCopy();
 
-        // Inject the implicit #files and #whois services as required by spec §6.5/6.6.
+        // Inject the implicit #files and #whois services as required by spec.
         // These services are conceptually part of the resolved DID document even when
         // the DID Controller did not explicitly declare them.
         ImplicitServiceInjector.inject(document, baseDid);

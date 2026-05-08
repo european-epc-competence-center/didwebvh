@@ -183,4 +183,77 @@ class DidUrlTransformerTest {
     void stripFragment_null_returnsNull() {
         assertThat(DidUrlTransformer.stripFragment(null)).isNull();
     }
+
+    // -------------------------------------------------------------------------
+    // extractPath / stripPath / stripPathAndFragment
+    // -------------------------------------------------------------------------
+
+    @Test
+    void extractPath_withPath_returnsPath() {
+        assertThat(DidUrlTransformer.extractPath("did:webvh:" + SCID + ":example.com/whois"))
+                .isEqualTo("/whois");
+    }
+
+    @Test
+    void extractPath_withPathAndFragment_returnsPathWithoutFragment() {
+        assertThat(DidUrlTransformer.extractPath("did:webvh:" + SCID + ":example.com/whois#frag"))
+                .isEqualTo("/whois");
+    }
+
+    @Test
+    void extractPath_nestedPath() {
+        assertThat(DidUrlTransformer.extractPath("did:webvh:" + SCID + ":example.com/governance/issuers.json"))
+                .isEqualTo("/governance/issuers.json");
+    }
+
+    @Test
+    void extractPath_noPath_returnsNull() {
+        assertThat(DidUrlTransformer.extractPath("did:webvh:" + SCID + ":example.com")).isNull();
+    }
+
+    @Test
+    void extractPath_noPathWithFragment_returnsNull() {
+        assertThat(DidUrlTransformer.extractPath("did:webvh:" + SCID + ":example.com#frag")).isNull();
+    }
+
+    @Test
+    void stripPath_removesPath() {
+        String base = "did:webvh:" + SCID + ":example.com";
+        assertThat(DidUrlTransformer.stripPath(base + "/whois")).isEqualTo(base);
+    }
+
+    @Test
+    void stripPath_noPath_returnsUnchanged() {
+        String did = "did:webvh:" + SCID + ":example.com";
+        assertThat(DidUrlTransformer.stripPath(did)).isEqualTo(did);
+    }
+
+    @Test
+    void stripPathAndFragment_removesBoth() {
+        String base = "did:webvh:" + SCID + ":example.com";
+        assertThat(DidUrlTransformer.stripPathAndFragment(base + "/whois#frag")).isEqualTo(base);
+    }
+
+    // -------------------------------------------------------------------------
+    // toBaseUrl — implicit service base (no .well-known, no filename)
+    // -------------------------------------------------------------------------
+
+    @ParameterizedTest(name = "{0} -> {1}")
+    @CsvSource({
+            "did:webvh:" + SCID + ":example.com,https://example.com/",
+            "did:webvh:" + SCID + ":example.com:dids,https://example.com/dids/",
+            "did:webvh:" + SCID + ":example.com:dids:issuer,https://example.com/dids/issuer/",
+            "did:webvh:" + SCID + ":example.com%3A3000,https://example.com:3000/",
+            "did:webvh:" + SCID + ":example.com%3A3000:dids,https://example.com:3000/dids/",
+    })
+    void toBaseUrl_transformationTable(String did, String expected) {
+        assertThat(DidUrlTransformer.toBaseUrl(did)).isEqualTo(expected);
+    }
+
+    @Test
+    void toBaseUrl_unicodePathSegment() {
+        String did = "did:webvh:" + SCID + ":example.com:用户";
+        assertThat(DidUrlTransformer.toBaseUrl(did))
+                .isEqualTo("https://example.com/%E7%94%A8%E6%88%B7/");
+    }
 }

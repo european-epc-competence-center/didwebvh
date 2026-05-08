@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 /**
  * Injects the two implicit {@code did:webvh} services into a resolved DID document.
  *
- * <p>The {@code did:webvh} specification (§6.5 and §6.6) defines two implicit
+ * <p>The {@code did:webvh} specification defines two implicit
  * services that every DID automatically supports, even when the DID Controller
  * does not explicitly declare them in the DID document:
  * <ul>

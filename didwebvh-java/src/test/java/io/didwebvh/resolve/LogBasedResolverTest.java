@@ -1045,4 +1045,52 @@ class LogBasedResolverTest {
                             .build());
         }
     }
+
+    // -------------------------------------------------------------------------
+    // DID URL parsing (paths and fragments stripped before resolution)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class DidUrlParsing {
+
+        @Test
+        void resolveWithPath_stripsPathAndResolvesBaseDid() {
+            // LogBasedResolver is called with a DID URL that contains a path.
+            // It must strip the path before comparing the DID against the document id.
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .build());
+
+            String didWithPath = created.did() + "/whois";
+            ResolveResult result = resolver.resolve(didWithPath, created.log(), defaultOptions());
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.document().path("id").asText()).isEqualTo(created.did());
+            // Implicit services should be injected
+            assertThat(result.document().path("service").isArray()).isTrue();
+        }
+
+        @Test
+        void resolveWithPathAndFragment_stripsBothThenDereferencesFragment() {
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .build());
+
+            // The path is stripped, then the fragment (#key-1) is dereferenced.
+            // Since #key-1 does not exist in the document, resolution fails with notFound.
+            String didWithPathAndFragment = created.did() + "/whois#key-1";
+            ResolveResult result = resolver.resolve(didWithPathAndFragment, created.log(), defaultOptions());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.resolutionMetadata().error()).isEqualTo("notFound");
+        }
+    }
 }
