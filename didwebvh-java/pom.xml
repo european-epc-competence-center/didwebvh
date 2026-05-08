@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>io.didwebvh</groupId>
+  <groupId>io.github.european-epc-competence-center</groupId>
   <artifactId>didwebvh-java</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>didwebvh-java</name>
   <description>Java implementation of the did:webvh DID method (W3C/DIF spec v1.0)</description>
-  <url>https://github.com/decentralized-identity/didwebvh</url>
+  <url>https://github.com/european-epc-competence-center/didwebvh</url>
 
   <licenses>
     <license>
@@ -20,9 +20,23 @@
     </license>
   </licenses>
 
+  <scm>
+    <connection>scm:git:git@github.com:european-epc-competence-center/didwebvh.git</connection>
+    <developerConnection>scm:git:git@github.com:european-epc-competence-center/didwebvh.git</developerConnection>
+    <url>https://github.com/european-epc-competence-center/didwebvh</url>
+  </scm>
+
+  <developers>
+    <developer>
+      <name>Yannik Sinthern</name>
+      <organization>European EPC Competence Center GmbH (EECC)</organization>
+      <organizationUrl>https://www.eecc.info</organizationUrl>
+    </developer>
+  </developers>
+
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.release>21</maven.compiler.release>
+    <maven.compiler.release>17</maven.compiler.release>
 
     <!-- dependency versions -->
     <jackson.version>2.18.3</jackson.version>
@@ -30,6 +44,12 @@
     <slf4j.version>2.0.16</slf4j.version>
     <junit.version>5.11.4</junit.version>
     <assertj.version>3.27.3</assertj.version>
+
+    <!-- plugin versions -->
+    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+    <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
+    <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
+    <central-publishing-maven-plugin.version>0.7.0</central-publishing-maven-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -53,10 +73,12 @@
     </dependency>
 
     <!-- Cryptography: Ed25519 (signing / verification helpers) -->
+    <!-- Marked optional so consumers can bring their own crypto provider. -->
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk18on</artifactId>
       <version>${bouncycastle.version}</version>
+      <optional>true</optional>
     </dependency>
 
     <!-- RFC 8785 JCS: reference Java implementation (RFC Appendix G) -->
@@ -138,7 +160,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.13.0</version>
         <configuration>
-          <release>21</release>
+          <release>17</release>
           <compilerArgs>
             <arg>-Xlint:all</arg>
           </compilerArgs>
@@ -153,4 +175,77 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!--
+      Release profile: attaches sources, javadoc, GPG signs artifacts,
+      and stages to Maven Central via the Central Publishing plugin.
+      Activate with: mvn deploy -P release
+      Requires: GPG key and Central Portal token configured.
+    -->
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>${maven-source-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar-no-fork</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <version>${maven-javadoc-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>${maven-gpg-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${central-publishing-maven-plugin.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>false</autoPublish>
+              <waitForClose>false</waitForClose>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

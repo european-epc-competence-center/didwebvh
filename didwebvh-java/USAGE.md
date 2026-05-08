@@ -33,7 +33,7 @@ Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-  <groupId>io.didwebvh</groupId>
+  <groupId>io.github.european-epc-competence-center</groupId>
   <artifactId>didwebvh-java</artifactId>
   <version>0.1.0-SNAPSHOT</version>
 </dependency>
