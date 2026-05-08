@@ -78,10 +78,12 @@ public final class LogBasedResolver {
     // -------------------------------------------------------------------------
 
     private ResolveResult doResolve(String did, DidLog didLog, ResolveOptions options) {
-        // Strip fragment early; base DID is used for SCID extraction and URL operations.
-        // The original `did` (which may carry a fragment) is preserved for the result.
+        // Strip both path and fragment early. The base DID is used for SCID extraction,
+        // URL operations, and the document id match. The fragment (if any) is preserved
+        // for dereferencing after the document is resolved. The original `did` (which may
+        // carry a path or fragment) is preserved for the result.
         String fragment = DidUrlTransformer.extractFragment(did);
-        String baseDid = DidUrlTransformer.stripFragment(did);
+        String baseDid = DidUrlTransformer.stripPathAndFragment(did);
 
         List<ValidatedEntry> validEntries = validateLog(didLog, options);
         if (validEntries.isEmpty()) {
@@ -139,7 +141,15 @@ public final class LogBasedResolver {
         DidDocumentMetadata documentMetadata = buildMetadata(target, latest, genesis, currentlyDeactivated);
         ResolutionMetadata resolutionMetadata = ResolutionMetadata.success(did);
 
-        JsonNode document = target.entry().state();
+        // Deep-copy the document so we can safely inject implicit services without
+        // mutating the cached log entry state (which may be reused elsewhere).
+        JsonNode document = target.entry().state().deepCopy();
+
+        // Inject the implicit #files and #whois services as required by spec §6.5/6.6.
+        // These services are conceptually part of the resolved DID document even when
+        // the DID Controller did not explicitly declare them.
+        ImplicitServiceInjector.inject(document, baseDid);
+
         if (fragment != null) {
             log.trace("Dereferencing fragment '{}' from DID document for {}", fragment, did);
             document = FragmentDereferencer.dereference(document, fragment);

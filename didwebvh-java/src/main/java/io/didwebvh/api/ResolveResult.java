@@ -7,8 +7,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.ResolutionMetadata;
 
-
-
 /**
  * The result of a {@link DidWebVh#resolve} or {@link DidWebVh#resolveFromLog} operation.
  *
@@ -19,27 +17,59 @@ import io.didwebvh.model.ResolutionMetadata;
  *   <li>{@code didResolutionMetadata} — metadata about the resolution process</li>
  * </ul>
  *
- * <p>If resolution fails, {@code didDocument} is {@code null} and
- * {@code didResolutionMetadata} contains an {@code error} code and optional
- * {@code problemDetails}.
+ * <p>For DID URL <b>dereferencing</b> (e.g. resolving {@code did:.../whois} or
+ * {@code did:.../path/to/file}), the result carries the fetched resource content
+ * in {@code contentStream} instead of a DID document.</p>
  *
- * @param did                  the resolved DID string (ignored during JSON serialization)
- * @param document             the resolved DID document, or {@code null} on error
- * @param documentMetadata     metadata describing the DID document
- * @param resolutionMetadata   metadata describing the resolution process
+ * <p>This design keeps {@code resolve()} as a single entry point. Callers can
+ * distinguish the two cases by checking {@link #isSuccess()} and then inspecting
+ * whether {@link #document()} (DID resolution) or {@link #contentStream()}
+ * (dereferencing) is present.</p>
+ *
+ * <p>If resolution fails, {@code didDocument} and {@code contentStream} are
+ * {@code null} and {@code didResolutionMetadata} contains an {@code error} code
+ * and optional {@code problemDetails}.</p>
  */
 public record ResolveResult(
         @JsonIgnore String did,
         @JsonInclude(JsonInclude.Include.ALWAYS)
         @JsonProperty("didDocument") JsonNode document,
         @JsonProperty("didDocumentMetadata") DidDocumentMetadata documentMetadata,
-        @JsonProperty("didResolutionMetadata") ResolutionMetadata resolutionMetadata
+        @JsonProperty("didResolutionMetadata") ResolutionMetadata resolutionMetadata,
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @JsonProperty("contentStream") String contentStream
 ) {
 
-    /** Returns {@code true} if resolution succeeded (no error in resolution metadata). */
+    /**
+     * Backward-compatible constructor for normal DID resolution results.
+     *
+     * <p>When a DID is resolved without a path, only the DID document and its
+     * metadata are returned. The {@code contentStream} is left {@code null}.</p>
+     */
+    public ResolveResult(String did, JsonNode document,
+                         DidDocumentMetadata documentMetadata,
+                         ResolutionMetadata resolutionMetadata) {
+        this(did, document, documentMetadata, resolutionMetadata, null);
+    }
+
+    /**
+     * Constructor for dereferencing results (path or {@code /whois} resolution).
+     *
+     * <p>When a DID URL with a path is resolved, the resolver fetches the
+     * resource and returns it as {@code contentStream}. The DID document and
+     * its metadata are omitted because the result is not a DID document.</p>
+     */
+    public ResolveResult(String did, ResolutionMetadata resolutionMetadata,
+                         String contentStream) {
+        this(did, null, DidDocumentMetadata.EMPTY, resolutionMetadata, contentStream);
+    }
+
+    /** Returns {@code true} if resolution or dereferencing succeeded. */
     @JsonIgnore
     public boolean isSuccess() {
-        return document != null && resolutionMetadata != null && resolutionMetadata.error() == null;
+        return (document != null || contentStream != null)
+                && resolutionMetadata != null
+                && resolutionMetadata.error() == null;
     }
 
     /**

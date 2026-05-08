@@ -198,6 +198,104 @@ public final class DidUrlTransformer {
     }
 
     /**
+     * Extracts the path from a DID URL — everything from the first {@code /} to
+     * the next {@code #} (or end of string).
+     *
+     * <p>In a DID URL such as {@code did:webvh:{SCID}:example.com/whois} or
+     * {@code did:webvh:{SCID}:example.com/governance/issuers.json}, the path
+     * is the part after the method-specific identifier.
+     *
+     * <p>Example: {@code did:webvh:{SCID}:example.com/whois#fragment} → {@code "/whois"}.
+     *
+     * @param didUrl the DID URL string (may include a path and/or fragment)
+     * @return the path including the leading {@code /}, or {@code null} if absent
+     */
+    public static String extractPath(String didUrl) {
+        if (didUrl == null) return null;
+        int slashIdx = didUrl.indexOf('/');
+        if (slashIdx >= 0) {
+            int hashIdx = didUrl.indexOf('#', slashIdx);
+            if (hashIdx >= 0) {
+                return didUrl.substring(slashIdx, hashIdx);
+            }
+            return didUrl.substring(slashIdx);
+        }
+        return null;
+    }
+
+    /**
+     * Strips the path from a DID URL, returning just the DID (without path or fragment).
+     *
+     * <p>Example: {@code did:webvh:{SCID}:example.com/whois} → {@code did:webvh:{SCID}:example.com}.
+     *
+     * @param didUrl the DID URL string (may include a path)
+     * @return the DID without the path
+     */
+    public static String stripPath(String didUrl) {
+        if (didUrl == null) return null;
+        int slashIdx = didUrl.indexOf('/');
+        if (slashIdx >= 0) {
+            return didUrl.substring(0, slashIdx);
+        }
+        return didUrl;
+    }
+
+    /**
+     * Strips both path and fragment from a DID URL, returning the clean base DID.
+     *
+     * <p>This is a convenience combining {@link #stripPath(String)} and
+     * {@link #stripFragment(String)}.
+     *
+     * @param didUrl the DID URL string (may include path and/or fragment)
+     * @return the base DID without path or fragment
+     */
+    public static String stripPathAndFragment(String didUrl) {
+        return stripFragment(stripPath(didUrl));
+    }
+
+    /**
+     * Returns the base HTTPS URL for implicit service endpoints.
+     *
+     * <p>Unlike {@link #toLogUrl}, this <b>excludes</b> {@code .well-known/}
+     * and the filename. It produces the directory prefix that implicit
+     * {@code #files} and {@code #whois} services use as their
+     * {@code serviceEndpoint}.</p>
+     *
+     * <p>Per spec §3.4 (DID-to-HTTPS transformation for paths):
+     * <ul>
+     *   <li>{@code did:webvh:{SCID}:example.com} → {@code https://example.com/}</li>
+     *   <li>{@code did:webvh:{SCID}:example.com:dids:issuer} → {@code https://example.com/dids/issuer/}</li>
+     * </ul>
+     *
+     * @param did the full DID string (without path or fragment)
+     * @return the base HTTPS URL ending with {@code /}
+     * @throws InvalidDidException if the DID cannot be parsed
+     */
+    public static String toBaseUrl(String did) {
+        validatePrefix(did);
+        String withoutPrefix = did.substring(DidWebVhConstants.DID_METHOD_PREFIX.length());
+
+        String[] parts = withoutPrefix.split(":", -1);
+        if (parts.length < 2) {
+            throw new InvalidDidException("DID must have at least a SCID and host segment: " + did);
+        }
+        if (parts[1].isEmpty()) {
+            throw new InvalidDidException("Host segment is empty in DID: " + did);
+        }
+
+        String hostSegment = parts[1].replace("%3A", ":").replace("%3a", ":");
+        String host = normalizeHost(hostSegment, did);
+        String[] pathSegments = Arrays.copyOfRange(parts, 2, parts.length);
+
+        StringBuilder sb = new StringBuilder("https://").append(host);
+        for (String segment : pathSegments) {
+            sb.append('/').append(percentEncodeSegment(segment));
+        }
+        sb.append('/');
+        return sb.toString();
+    }
+
+    /**
      * Validates that the DID string starts with the expected {@code did:webvh:} prefix.
      * @param did the full DID string to validate
      * @throws InvalidDidException if the prefix is missing or null
