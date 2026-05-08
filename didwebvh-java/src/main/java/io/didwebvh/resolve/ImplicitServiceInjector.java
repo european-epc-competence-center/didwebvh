@@ -99,7 +99,7 @@ public final class ImplicitServiceInjector {
 
         if (!hasFiles) {
             ObjectNode filesService = services.addObject();
-            filesService.put("id", FILES_SERVICE_ID);
+            filesService.put("id", did + FILES_SERVICE_ID);
             filesService.put("type", "relativeRef");
             filesService.put("serviceEndpoint", baseUrl);
         }
@@ -107,7 +107,7 @@ public final class ImplicitServiceInjector {
         if (!hasWhois) {
             ObjectNode whoisService = services.addObject();
             whoisService.put("@context", LINKED_VP_CONTEXT);
-            whoisService.put("id", WHOIS_SERVICE_ID);
+            whoisService.put("id", did + WHOIS_SERVICE_ID);
             whoisService.put("type", "LinkedVerifiablePresentation");
             whoisService.put("serviceEndpoint", baseUrl + "whois.vp");
         }

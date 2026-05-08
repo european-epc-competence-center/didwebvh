@@ -32,13 +32,13 @@ class ImplicitServiceInjectorTest {
 
         // #files service
         JsonNode files = services.get(0);
-        assertThat(files.path("id").asText()).isEqualTo("#files");
+        assertThat(files.path("id").asText()).isEqualTo(DID + "#files");
         assertThat(files.path("type").asText()).isEqualTo("relativeRef");
         assertThat(files.path("serviceEndpoint").asText()).isEqualTo("https://example.com/");
 
         // #whois service
         JsonNode whois = services.get(1);
-        assertThat(whois.path("id").asText()).isEqualTo("#whois");
+        assertThat(whois.path("id").asText()).isEqualTo(DID + "#whois");
         assertThat(whois.path("type").asText()).isEqualTo("LinkedVerifiablePresentation");
         assertThat(whois.path("serviceEndpoint").asText()).isEqualTo("https://example.com/whois.vp");
         assertThat(whois.path("@context").asText())
