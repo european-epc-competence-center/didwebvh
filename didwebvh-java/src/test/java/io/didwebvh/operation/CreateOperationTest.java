@@ -3,6 +3,7 @@ package io.didwebvh.operation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
@@ -45,11 +46,11 @@ class CreateOperationTest {
         publicKeyMultibase = fixture.publicKeyMultibase();
     }
 
-    private ObjectNode buildInitialDocument() {
+    private DidDocument buildInitialDocument() {
         ObjectNode doc = MAPPER.createObjectNode();
         doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
         doc.put("id", "did:webvh:{SCID}:" + DOMAIN);
-        return doc;
+        return new DidDocument(doc);
     }
 
     private CreateOptions.Builder defaultOptions() {
@@ -90,9 +91,10 @@ class CreateOperationTest {
         @Test
         void create_withPathDomain() {
             String domainWithPath = "example.com:dids:issuer";
-            ObjectNode doc = MAPPER.createObjectNode();
-            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
-            doc.put("id", "did:webvh:{SCID}:" + domainWithPath);
+            ObjectNode docNode = MAPPER.createObjectNode();
+            docNode.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            docNode.put("id", "did:webvh:{SCID}:" + domainWithPath);
+            DidDocument doc = new DidDocument(docNode);
 
             CreateResult result = CreateOperation.create(
                     CreateOptions.builder()
@@ -396,7 +398,7 @@ class CreateOperationTest {
         @Test
         void state_containsDidAsId() {
             CreateResult result = CreateOperation.create(defaultOptions().build());
-            String docId = result.log().first().state().get("id").asText();
+            String docId = result.log().first().state().getString("id");
 
             assertThat(docId).isEqualTo(result.did());
         }
@@ -404,23 +406,25 @@ class CreateOperationTest {
         @Test
         void state_preservesContext() {
             CreateResult result = CreateOperation.create(defaultOptions().build());
-            JsonNode context = result.log().first().state().get("@context");
+            List<String> context = result.log().first().state().getStrings("@context");
 
-            assertThat(context).isNotNull();
-            assertThat(context.isArray()).isTrue();
-            assertThat(context.get(0).asText()).isEqualTo("https://www.w3.org/ns/did/v1");
+            assertThat(context).isNotEmpty();
+            assertThat(context.get(0)).isEqualTo("https://www.w3.org/ns/did/v1");
         }
 
         @Test
         void state_preservesAdditionalFields() {
-            ObjectNode doc = buildInitialDocument();
+            ObjectNode docNode = MAPPER.createObjectNode();
+            docNode.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            docNode.put("id", "did:webvh:{SCID}:" + DOMAIN);
             ObjectNode verificationMethod = MAPPER.createObjectNode();
             verificationMethod.put("id", "did:webvh:{SCID}:" + DOMAIN + "#key-1");
             verificationMethod.put("type", "Multikey");
             verificationMethod.put("controller", "did:webvh:{SCID}:" + DOMAIN);
             verificationMethod.put("publicKeyMultibase", publicKeyMultibase);
-            doc.putArray("verificationMethod").add(verificationMethod);
-            doc.putArray("authentication").add("did:webvh:{SCID}:" + DOMAIN + "#key-1");
+            docNode.putArray("verificationMethod").add(verificationMethod);
+            docNode.putArray("authentication").add("did:webvh:{SCID}:" + DOMAIN + "#key-1");
+            DidDocument doc = new DidDocument(docNode);
 
             CreateResult result = CreateOperation.create(
                     CreateOptions.builder()
@@ -430,14 +434,14 @@ class CreateOperationTest {
                             .signer(signer)
                             .build());
 
-            JsonNode state = result.log().first().state();
+            DidDocument state = result.log().first().state();
             String scid = result.metadata().scid();
 
             assertThat(state.has("verificationMethod")).isTrue();
-            JsonNode vm = state.get("verificationMethod").get(0);
-            assertThat(vm.get("id").asText()).contains(scid);
-            assertThat(vm.get("id").asText()).doesNotContain("{SCID}");
-            assertThat(vm.get("controller").asText()).isEqualTo(result.did());
+            DidDocument vm = state.getObjects("verificationMethod").get(0);
+            assertThat(vm.getString("id")).contains(scid);
+            assertThat(vm.getString("id")).doesNotContain("{SCID}");
+            assertThat(vm.getString("controller")).isEqualTo(result.did());
         }
     }
 

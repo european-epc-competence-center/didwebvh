@@ -1,6 +1,6 @@
 package io.didwebvh.resolve;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
 import io.didwebvh.exception.DidNotFoundException;
@@ -127,12 +127,12 @@ public final class LogBasedResolver {
             return deactivatedResult(did, latest, genesis);
         }
 
-        // The spec requires that the DID being resolved matches the top-level 
+        // The spec requires that the DID being resolved matches the top-level
         // "id" in AT LEAST ONE version of the DIDDoc.
-        // Validity check: it answers "is this log associated with the DID 
+        // Validity check: it answers "is this log associated with the DID
         // I'm trying to resolve?"
         boolean didIdFound = validEntries.stream()
-                .anyMatch(v -> baseDid.equals(v.entry().state().path("id").asText(null)));
+                .anyMatch(v -> baseDid.equals(v.entry().state().getString("id")));
         if (!didIdFound) {
             throw new LogValidationException(
                     "DID '" + baseDid + "' does not match any document id in the valid log");
@@ -143,12 +143,12 @@ public final class LogBasedResolver {
 
         // Deep-copy the document so we can safely inject implicit services without
         // mutating the cached log entry state (which may be reused elsewhere).
-        JsonNode document = target.entry().state().deepCopy();
+        DidDocument document = target.entry().state().deepCopy();
 
         // Inject the implicit #files and #whois services as required by spec.
         // These services are conceptually part of the resolved DID document even when
         // the DID Controller did not explicitly declare them.
-        ImplicitServiceInjector.inject(document, baseDid);
+        document = ImplicitServiceInjector.inject(document, baseDid);
 
         if (fragment != null) {
             log.trace("Dereferencing fragment '{}' from DID document for {}", fragment, did);

@@ -1,6 +1,6 @@
 package io.didwebvh.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.WitnessParameter;
@@ -42,7 +42,7 @@ public final class UpdateOptions {
     private final DidLog log;
 
     /** The new DID document state to record in this log entry. */
-    private final JsonNode updatedDocument;
+    private final DidDocument updatedDocument;
 
     /** The signing key corresponding to the currently active {@code updateKeys}. */
     private final Signer signer;
@@ -89,7 +89,7 @@ public final class UpdateOptions {
     }
 
     public DidLog getLog() { return log; }
-    public JsonNode getUpdatedDocument() { return updatedDocument; }
+    public DidDocument getUpdatedDocument() { return updatedDocument; }
     public Signer getSigner() { return signer; }
     public List<String> getUpdateKeys() { return updateKeys; }
     public List<String> getNextKeyHashes() { return nextKeyHashes; }
@@ -103,7 +103,7 @@ public final class UpdateOptions {
 
     public static final class Builder {
         private DidLog log;
-        private JsonNode updatedDocument;
+        private DidDocument updatedDocument;
         private Signer signer;
         private List<String> updateKeys;
         private List<String> nextKeyHashes;
@@ -118,7 +118,7 @@ public final class UpdateOptions {
             return this;
         }
 
-        public Builder updatedDocument(JsonNode updatedDocument) {
+        public Builder updatedDocument(DidDocument updatedDocument) {
             this.updatedDocument = updatedDocument;
             return this;
         }

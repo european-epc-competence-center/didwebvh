@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.model.proof.DataIntegrityProof;
 
 import java.util.List;
@@ -13,8 +13,7 @@ import java.util.List;
  * A single entry in the did:webvh log ({@code did.jsonl}).
  *
  * <p>Each line in the JSONL file deserializes to one {@code DidLogEntry}.
- * The {@code state} field holds the raw DID document as a {@link JsonNode}
- * to avoid prematurely binding to a specific DID doc schema.
+ * The {@code state} field holds the DID document as a {@link DidDocument}.
  *
  * <p>Wire format:
  * <pre>
@@ -33,7 +32,7 @@ public record DidLogEntry(
         @JsonProperty("versionId") String versionId,
         @JsonProperty("versionTime") String versionTime,
         @JsonProperty("parameters") Parameters parameters,
-        @JsonProperty("state") JsonNode state,
+        @JsonProperty("state") DidDocument state,
         @JsonProperty("proof") List<DataIntegrityProof> proof
 ) {
 

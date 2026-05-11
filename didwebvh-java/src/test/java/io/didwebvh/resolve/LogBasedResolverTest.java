@@ -2,6 +2,7 @@ package io.didwebvh.resolve;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.*;
 import io.didwebvh.crypto.DataIntegrity;
 import io.didwebvh.model.DidLog;
@@ -47,11 +48,11 @@ class LogBasedResolverTest {
                 .build();
     }
 
-    private ObjectNode initialDocument() {
+    private DidDocument initialDocument() {
         ObjectNode doc = MAPPER.createObjectNode();
         doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
         doc.put("id", "did:webvh:{SCID}:" + DOMAIN);
-        return doc;
+        return new DidDocument(doc);
     }
 
     private CreateResult createDid() {
@@ -72,7 +73,7 @@ class LogBasedResolverTest {
         return UpdateOperation.update(
                 UpdateOptions.builder()
                         .log(log)
-                        .updatedDocument(doc)
+                        .updatedDocument(new DidDocument(doc))
                         .signer(fixture.signer())
                         .build());
     }
@@ -104,7 +105,7 @@ class LogBasedResolverTest {
         return UpdateOperation.update(
                 UpdateOptions.builder()
                         .log(log)
-                        .updatedDocument(doc)
+                        .updatedDocument(new DidDocument(doc))
                         .signer(fixture.signer())
                         .build());
     }
@@ -356,7 +357,7 @@ class LogBasedResolverTest {
                     original.versionId(),
                     original.versionTime(),
                     original.parameters(),
-                    MAPPER.createObjectNode().put("id", "tampered"),
+                    new DidDocument(MAPPER.createObjectNode().put("id", "tampered")),
                     original.proof());
 
             List<DidLogEntry> entries = new ArrayList<>();
@@ -441,7 +442,7 @@ class LogBasedResolverTest {
             ResolveResult result = resolver.resolve(newDid, moved.log(), defaultOptions());
 
             assertThat(result.isSuccess()).isTrue();
-            assertThat(result.document().get("id").asText()).isEqualTo(newDid);
+            assertThat(result.document().getString("id")).isEqualTo(newDid);
         }
 
         /**
@@ -461,7 +462,7 @@ class LogBasedResolverTest {
             UpdateResult moved = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(movedDoc)
+                            .updatedDocument(new DidDocument(movedDoc))
                             .signer(fixture.signer())
                             .build());
 
@@ -490,7 +491,7 @@ class LogBasedResolverTest {
             // Log-level check: v1 had id=oldDid → passes
             assertThat(result.isSuccess()).isTrue();
             // Latest document has the new id
-            assertThat(result.document().get("id").asText())
+            assertThat(result.document().getString("id"))
                     .isEqualTo("did:webvh:" + scid + ":newdomain.com");
         }
 
@@ -516,7 +517,7 @@ class LogBasedResolverTest {
             // Log-level check: v2 has id=newDid → passes
             assertThat(result.isSuccess()).isTrue();
             // Target is v1, which still has the old id
-            assertThat(result.document().get("id").asText())
+            assertThat(result.document().getString("id"))
                     .isEqualTo("did:webvh:" + scid + ":" + DOMAIN);
         }
     }
@@ -600,7 +601,7 @@ class LogBasedResolverTest {
             UpdateResult updated2 = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(doc2)
+                            .updatedDocument(new DidDocument(doc2))
                             .signer(fixture.signer())
                             .witness(configB())
                             .build());
@@ -612,7 +613,7 @@ class LogBasedResolverTest {
             UpdateResult updated3 = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(updated2.log())
-                            .updatedDocument(doc3)
+                            .updatedDocument(new DidDocument(doc3))
                             .signer(fixture.signer())
                             .witness(new WitnessParameter(null, null))
                             .build());
@@ -748,7 +749,7 @@ class LogBasedResolverTest {
             UpdateResult updated2 = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(doc2)
+                            .updatedDocument(new DidDocument(doc2))
                             .signer(fixture.signer())
                             .build());
 
@@ -758,7 +759,7 @@ class LogBasedResolverTest {
             UpdateResult updated3 = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(updated2.log())
-                            .updatedDocument(doc3)
+                            .updatedDocument(new DidDocument(doc3))
                             .signer(fixture.signer())
                             .build());
 
@@ -873,7 +874,7 @@ class LogBasedResolverTest {
             UpdateResult updated = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(doc2)
+                            .updatedDocument(new DidDocument(doc2))
                             .signer(fixture.signer())
                             .witness(witnessConfig())
                             .build());
@@ -1039,7 +1040,7 @@ class LogBasedResolverTest {
             return UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(log)
-                            .updatedDocument(doc)
+                            .updatedDocument(new DidDocument(doc))
                             .signer(fixture.signer())
                             .witness(new WitnessParameter(null, null))
                             .build());

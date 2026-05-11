@@ -2,6 +2,7 @@ package io.didwebvh.log;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
 import io.didwebvh.api.UpdateOptions;
@@ -44,11 +45,11 @@ class LogValidatorTest {
         validator = new LogValidator(Ed25519TestFixture.verifier());
     }
 
-    private ObjectNode initialDocument() {
+    private DidDocument initialDocument() {
         ObjectNode doc = MAPPER.createObjectNode();
         doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
         doc.put("id", "did:webvh:{SCID}:" + DOMAIN);
-        return doc;
+        return new DidDocument(doc);
     }
 
     private CreateResult createDid() {
@@ -68,7 +69,7 @@ class LogValidatorTest {
         return UpdateOperation.update(
                 UpdateOptions.builder()
                         .log(log)
-                        .updatedDocument(doc)
+                        .updatedDocument(new DidDocument(doc))
                         .signer(fixture.signer())
                         .build());
     }
@@ -133,8 +134,7 @@ class LogValidatorTest {
         void entryHashMismatch_onTamperedState() {
             CreateResult created = createDid();
             DidLogEntry g = created.log().first();
-            ObjectNode state = g.state().deepCopy();
-            state.put("tampered", true);
+            DidDocument state = g.state().toBuilder().setBoolean("tampered", true).build();
             DidLogEntry bad = new DidLogEntry(
                     g.versionId(), g.versionTime(), g.parameters(), state, g.proof());
             DidLog badLog = new DidLog(List.of(bad));
@@ -255,8 +255,7 @@ class LogValidatorTest {
             String scid = created.metadata().scid();
             UpdateResult updated = updateDid(created.log(), scid);
             DidLogEntry second = updated.log().latest();
-            ObjectNode tamperedState = (ObjectNode) second.state().deepCopy();
-            tamperedState.put("x", 1);
+            DidDocument tamperedState = second.state().toBuilder().setInt("x", 1).build();
             DidLogEntry tampered = new DidLogEntry(
                     second.versionId(),
                     second.versionTime(),
@@ -298,7 +297,7 @@ class LogValidatorTest {
             UpdateResult moved = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(movedDoc)
+                            .updatedDocument(new DidDocument(movedDoc))
                             .signer(fixture.signer())
                             .build());
 
@@ -335,7 +334,7 @@ class LogValidatorTest {
             UpdateResult moved = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(movedDoc)
+                            .updatedDocument(new DidDocument(movedDoc))
                             .signer(fixture.signer())
                             .build());
 

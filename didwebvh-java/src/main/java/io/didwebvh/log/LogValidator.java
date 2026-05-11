@@ -141,8 +141,8 @@ public final class LogValidator {
         // to a new domain — only DIDs explicitly created with portable=true
         // may change their document id across entries.
         if (previous != null) {
-            String prevDocId = previous.state().path("id").asText(null);
-            String currDocId = entry.state().path("id").asText(null);
+            String prevDocId = previous.state().getString("id");
+            String currDocId = entry.state().getString("id");
             if (prevDocId != null && !prevDocId.equals(currDocId)) {
                 if (!Boolean.TRUE.equals(activeParams.portable())) {
                     throw new LogValidationException(

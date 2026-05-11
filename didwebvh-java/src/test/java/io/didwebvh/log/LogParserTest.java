@@ -2,6 +2,7 @@ package io.didwebvh.log;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.exception.LogValidationException;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
@@ -52,7 +53,7 @@ class LogParserTest {
         assertThat(entry.parameters().method()).isEqualTo("did:webvh:1.0");
         assertThat(entry.parameters().scid()).isEqualTo("Scid123");
         assertThat(entry.parameters().updateKeys()).containsExactly("Key1");
-        assertThat(entry.state().get("id").asText()).isEqualTo("did:webvh:Scid123:example.com");
+        assertThat(entry.state().getString("id")).isEqualTo("did:webvh:Scid123:example.com");
         assertThat(entry.proof()).hasSize(1);
         assertThat(entry.proof().get(0).proofValue()).isEqualTo("SigValue");
     }
@@ -151,13 +152,14 @@ class LogParserTest {
     @Test
     void roundTrip_serializeThenParse_preservesData() {
         Parameters params = new Parameters("did:webvh:1.0", "Scid123", List.of("Key1"), null, null, null, null, null, null);
-        ObjectNode state = MAPPER.createObjectNode();
-        state.put("id", "did:webvh:Scid123:example.com");
-        state.putArray("verificationMethod").addObject()
+        ObjectNode stateNode = MAPPER.createObjectNode();
+        stateNode.put("id", "did:webvh:Scid123:example.com");
+        stateNode.putArray("verificationMethod").addObject()
                 .put("id", "did:webvh:Scid123:example.com#key-1")
                 .put("type", "Multikey")
                 .put("controller", "did:webvh:Scid123:example.com")
                 .put("publicKeyMultibase", "Key1");
+        DidDocument state = new DidDocument(stateNode);
         DataIntegrityProof proof = DataIntegrityProof.of("Key1", "2025-01-23T04:12:36Z", "SigValue");
 
         DidLogEntry entry1 = new DidLogEntry("1-QmHash1", "2025-01-23T04:12:36Z", params, state, List.of(proof));
@@ -176,7 +178,7 @@ class LogParserTest {
         assertThat(parsed1.parameters().method()).isEqualTo("did:webvh:1.0");
         assertThat(parsed1.parameters().scid()).isEqualTo("Scid123");
         assertThat(parsed1.parameters().updateKeys()).containsExactly("Key1");
-        assertThat(parsed1.state().get("id").asText()).isEqualTo("did:webvh:Scid123:example.com");
+        assertThat(parsed1.state().getString("id")).isEqualTo("did:webvh:Scid123:example.com");
         assertThat(parsed1.proof()).hasSize(1);
         assertThat(parsed1.proof().get(0).proofValue()).isEqualTo("SigValue");
         assertThat(parsed1.proof().get(0).cryptosuite()).isEqualTo("eddsa-jcs-2022");

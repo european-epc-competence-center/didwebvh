@@ -1,6 +1,6 @@
 package io.didwebvh.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.WitnessParameter;
 
@@ -19,7 +19,7 @@ import java.util.List;
  * <pre>{@code
  * var options = CreateOptions.builder()
  *     .domain("example.com:dids:issuer")
- *     .initialDocument(doc)                    // JsonNode with {SCID} placeholders
+ *     .initialDocument(doc)                    // DidDocument with {SCID} placeholders
  *     .updateKeys(List.of(publicKeyMultibase))  // multikey-encoded public key(s)
  *     .signer(signer)
  *     .build();
@@ -38,7 +38,7 @@ public final class CreateOptions {
      * DID identifier appears (e.g. the {@code id} field). The library replaces all occurrences
      * with the computed SCID before signing.
      */
-    private final JsonNode initialDocument;
+    private final DidDocument initialDocument;
 
     /**
      * The multikey-encoded public key(s) authorised to sign future log updates.
@@ -81,7 +81,7 @@ public final class CreateOptions {
     }
 
     public String getDomain() { return domain; }
-    public JsonNode getInitialDocument() { return initialDocument; }
+    public DidDocument getInitialDocument() { return initialDocument; }
     public List<String> getUpdateKeys() { return updateKeys; }
     public Signer getSigner() { return signer; }
     public boolean isPortable() { return portable; }
@@ -96,7 +96,7 @@ public final class CreateOptions {
 
     public static final class Builder {
         private String domain;
-        private JsonNode initialDocument;
+        private DidDocument initialDocument;
         private List<String> updateKeys;
         private Signer signer;
         private boolean portable = false;
@@ -112,7 +112,7 @@ public final class CreateOptions {
             return this;
         }
 
-        public Builder initialDocument(JsonNode initialDocument) {
+        public Builder initialDocument(DidDocument initialDocument) {
             this.initialDocument = initialDocument;
             return this;
         }

@@ -2,6 +2,7 @@ package io.didwebvh.operation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.didwebvh.DidDocument;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.DeactivateOptions;
 import io.didwebvh.util.JsonMapper;
@@ -76,7 +77,7 @@ public final class DeactivateOperation {
             Parameters newEffective = deactivatedEffectiveParameters(activeParams);
             Parameters delta = newEffective.diff(activeParams);
 
-            JsonNode document = previous.state();
+            DidDocument document = previous.state();
             String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
 
             DidLogEntry preliminaryEntry = new DidLogEntry(

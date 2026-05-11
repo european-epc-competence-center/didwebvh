@@ -1,9 +1,11 @@
 package io.didwebvh.resolve;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,24 +26,23 @@ class ImplicitServiceInjectorTest {
         ObjectNode doc = MAPPER.createObjectNode();
         doc.put("id", DID);
 
-        ImplicitServiceInjector.inject(doc, DID);
+        DidDocument result = ImplicitServiceInjector.inject(new DidDocument(doc), DID);
 
-        JsonNode services = doc.path("service");
-        assertThat(services.isArray()).isTrue();
+        List<DidDocument> services = result.getObjects("service");
         assertThat(services).hasSize(2);
 
         // #files service
-        JsonNode files = services.get(0);
-        assertThat(files.path("id").asText()).isEqualTo(DID + "#files");
-        assertThat(files.path("type").asText()).isEqualTo("relativeRef");
-        assertThat(files.path("serviceEndpoint").asText()).isEqualTo("https://example.com/");
+        DidDocument files = services.get(0);
+        assertThat(files.getString("id")).isEqualTo(DID + "#files");
+        assertThat(files.getString("type")).isEqualTo("relativeRef");
+        assertThat(files.getString("serviceEndpoint")).isEqualTo("https://example.com/");
 
         // #whois service
-        JsonNode whois = services.get(1);
-        assertThat(whois.path("id").asText()).isEqualTo(DID + "#whois");
-        assertThat(whois.path("type").asText()).isEqualTo("LinkedVerifiablePresentation");
-        assertThat(whois.path("serviceEndpoint").asText()).isEqualTo("https://example.com/whois.vp");
-        assertThat(whois.path("@context").asText())
+        DidDocument whois = services.get(1);
+        assertThat(whois.getString("id")).isEqualTo(DID + "#whois");
+        assertThat(whois.getString("type")).isEqualTo("LinkedVerifiablePresentation");
+        assertThat(whois.getString("serviceEndpoint")).isEqualTo("https://example.com/whois.vp");
+        assertThat(whois.getString("@context"))
                 .isEqualTo("https://identity.foundation/linked-vp/contexts/v1");
     }
 
@@ -51,15 +52,15 @@ class ImplicitServiceInjectorTest {
         ObjectNode doc = MAPPER.createObjectNode();
         doc.put("id", did);
 
-        ImplicitServiceInjector.inject(doc, did);
+        DidDocument result = ImplicitServiceInjector.inject(new DidDocument(doc), did);
 
-        JsonNode services = doc.path("service");
-        JsonNode files = services.get(0);
-        assertThat(files.path("serviceEndpoint").asText())
+        List<DidDocument> services = result.getObjects("service");
+        DidDocument files = services.get(0);
+        assertThat(files.getString("serviceEndpoint"))
                 .isEqualTo("https://example.com/dids/issuer/");
 
-        JsonNode whois = services.get(1);
-        assertThat(whois.path("serviceEndpoint").asText())
+        DidDocument whois = services.get(1);
+        assertThat(whois.getString("serviceEndpoint"))
                 .isEqualTo("https://example.com/dids/issuer/whois.vp");
     }
 
@@ -73,11 +74,11 @@ class ImplicitServiceInjectorTest {
         existingService.put("serviceEndpoint", "https://example.com/api");
         doc.putArray("service").add(existingService);
 
-        ImplicitServiceInjector.inject(doc, DID);
+        DidDocument result = ImplicitServiceInjector.inject(new DidDocument(doc), DID);
 
-        JsonNode services = doc.path("service");
+        List<DidDocument> services = result.getObjects("service");
         assertThat(services).hasSize(3);
-        assertThat(services.get(0).path("id").asText()).isEqualTo("#my-service");
+        assertThat(services.get(0).getString("id")).isEqualTo("#my-service");
     }
 
     @Test
@@ -90,12 +91,12 @@ class ImplicitServiceInjectorTest {
         explicitFiles.put("serviceEndpoint", "https://cdn.example.com/");
         doc.putArray("service").add(explicitFiles);
 
-        ImplicitServiceInjector.inject(doc, DID);
+        DidDocument result = ImplicitServiceInjector.inject(new DidDocument(doc), DID);
 
-        JsonNode services = doc.path("service");
+        List<DidDocument> services = result.getObjects("service");
         assertThat(services).hasSize(2); // only #whois added
-        JsonNode files = services.get(0);
-        assertThat(files.path("serviceEndpoint").asText()).isEqualTo("https://cdn.example.com/");
+        DidDocument files = services.get(0);
+        assertThat(files.getString("serviceEndpoint")).isEqualTo("https://cdn.example.com/");
     }
 
     @Test
@@ -108,12 +109,12 @@ class ImplicitServiceInjectorTest {
         explicitWhois.put("serviceEndpoint", "https://example.com/custom-whois");
         doc.putArray("service").add(explicitWhois);
 
-        ImplicitServiceInjector.inject(doc, DID);
+        DidDocument result = ImplicitServiceInjector.inject(new DidDocument(doc), DID);
 
-        JsonNode services = doc.path("service");
+        List<DidDocument> services = result.getObjects("service");
         assertThat(services).hasSize(2); // only #files added
-        JsonNode whois = services.get(0);
-        assertThat(whois.path("serviceEndpoint").asText()).isEqualTo("https://example.com/custom-whois");
+        DidDocument whois = services.get(0);
+        assertThat(whois.getString("serviceEndpoint")).isEqualTo("https://example.com/custom-whois");
     }
 
     @Test
@@ -122,16 +123,17 @@ class ImplicitServiceInjectorTest {
         doc.put("id", DID);
         // no "service" field at all
 
-        ImplicitServiceInjector.inject(doc, DID);
+        DidDocument result = ImplicitServiceInjector.inject(new DidDocument(doc), DID);
 
-        assertThat(doc.has("service")).isTrue();
-        assertThat(doc.path("service").isArray()).isTrue();
+        assertThat(result.has("service")).isTrue();
+        assertThat(result.getObjects("service")).isNotEmpty();
     }
 
     @Test
     void inject_nonObjectDocument_noOp() {
-        JsonNode textNode = MAPPER.valueToTree("not an object");
+        DidDocument textNode = new DidDocument(MAPPER.valueToTree("not an object"));
         // Should not throw
-        ImplicitServiceInjector.inject(textNode, DID);
+        DidDocument result = ImplicitServiceInjector.inject(textNode, DID);
+        assertThat(result).isSameAs(textNode);
     }
 }

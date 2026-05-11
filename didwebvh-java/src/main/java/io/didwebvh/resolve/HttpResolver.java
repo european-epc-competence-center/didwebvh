@@ -1,5 +1,6 @@
 package io.didwebvh.resolve;
 
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
 import io.didwebvh.exception.DidNotFoundException;
@@ -10,7 +11,6 @@ import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.ResolutionMetadata;
 import io.didwebvh.witness.WitnessProofCollection;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -151,7 +151,7 @@ public final class HttpResolver implements DidResolver {
                         baseResult.resolutionMetadata());
             }
 
-            JsonNode document = baseResult.document();
+            DidDocument document = baseResult.document();
 
             // ------------------------------------------------------------------
             // 3. Path dereferencing takes precedence over fragment dereferencing.
@@ -205,7 +205,7 @@ public final class HttpResolver implements DidResolver {
      * @param options   resolution options (may contain a custom resource fetcher)
      * @return a {@link ResolveResult} carrying the content in {@code contentStream}
      */
-    private ResolveResult resolvePath(JsonNode document, String baseDid,
+    private ResolveResult resolvePath(DidDocument document, String baseDid,
                                       String didUrl, String path, ResolveOptions options) {
         try {
             // Ask the path resolver to map the DID URL path to a concrete HTTPS URL.

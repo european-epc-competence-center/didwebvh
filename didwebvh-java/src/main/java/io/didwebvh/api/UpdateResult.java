@@ -1,6 +1,6 @@
 package io.didwebvh.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.DidLog;
 
@@ -12,7 +12,7 @@ import io.didwebvh.model.DidLog;
  * @param log      the full updated log (existing entries + new entry) to replace {@code did.jsonl}
  */
 public record UpdateResult(
-        JsonNode document,
+        DidDocument document,
         DidDocumentMetadata metadata,
         DidLog log
 ) {}

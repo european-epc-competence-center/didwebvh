@@ -1,9 +1,9 @@
 package io.didwebvh.resolve;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Injects the two implicit {@code did:webvh} services into a resolved DID document.
@@ -33,10 +33,6 @@ import com.fasterxml.jackson.databind.JsonNode;
  *       services available in the document.</li>
  * </ol>
  *
- * <p><b>Important:</b> The supplied {@code document} is mutated in-place.
- * Callers should pass a mutable {@link ObjectNode} (typically a deep copy of
- * the original log entry state) to avoid corrupting the cached log data.</p>
- *
  * @see DidUrlPathResolver
  * @see <a href="https://identity.foundation/linked-vp/">Linked Verifiable Presentation</a>
  */
@@ -56,37 +52,23 @@ public final class ImplicitServiceInjector {
      * (see {@link DidUrlTransformer#toBaseUrl}). The {@code #whois} endpoint
      * additionally appends {@code whois.vp}.</p>
      *
-     * @param document the resolved DID document; must be a mutable {@link ObjectNode}
+     * @param document the resolved DID document
      * @param did      the base DID string (used to construct absolute service IDs
      *                 and the base URL)
+     * @return a new DID document with implicit services injected
      */
-    public static void inject(JsonNode document, String did) {
+    public static DidDocument inject(DidDocument document, String did) {
         if (!document.isObject()) {
-            return;
+            return document;
         }
-        ObjectNode doc = (ObjectNode) document;
 
-        ArrayNode services;
-        if (doc.has("service")) {
-            JsonNode existing = doc.get("service");
-            if (existing.isArray()) {
-                services = (ArrayNode) existing;
-            } else {
-                // Non-array service field — wrap in array to keep it valid
-                services = JsonNodeFactory.instance.arrayNode();
-                services.add(existing);
-                doc.set("service", services);
-            }
-        } else {
-            services = doc.putArray("service");
-        }
+        List<DidDocument> services = new ArrayList<>(document.getObjects("service"));
 
         boolean hasFiles = false;
         boolean hasWhois = false;
 
-        for (JsonNode svc : services) {
-            if (!svc.isObject()) continue;
-            String id = svc.path("id").asText("");
+        for (DidDocument svc : services) {
+            String id = svc.getString("id", "");
             if (FILES_SERVICE_ID.equals(id) || (did + FILES_SERVICE_ID).equals(id)) {
                 hasFiles = true;
             }
@@ -98,18 +80,24 @@ public final class ImplicitServiceInjector {
         String baseUrl = DidUrlTransformer.toBaseUrl(did);
 
         if (!hasFiles) {
-            ObjectNode filesService = services.addObject();
-            filesService.put("id", did + FILES_SERVICE_ID);
-            filesService.put("type", "relativeRef");
-            filesService.put("serviceEndpoint", baseUrl);
+            DidDocument filesService = DidDocument.builder()
+                    .setString("id", did + FILES_SERVICE_ID)
+                    .setString("type", "relativeRef")
+                    .setString("serviceEndpoint", baseUrl)
+                    .build();
+            services.add(filesService);
         }
 
         if (!hasWhois) {
-            ObjectNode whoisService = services.addObject();
-            whoisService.put("@context", LINKED_VP_CONTEXT);
-            whoisService.put("id", did + WHOIS_SERVICE_ID);
-            whoisService.put("type", "LinkedVerifiablePresentation");
-            whoisService.put("serviceEndpoint", baseUrl + "whois.vp");
+            DidDocument whoisService = DidDocument.builder()
+                    .setString("@context", LINKED_VP_CONTEXT)
+                    .setString("id", did + WHOIS_SERVICE_ID)
+                    .setString("type", "LinkedVerifiablePresentation")
+                    .setString("serviceEndpoint", baseUrl + "whois.vp")
+                    .build();
+            services.add(whoisService);
         }
+
+        return document.toBuilder().setObjects("service", services).build();
     }
 }

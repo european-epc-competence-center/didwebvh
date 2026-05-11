@@ -3,6 +3,8 @@ package io.didwebvh;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -23,6 +25,8 @@ import java.util.Objects;
  * <p>Instances are immutable. All mutation is done via the nested
  * {@link Builder}.</p>
  */
+@JsonSerialize(using = DidDocumentSerializer.class)
+@JsonDeserialize(using = DidDocumentDeserializer.class)
 public final class DidDocument {
 
     private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
@@ -32,8 +36,7 @@ public final class DidDocument {
     /**
      * Constructs a wrapper around the given Jackson node.
      *
-     * <p>This constructor is public so that internal packages can construct
-     * a {@code DidDocument} from an existing tree. Consumers should prefer
+     * <p><strong>Library internal use only.</strong> Consumers should prefer
      * {@link #fromJson}, {@link #fromMap}, or the {@link Builder}.</p>
      */
     public DidDocument(JsonNode node) {
@@ -223,6 +226,17 @@ public final class DidDocument {
         return new DidDocument(node.deepCopy());
     }
 
+    /**
+     * Returns a mutable builder pre-populated with the fields of this document.
+     * If this node is not an object, an empty builder is returned.
+     */
+    public Builder toBuilder() {
+        if (!node.isObject()) {
+            return builder();
+        }
+        return new Builder((ObjectNode) node.deepCopy());
+    }
+
     /** Returns a copy of this object with the given field removed. */
     public DidDocument without(String field) {
         if (node.isObject()) {
@@ -279,6 +293,10 @@ public final class DidDocument {
 
         private Builder() {
             this.node = MAPPER.createObjectNode();
+        }
+
+        private Builder(ObjectNode node) {
+            this.node = node;
         }
 
         public Builder setString(String field, String value) {

@@ -2,6 +2,7 @@ package io.didwebvh.log;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
@@ -49,8 +50,9 @@ class LogSerializerTest {
     @Test
     void serializeLine_fullEntry_allFieldsPresent() {
         Parameters params = new Parameters("did:webvh:1.0", "Scid123", List.of("Key1"), null, null, null, null, null, null);
-        ObjectNode state = MAPPER.createObjectNode();
-        state.put("id", "did:webvh:Scid123:example.com");
+        ObjectNode stateNode = MAPPER.createObjectNode();
+        stateNode.put("id", "did:webvh:Scid123:example.com");
+        DidDocument state = new DidDocument(stateNode);
         DataIntegrityProof proof = DataIntegrityProof.of("Key1", "2025-01-23T04:12:36Z", "SigValue");
 
         DidLogEntry entry = new DidLogEntry("1-QmHash", "2025-01-23T04:12:36Z", params, state, List.of(proof));
@@ -122,8 +124,9 @@ class LogSerializerTest {
     @Test
     void serialize_outputIsCompactNoWhitespaceInObjects() {
         Parameters params = new Parameters("did:webvh:1.0", "Scid", List.of("Key"), null, null, null, null, null, null);
-        ObjectNode state = MAPPER.createObjectNode();
-        state.put("id", "did:webvh:Scid:example.com");
+        ObjectNode stateNode = MAPPER.createObjectNode();
+        stateNode.put("id", "did:webvh:Scid:example.com");
+        DidDocument state = new DidDocument(stateNode);
         DidLogEntry entry = new DidLogEntry("1-QmHash", "2025-01-23T04:12:36Z", params, state, null);
 
         String line = LogSerializer.serializeLine(entry);

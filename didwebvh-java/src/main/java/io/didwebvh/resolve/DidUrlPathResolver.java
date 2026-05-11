@@ -1,8 +1,10 @@
 package io.didwebvh.resolve;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.exception.DidNotFoundException;
 import io.didwebvh.exception.DidWebVhException;
+
+import java.util.List;
 
 /**
  * Resolves a DID URL path to a concrete HTTPS URL by looking up the
@@ -52,7 +54,7 @@ public final class DidUrlPathResolver {
      * @throws DidNotFoundException if the required service is not found in the document
      * @throws DidWebVhException    if the service entry is malformed (missing {@code serviceEndpoint})
      */
-    public static String resolvePath(JsonNode document, String did, String path) {
+    public static String resolvePath(DidDocument document, String did, String path) {
         if ("/whois".equals(path)) {
             return resolveWhois(document, did);
         } else {
@@ -60,13 +62,13 @@ public final class DidUrlPathResolver {
         }
     }
 
-    private static String resolveWhois(JsonNode document, String did) {
-        JsonNode service = findService(document, did, WHOIS_SERVICE_ID);
+    private static String resolveWhois(DidDocument document, String did) {
+        DidDocument service = findService(document, did, WHOIS_SERVICE_ID);
         if (service == null) {
             throw new DidNotFoundException(
                     "whois service not found in DID document for " + did);
         }
-        String endpoint = service.path("serviceEndpoint").asText(null);
+        String endpoint = service.getString("serviceEndpoint");
         if (endpoint == null || endpoint.isEmpty()) {
             throw new DidWebVhException(
                     "Missing or empty serviceEndpoint for whois service in " + did);
@@ -74,13 +76,13 @@ public final class DidUrlPathResolver {
         return endpoint;
     }
 
-    private static String resolveFilesPath(JsonNode document, String did, String path) {
-        JsonNode service = findService(document, did, FILES_SERVICE_ID);
+    private static String resolveFilesPath(DidDocument document, String did, String path) {
+        DidDocument service = findService(document, did, FILES_SERVICE_ID);
         if (service == null) {
             throw new DidNotFoundException(
                     "files service not found in DID document for " + did);
         }
-        String endpoint = service.path("serviceEndpoint").asText(null);
+        String endpoint = service.getString("serviceEndpoint");
         if (endpoint == null || endpoint.isEmpty()) {
             throw new DidWebVhException(
                     "Missing or empty serviceEndpoint for files service in " + did);
@@ -102,14 +104,10 @@ public final class DidUrlPathResolver {
      * @param serviceId the relative service ID to look for (e.g. {@code "#files"})
      * @return the matching service node, or {@code null} if not found
      */
-    private static JsonNode findService(JsonNode document, String did, String serviceId) {
-        JsonNode services = document.path("service");
-        if (!services.isArray()) {
-            return null;
-        }
-        for (JsonNode svc : services) {
-            if (!svc.isObject()) continue;
-            String id = svc.path("id").asText("");
+    private static DidDocument findService(DidDocument document, String did, String serviceId) {
+        List<DidDocument> services = document.getObjects("service");
+        for (DidDocument svc : services) {
+            String id = svc.getString("id", "");
             if (serviceId.equals(id) || (did + serviceId).equals(id)) {
                 return svc;
             }

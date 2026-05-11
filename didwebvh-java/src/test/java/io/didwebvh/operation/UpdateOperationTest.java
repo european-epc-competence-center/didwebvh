@@ -3,6 +3,7 @@ package io.didwebvh.operation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
 import io.didwebvh.api.UpdateOptions;
@@ -45,11 +46,11 @@ class UpdateOperationTest {
 
     // -- Helpers ---------------------------------------------------------------
 
-    private ObjectNode buildDocument(String scid) {
+    private DidDocument buildDocument(String scid) {
         ObjectNode doc = MAPPER.createObjectNode();
         doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
         doc.put("id", "did:webvh:" + scid + ":" + DOMAIN);
-        return doc;
+        return new DidDocument(doc);
     }
 
     private CreateResult createDid() {
@@ -64,7 +65,7 @@ class UpdateOperationTest {
 
         CreateOptions.Builder builder = CreateOptions.builder()
                 .domain(DOMAIN)
-                .initialDocument(doc)
+                .initialDocument(new DidDocument(doc))
                 .updateKeys(List.of(fixture.publicKeyMultibase()))
                 .signer(fixture.signer());
 
@@ -152,8 +153,11 @@ class UpdateOperationTest {
         void update_stateContainsNewDocument() {
             CreateResult created = createDid();
             String scid = created.metadata().scid();
-            ObjectNode newDoc = buildDocument(scid);
-            newDoc.put("customField", "customValue");
+            ObjectNode newDocNode = MAPPER.createObjectNode();
+            newDocNode.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            newDocNode.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            newDocNode.put("customField", "customValue");
+            DidDocument newDoc = new DidDocument(newDocNode);
 
             UpdateResult result = UpdateOperation.update(
                     UpdateOptions.builder()
@@ -162,8 +166,8 @@ class UpdateOperationTest {
                             .signer(signerA)
                             .build());
 
-            assertThat(result.document().get("customField").asText()).isEqualTo("customValue");
-            assertThat(result.log().latest().state().get("customField").asText()).isEqualTo("customValue");
+            assertThat(result.document().getString("customField")).isEqualTo("customValue");
+            assertThat(result.log().latest().state().getString("customField")).isEqualTo("customValue");
         }
 
         @Test
@@ -755,7 +759,7 @@ class UpdateOperationTest {
         void rejectsMissingLog() {
             assertThatThrownBy(() -> UpdateOperation.update(
                     UpdateOptions.builder()
-                            .updatedDocument(MAPPER.createObjectNode())
+                            .updatedDocument(new DidDocument(MAPPER.createObjectNode()))
                             .signer(signerA)
                             .build()))
                     .isInstanceOf(NullPointerException.class)
@@ -767,7 +771,7 @@ class UpdateOperationTest {
             assertThatThrownBy(() -> UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(DidLog.empty())
-                            .updatedDocument(MAPPER.createObjectNode())
+                            .updatedDocument(new DidDocument(MAPPER.createObjectNode()))
                             .signer(signerA)
                             .build()))
                     .isInstanceOf(IllegalArgumentException.class)
@@ -934,8 +938,11 @@ class UpdateOperationTest {
             String scid = created.metadata().scid();
 
             // Update 1: doc-only change with keyA
-            ObjectNode doc1 = buildDocument(scid);
-            doc1.put("service", "v1");
+            ObjectNode doc1Node = MAPPER.createObjectNode();
+            doc1Node.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc1Node.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            doc1Node.put("service", "v1");
+            DidDocument doc1 = new DidDocument(doc1Node);
             UpdateResult update1 = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
@@ -954,8 +961,11 @@ class UpdateOperationTest {
                             .build());
 
             // Update 3: doc change (signed by keyB)
-            ObjectNode doc3 = buildDocument(scid);
-            doc3.put("service", "v3");
+            ObjectNode doc3Node = MAPPER.createObjectNode();
+            doc3Node.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc3Node.put("id", "did:webvh:" + scid + ":" + DOMAIN);
+            doc3Node.put("service", "v3");
+            DidDocument doc3 = new DidDocument(doc3Node);
             UpdateResult update3 = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(rotated.log())

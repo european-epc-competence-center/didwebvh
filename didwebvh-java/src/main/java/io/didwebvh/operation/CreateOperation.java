@@ -3,6 +3,7 @@ package io.didwebvh.operation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.didwebvh.DidDocument;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.util.JsonMapper;

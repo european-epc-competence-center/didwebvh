@@ -2,6 +2,7 @@ package io.didwebvh.resolve;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
 import io.didwebvh.api.ResolveOptions;
@@ -49,7 +50,7 @@ class HttpResolverTest {
         return CreateOperation.create(
                 CreateOptions.builder()
                         .domain(DOMAIN)
-                        .initialDocument(doc)
+                        .initialDocument(new DidDocument(doc))
                         .updateKeys(List.of(fixture.publicKeyMultibase()))
                         .signer(fixture.signer())
                         .build());
@@ -94,7 +95,7 @@ class HttpResolverTest {
             UpdateResult updated = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(updatedDoc)
+                            .updatedDocument(new DidDocument(updatedDoc))
                             .signer(fixture.signer())
                             .build());
 
@@ -114,10 +115,10 @@ class HttpResolverTest {
             // The resolved document now includes implicit #files and #whois services,
             // so we check the id and service presence instead of
             // exact JSON equality.
-            assertThat(result.document().path("id").asText()).isEqualTo(
-                    created.document().path("id").asText());
-            assertThat(result.document().path("service").isArray()).isTrue();
-            assertThat(result.document().path("service")).hasSize(2);
+            assertThat(result.document().getString("id")).isEqualTo(
+                    created.document().getString("id"));
+            assertThat(result.document().has("service")).isTrue();
+            assertThat(result.document().getObjects("service")).hasSize(2);
         }
     }
 
@@ -192,7 +193,7 @@ class HttpResolverTest {
             UpdateResult updated = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(doc)
+                            .updatedDocument(new DidDocument(doc))
                             .signer(fixture.signer())
                             .build());
 
@@ -203,8 +204,8 @@ class HttpResolverTest {
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.did()).isEqualTo(didBase + "#key-1");
-            assertThat(result.document().path("id").asText()).isEqualTo(vmId);
-            assertThat(result.document().path("publicKeyMultibase").asText())
+            assertThat(result.document().getString("id")).isEqualTo(vmId);
+            assertThat(result.document().getString("publicKeyMultibase"))
                     .isEqualTo(fixture.publicKeyMultibase());
             // The full document is not returned — only the matched VM node
             assertThat(result.document().has("verificationMethod")).isFalse();
@@ -263,7 +264,7 @@ class HttpResolverTest {
             CreateResult created = CreateOperation.create(
                     CreateOptions.builder()
                             .domain(DOMAIN + ":dids:issuer")
-                            .initialDocument(doc)
+                            .initialDocument(new DidDocument(doc))
                             .updateKeys(List.of(fixture.publicKeyMultibase()))
                             .signer(fixture.signer())
                             .build());
@@ -321,7 +322,7 @@ class HttpResolverTest {
             UpdateResult updated = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(doc)
+                            .updatedDocument(new DidDocument(doc))
                             .signer(fixture.signer())
                             .build());
 
@@ -406,7 +407,7 @@ class HttpResolverTest {
             UpdateResult updated = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
-                            .updatedDocument(doc)
+                            .updatedDocument(new DidDocument(doc))
                             .signer(fixture.signer())
                             .build());
 

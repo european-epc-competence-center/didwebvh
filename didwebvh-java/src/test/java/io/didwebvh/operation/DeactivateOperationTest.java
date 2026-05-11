@@ -2,6 +2,7 @@ package io.didwebvh.operation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
 import io.didwebvh.api.DeactivateOptions;
@@ -37,11 +38,11 @@ class DeactivateOperationTest {
         signerA = fixtureA.signer();
     }
 
-    private ObjectNode buildDocument(String scid) {
+    private DidDocument buildDocument(String scid) {
         ObjectNode doc = MAPPER.createObjectNode();
         doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
         doc.put("id", "did:webvh:" + scid + ":" + DOMAIN);
-        return doc;
+        return new DidDocument(doc);
     }
 
     private CreateResult createDid() {
@@ -56,7 +57,7 @@ class DeactivateOperationTest {
 
         CreateOptions.Builder builder = CreateOptions.builder()
                 .domain(DOMAIN)
-                .initialDocument(doc)
+                .initialDocument(new DidDocument(doc))
                 .updateKeys(List.of(fixture.publicKeyMultibase()))
                 .signer(fixture.signer());
 

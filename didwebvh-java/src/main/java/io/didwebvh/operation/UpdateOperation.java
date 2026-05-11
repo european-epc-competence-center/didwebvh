@@ -2,6 +2,7 @@ package io.didwebvh.operation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.didwebvh.DidDocument;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.util.JsonMapper;
 import io.didwebvh.api.UpdateOptions;

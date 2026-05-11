@@ -3,7 +3,7 @@ package io.didwebvh.api;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.model.DidDocumentMetadata;
 import io.didwebvh.model.ResolutionMetadata;
 
@@ -33,7 +33,7 @@ import io.didwebvh.model.ResolutionMetadata;
 public record ResolveResult(
         @JsonIgnore String did,
         @JsonInclude(JsonInclude.Include.ALWAYS)
-        @JsonProperty("didDocument") JsonNode document,
+        @JsonProperty("didDocument") DidDocument document,
         @JsonProperty("didDocumentMetadata") DidDocumentMetadata documentMetadata,
         @JsonProperty("didResolutionMetadata") ResolutionMetadata resolutionMetadata,
         @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -46,9 +46,9 @@ public record ResolveResult(
      * <p>When a DID is resolved without a path, only the DID document and its
      * metadata are returned. The {@code contentStream} is left {@code null}.</p>
      */
-    public ResolveResult(String did, JsonNode document,
-                         DidDocumentMetadata documentMetadata,
-                         ResolutionMetadata resolutionMetadata) {
+    public ResolveResult(String did, DidDocument document,
+                          DidDocumentMetadata documentMetadata,
+                          ResolutionMetadata resolutionMetadata) {
         this(did, document, documentMetadata, resolutionMetadata, null);
     }
 
@@ -60,7 +60,7 @@ public record ResolveResult(
      * its metadata are omitted because the result is not a DID document.</p>
      */
     public ResolveResult(String did, ResolutionMetadata resolutionMetadata,
-                         String contentStream) {
+                          String contentStream) {
         this(did, null, DidDocumentMetadata.EMPTY, resolutionMetadata, contentStream);
     }
 
