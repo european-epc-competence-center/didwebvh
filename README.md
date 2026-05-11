@@ -39,8 +39,6 @@ Add the dependency to your `pom.xml`:
 ## Quick Start
 
 ```java
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.didwebvh.api.*;
 import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.crypto.Signer;
@@ -76,10 +74,10 @@ Signer signer = Signer.create(verificationMethodId, data -> {
 });
 
 // 4. Build the initial DID document with {SCID} placeholders
-ObjectMapper mapper = new ObjectMapper();
-ObjectNode doc = mapper.createObjectNode();
-doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
-doc.put("id", "did:webvh:{SCID}:example.com");
+DidDocument doc = DidDocument.builder()
+    .setStrings("@context", List.of("https://www.w3.org/ns/did/v1"))
+    .setString("id", "did:webvh:{SCID}:example.com")
+    .build();
 
 // 5. Create the DID
 CreateResult created = DidWebVh.create(
@@ -101,7 +99,8 @@ String jsonl = LogSerializer.serialize(created.log());
 // 7. Resolve the DID
 ResolveResult resolved = DidWebVh.resolve(did, ResolveOptions.builder().build());
 if (resolved.isSuccess()) {
-    System.out.println("Document: " + resolved.document());
+    DidDocument document = resolved.document();
+    System.out.println("Document id: " + document.getString("id"));
 }
 ```
 

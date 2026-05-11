@@ -61,8 +61,7 @@ Creating a DID generates the SCID, builds the genesis log entry, and signs it wi
 ### Minimal Example
 
 ```java
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.api.CreateResult;
 import io.didwebvh.api.DidWebVh;
@@ -99,10 +98,10 @@ Signer signer = Signer.create(verificationMethodId, data -> {
 });
 
 // 4. Build the initial DID document with {SCID} placeholders
-ObjectMapper mapper = new ObjectMapper();
-ObjectNode doc = mapper.createObjectNode();
-doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
-doc.put("id", "did:webvh:{SCID}:example.com"); // {SCID} is mandatory
+DidDocument doc = DidDocument.builder()
+    .setStrings("@context", List.of("https://www.w3.org/ns/did/v1"))
+    .setString("id", "did:webvh:{SCID}:example.com") // {SCID} is mandatory
+    .build();
 
 // 5. Create the DID
 CreateResult result = DidWebVh.create(
@@ -115,9 +114,9 @@ CreateResult result = DidWebVh.create(
 );
 
 // 6. Use the result
-String did = result.did();               // e.g. did:webvh:Qm...:example.com
-JsonNode document = result.document();   // the resolved DID document
-DidLog log = result.log();               // the genesis log entry
+String did = result.did();                  // e.g. did:webvh:Qm...:example.com
+DidDocument document = result.document();   // the resolved DID document
+DidLog log = result.log();                  // the genesis log entry
 ```
 
 ### The `CreateOptions` Builder
@@ -127,7 +126,7 @@ All fields are set through the `CreateOptions.Builder`:
 | Builder Method | Required | Description |
 |----------------|----------|-------------|
 | `.domain(String)` | **Yes** | The domain for the DID, e.g. `example.com`. |
-| `.initialDocument(JsonNode)` | **Yes** | The initial DID document. Must use `{SCID}` as a placeholder wherever the DID identifier appears (e.g. in `id`, `controller`, `verificationMethod.id`). |
+| `.initialDocument(DidDocument)` | **Yes** | The initial DID document. Must use `{SCID}` as a placeholder wherever the DID identifier appears (e.g. in `id`, `controller`, `verificationMethod.id`). |
 | `.updateKeys(List<String>)` | **Yes** | One or more multikey-encoded Ed25519 public keys authorised to sign future updates. |
 | `.signer(Signer)` | **Yes** | The signing key that corresponds to one of the `updateKeys`. |
 | `.portable(boolean)` | No | Whether the DID may be moved to a new domain later. Can only be set `true` at creation. Default: `false`. |
@@ -207,6 +206,7 @@ String jsonl = LogSerializer.serialize(result.log());
 The library fetches `did.jsonl`, validates every entry (signatures, hash chain, SCID), and returns the latest DID document.
 
 ```java
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.ResolveOptions;
 import io.didwebvh.api.ResolveResult;
 
@@ -216,11 +216,12 @@ ResolveResult result = DidWebVh.resolve(
 );
 
 if (result.isSuccess()) {
-    JsonNode doc = result.document();
-    ResolutionMetadata meta = result.metadata();
+    DidDocument doc = result.document();
+    System.out.println("Resolved id: " + doc.getString("id"));
+    ResolutionMetadata meta = result.documentMetadata();
     System.out.println("Resolved version " + meta.versionId());
 } else {
-    System.out.println("Error: " + result.metadata().error());
+    System.out.println("Error: " + result.resolutionMetadata().error());
 }
 ```
 
@@ -264,8 +265,8 @@ ResolveResult result = DidWebVh.resolve(
 );
 
 if (result.isSuccess()) {
-    JsonNode verificationMethod = result.document();
-    String publicKeyMultibase = verificationMethod.get("publicKeyMultibase").asText();
+    DidDocument verificationMethod = result.document();
+    String publicKeyMultibase = verificationMethod.getString("publicKeyMultibase");
 }
 ```
 
@@ -278,13 +279,15 @@ Updating appends a new entry to the log. You provide the current log, the new do
 ### Document-Only Update
 
 ```java
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.UpdateOptions;
 import io.didwebvh.api.UpdateResult;
 
 // Build the new document (use the real SCID, not {SCID})
-ObjectNode newDoc = mapper.createObjectNode();
-newDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
-newDoc.put("id", did); // the real DID with SCID
+DidDocument newDoc = DidDocument.builder()
+    .setStrings("@context", List.of("https://www.w3.org/ns/did/v1"))
+    .setString("id", did) // the real DID with SCID
+    .build();
 
 UpdateResult result = DidWebVh.update(
     UpdateOptions.builder()
@@ -302,7 +305,7 @@ DidLog updatedLog = result.log(); // currentLog + new entry
 | Builder Method | Required | Description |
 |----------------|----------|-------------|
 | `.log(DidLog)` | **Yes** | The current log to append to. |
-| `.updatedDocument(JsonNode)` | **Yes** | The new DID document state. |
+| `.updatedDocument(DidDocument)` | **Yes** | The new DID document state. |
 | `.signer(Signer)` | **Yes** | The signing key matching the *currently active* `updateKeys`. |
 | `.updateKeys(List<String>)` | No | New authorization keys. Supply only when **rotating keys**. |
 | `.nextKeyHashes(List<String>)` | No | New pre-rotation hashes. Supply only when changing pre-rotation. |
@@ -546,7 +549,7 @@ for (DidLogEntry entry : log.entries()) {
     String versionId = entry.versionId();       // e.g. "2-Qm..."
     String versionTime = entry.versionTime();   // ISO-8601 timestamp
     Parameters params = entry.parameters();     // updateKeys, witness, etc.
-    JsonNode state = entry.state();             // the DID document at this version
+    DidDocument state = entry.state();          // the DID document at this version
     List<DataIntegrityProof> proofs = entry.proof(); // Data Integrity proofs
 }
 ```
@@ -659,8 +662,7 @@ if (!result.isSuccess()) {
 ## Full Lifecycle Example
 
 ```java
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.didwebvh.DidDocument;
 import io.didwebvh.api.*;
 import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.crypto.Signer;
@@ -704,10 +706,10 @@ KeyPairAndSigner keyA = generate();
 KeyPairAndSigner keyB = generate();
 
 // 2. CREATE
-ObjectMapper mapper = new ObjectMapper();
-ObjectNode doc = mapper.createObjectNode();
-doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
-doc.put("id", "did:webvh:{SCID}:example.com");
+DidDocument doc = DidDocument.builder()
+    .setStrings("@context", List.of("https://www.w3.org/ns/did/v1"))
+    .setString("id", "did:webvh:{SCID}:example.com")
+    .build();
 
 CreateResult created = DidWebVh.create(
     CreateOptions.builder()
@@ -722,10 +724,11 @@ String did = created.did();
 DidLog log = created.log();
 
 // 3. UPDATE (document change)
-ObjectNode docV2 = mapper.createObjectNode();
-docV2.putArray("@context").add("https://www.w3.org/ns/did/v1");
-docV2.put("id", did);
-docV2.put("service", "https://example.com/vc-issuer");
+DidDocument docV2 = DidDocument.builder()
+    .setStrings("@context", List.of("https://www.w3.org/ns/did/v1"))
+    .setString("id", did)
+    .setString("service", "https://example.com/vc-issuer")
+    .build();
 
 UpdateResult updated = DidWebVh.update(
     UpdateOptions.builder()
