@@ -74,12 +74,10 @@
     </dependency>
 
     <!-- Cryptography: Ed25519 (signing / verification helpers) -->
-    <!-- Marked optional so consumers can bring their own crypto provider. -->
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcprov-jdk18on</artifactId>
       <version>${bouncycastle.version}</version>
-      <optional>true</optional>
     </dependency>
 
     <!-- RFC 8785 JCS: reference Java implementation (RFC Appendix G) -->
