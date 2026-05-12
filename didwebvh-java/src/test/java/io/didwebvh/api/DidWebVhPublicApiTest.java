@@ -103,14 +103,14 @@ class DidWebVhPublicApiTest {
         assertThat(services).hasSize(2);
 
         DidDocument filesService = services.stream()
-                .filter(s -> (created.did() + "#files").equals(s.getString("id")))
+                .filter(s -> ("#files").equals(s.getString("id")))
                 .findFirst()
                 .orElseThrow();
         assertThat(filesService.getString("type")).isEqualTo("relativeRef");
         assertThat(filesService.getString("serviceEndpoint")).isEqualTo("https://example.com/");
 
         DidDocument whoisService = services.stream()
-                .filter(s -> (created.did() + "#whois").equals(s.getString("id")))
+                .filter(s -> ("#whois").equals(s.getString("id")))
                 .findFirst()
                 .orElseThrow();
         assertThat(whoisService.getString("type")).isEqualTo("LinkedVerifiablePresentation");

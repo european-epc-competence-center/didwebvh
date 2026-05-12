@@ -81,7 +81,7 @@ public final class ImplicitServiceInjector {
 
         if (!hasFiles) {
             DidDocument filesService = DidDocument.builder()
-                    .setString("id", did + FILES_SERVICE_ID)
+                    .setString("id", FILES_SERVICE_ID)
                     .setString("type", "relativeRef")
                     .setString("serviceEndpoint", baseUrl)
                     .build();
@@ -91,7 +91,7 @@ public final class ImplicitServiceInjector {
         if (!hasWhois) {
             DidDocument whoisService = DidDocument.builder()
                     .setString("@context", LINKED_VP_CONTEXT)
-                    .setString("id", did + WHOIS_SERVICE_ID)
+                    .setString("id", WHOIS_SERVICE_ID)
                     .setString("type", "LinkedVerifiablePresentation")
                     .setString("serviceEndpoint", baseUrl + "whois.vp")
                     .build();

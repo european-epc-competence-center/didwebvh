@@ -33,13 +33,13 @@ class ImplicitServiceInjectorTest {
 
         // #files service
         DidDocument files = services.get(0);
-        assertThat(files.getString("id")).isEqualTo(DID + "#files");
+        assertThat(files.getString("id")).isEqualTo("#files");
         assertThat(files.getString("type")).isEqualTo("relativeRef");
         assertThat(files.getString("serviceEndpoint")).isEqualTo("https://example.com/");
 
         // #whois service
         DidDocument whois = services.get(1);
-        assertThat(whois.getString("id")).isEqualTo(DID + "#whois");
+        assertThat(whois.getString("id")).isEqualTo("#whois");
         assertThat(whois.getString("type")).isEqualTo("LinkedVerifiablePresentation");
         assertThat(whois.getString("serviceEndpoint")).isEqualTo("https://example.com/whois.vp");
         assertThat(whois.getString("@context"))
