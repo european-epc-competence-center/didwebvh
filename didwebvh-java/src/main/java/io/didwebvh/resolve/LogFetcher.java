@@ -10,7 +10,7 @@ import java.io.IOException;
  * all network access to a {@code LogFetcher}, keeping the resolution logic in
  * {@link LogBasedResolver} free of I/O concerns.
  *
- * <h3>Production use</h3>
+ * <h2>Production use</h2>
  *
  * <p>In production, callers use the default {@link HttpResolver#HttpResolver() no-arg constructor},
  * which creates a built-in fetcher backed by {@link java.net.http.HttpClient}:
@@ -19,7 +19,7 @@ import java.io.IOException;
  * ResolveResult result = resolver.resolve("did:webvh:Qm...:example.com", options);
  * }</pre>
  *
- * <h3>Testing</h3>
+ * <h2>Testing</h2>
  *
  * <p>In tests, inject a custom fetcher to avoid real HTTP calls. Because {@code LogFetcher}
  * is a {@code @FunctionalInterface}, a lambda is sufficient:
@@ -32,7 +32,7 @@ import java.io.IOException;
  * }</pre>
  *
  * <p>For pure logic tests that don't involve HTTP at all, use
- * {@link LogBasedResolver#resolveFromLog} directly with an in-memory {@code DidLog}.
+ * {@link LogBasedResolver#resolve} directly with an in-memory {@code DidLog}.
  *
  * @see HttpResolver
  * @see LogBasedResolver

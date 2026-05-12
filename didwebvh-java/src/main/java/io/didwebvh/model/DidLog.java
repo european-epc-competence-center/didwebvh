@@ -17,19 +17,32 @@ public final class DidLog {
     private final List<DidLogEntry> entries;
     private final boolean parsingComplete;
 
+    /**
+     * Creates a new log from the given entries, assuming parsing was complete.
+     *
+     * @param entries the list of log entries
+     */
     public DidLog(List<DidLogEntry> entries) {
         this(entries, true);
     }
 
+    /**
+     * Creates a new log from the given entries, with an explicit parsing-complete flag.
+     *
+     * @param entries         the list of log entries
+     * @param parsingComplete whether all source lines were successfully parsed
+     */
     public DidLog(List<DidLogEntry> entries, boolean parsingComplete) {
         this.entries = Collections.unmodifiableList(new ArrayList<>(entries));
         this.parsingComplete = parsingComplete;
     }
 
+    /** Returns an empty {@code DidLog}. */
     public static DidLog empty() {
         return new DidLog(List.of());
     }
 
+    /** Returns the ordered list of log entries. */
     public List<DidLogEntry> entries() {
         return entries;
     }
@@ -37,20 +50,29 @@ public final class DidLog {
     /**
      * Returns {@code true} if all lines in the source JSONL were successfully parsed.
      * {@code false} means the parser stopped at a corrupt line and the log may be truncated.
+     *
+     * @return whether parsing completed successfully
      */
     public boolean isParsingComplete() {
         return parsingComplete;
     }
 
+    /** Returns {@code true} if the log contains no entries. */
     public boolean isEmpty() {
         return entries.isEmpty();
     }
 
+    /** Returns the number of entries in the log. */
     public int size() {
         return entries.size();
     }
 
-    /** Returns the most recent (last) log entry, or throws if empty. */
+    /**
+     * Returns the most recent (last) log entry.
+     *
+     * @return the latest entry
+     * @throws IllegalStateException if the log is empty
+     */
     public DidLogEntry latest() {
         if (entries.isEmpty()) {
             throw new IllegalStateException("Log is empty");
@@ -58,7 +80,12 @@ public final class DidLog {
         return entries.get(entries.size() - 1);
     }
 
-    /** Returns the first (genesis) log entry, or throws if empty. */
+    /**
+     * Returns the first (genesis) log entry.
+     *
+     * @return the genesis entry
+     * @throws IllegalStateException if the log is empty
+     */
     public DidLogEntry first() {
         if (entries.isEmpty()) {
             throw new IllegalStateException("Log is empty");
@@ -82,7 +109,12 @@ public final class DidLog {
         return s.replace("\n", "\n" + prefix);
     }
 
-    /** Returns a new {@code DidLog} with {@code newEntry} appended. */
+    /**
+     * Returns a new {@code DidLog} with {@code newEntry} appended.
+     *
+     * @param newEntry the entry to append
+     * @return a new log containing all existing entries plus {@code newEntry}
+     */
     public DidLog append(DidLogEntry newEntry) {
         List<DidLogEntry> updated = new ArrayList<>(entries);
         updated.add(newEntry);

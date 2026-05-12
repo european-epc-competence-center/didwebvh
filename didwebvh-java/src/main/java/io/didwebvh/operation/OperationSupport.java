@@ -1,19 +1,29 @@
 package io.didwebvh.operation;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.didwebvh.DidDocument;
+import io.didwebvh.crypto.DataIntegrity;
+import io.didwebvh.crypto.JcsCanonicalizer;
 import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.crypto.Signer;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
+import io.didwebvh.model.proof.DataIntegrityProof;
+import io.didwebvh.util.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Shared helpers for controller operations ({@link UpdateOperation}, {@link DeactivateOperation}):
- * deriving effective parameters from a log and validating signing keys against the spec.
+ * Shared helpers for controller operations ({@link CreateOperation}, {@link UpdateOperation},
+ * {@link DeactivateOperation}): deriving effective parameters from a log, validating signing keys,
+ * and building hashed/signed log entries.
  */
 final class OperationSupport {
+
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private OperationSupport() {}
 
@@ -27,6 +37,53 @@ final class OperationSupport {
             active = entry.parameters().validate(active);
         }
         return active;
+    }
+
+    /**
+     * Builds a log entry with a properly computed versionId and Data Integrity proof.
+     *
+     * <p>The hash chain step (spec §6) is:
+     * <ol>
+     *   <li>Build a preliminary entry with {@code versionId = predecessorVersionId} and no proof.</li>
+     *   <li>JCS-canonicalize and SHA-256-multihash to get the entry hash.</li>
+     *   <li>Set {@code versionId = versionNumber + "-" + entryHash}.</li>
+     *   <li>Sign the entry with the given signer and attach the proof.</li>
+     * </ol>
+     *
+     * @param predecessorVersionId the versionId to use as the hash predecessor (SCID for genesis,
+     *                             previous entry's versionId for updates)
+     * @param versionNumber        the integer version number for the new entry
+     * @param versionTime          the ISO-8601 UTC timestamp
+     * @param parameters           the parameter delta (or full params for genesis)
+     * @param state                the DID document state for this entry
+     * @param signer               the signing key
+     * @return the final log entry with versionId and proof attached
+     */
+    static DidLogEntry buildHashedAndSignedEntry(
+            String predecessorVersionId,
+            int versionNumber,
+            String versionTime,
+            Parameters parameters,
+            DidDocument state,
+            Signer signer) {
+
+        DidLogEntry forHashing = new DidLogEntry(
+                predecessorVersionId, versionTime, parameters, state, null);
+
+        JsonNode hashInput = MAPPER.valueToTree(forHashing);
+        String entryHash = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(hashInput));
+        String versionId = versionNumber + "-" + entryHash;
+
+        DidLogEntry entryWithVersionId = new DidLogEntry(
+                versionId, versionTime, parameters, state, null);
+
+        JsonNode documentToSign = MAPPER.valueToTree(entryWithVersionId);
+        DataIntegrityProof proof = DataIntegrity.createProof(
+                documentToSign,
+                signer.getVerificationMethodId(),
+                signer);
+
+        return new DidLogEntry(versionId, versionTime, parameters, state, List.of(proof));
     }
 
     /**

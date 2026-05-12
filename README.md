@@ -152,7 +152,7 @@ didwebvh-java/
 ```
 /
 ├── .github/workflows/       # CI: tests on push to main (ci.yml)
-├── didwebvh-java/           # Java library (Maven, Java 21)
+├── didwebvh-java/           # Java library (Maven, Java 17)
 ├── spec/                    # did:webvh specification v1.0 source files
 ├── docs/                    # Thesis documentation
 ├── README.md

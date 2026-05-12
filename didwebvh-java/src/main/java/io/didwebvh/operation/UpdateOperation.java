@@ -1,20 +1,13 @@
 package io.didwebvh.operation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.didwebvh.DidDocument;
 import io.didwebvh.DidWebVhConstants;
-import io.didwebvh.util.JsonMapper;
 import io.didwebvh.api.UpdateOptions;
 import io.didwebvh.api.UpdateResult;
-import io.didwebvh.crypto.DataIntegrity;
-import io.didwebvh.crypto.JcsCanonicalizer;
 import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
 import io.didwebvh.model.DidDocumentMetadata;
-import io.didwebvh.model.proof.DataIntegrityProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +40,6 @@ import java.util.Objects;
 public final class UpdateOperation {
 
     private static final Logger log = LoggerFactory.getLogger(UpdateOperation.class);
-    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private UpdateOperation() {}
 
@@ -90,45 +82,22 @@ public final class UpdateOperation {
 
             String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
 
-            DidLogEntry preliminaryEntry = new DidLogEntry(
-                    previous.versionId(),
-                    versionTime,
-                    delta,
-                    options.getUpdatedDocument(),
-                    null);
-
-            JsonNode hashInput = MAPPER.valueToTree(preliminaryEntry);
-            String entryHash = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(hashInput));
-
             int newVersionNumber = previous.versionNumber() + 1;
-            String versionId = newVersionNumber + "-" + entryHash;
-
-            DidLogEntry entryWithVersionId = new DidLogEntry(
-                    versionId,
+            DidLogEntry finalEntry = OperationSupport.buildHashedAndSignedEntry(
+                    previous.versionId(),
+                    newVersionNumber,
                     versionTime,
                     delta,
                     options.getUpdatedDocument(),
-                    null);
-
-            JsonNode documentToSign = MAPPER.valueToTree(entryWithVersionId);
-            DataIntegrityProof proof = DataIntegrity.createProof(
-                    documentToSign,
-                    options.getSigner().getVerificationMethodId(),
                     options.getSigner());
-
-            DidLogEntry finalEntry = new DidLogEntry(
-                    versionId,
-                    versionTime,
-                    delta,
-                    options.getUpdatedDocument(),
-                    List.of(proof));
 
             DidLog updatedLog = currentLog.append(finalEntry);
 
             String genesisTime = currentLog.first().versionTime();
             String scid = currentLog.first().parameters().scid();
+            String finalVersionId = finalEntry.versionId();
             DidDocumentMetadata metadata = new DidDocumentMetadata(
-                    versionId,
+                    finalVersionId,
                     finalEntry.versionNumber(),
                     versionTime,
                     genesisTime,
@@ -142,7 +111,7 @@ public final class UpdateOperation {
                     newEffective.witness(),
                     newEffective.watchers());
 
-            log.trace("Successfully updated DID log, new versionId={}", versionId);
+            log.trace("Successfully updated DID log, new versionId={}", finalVersionId);
             return new UpdateResult(
                     finalEntry.state(),
                     metadata,

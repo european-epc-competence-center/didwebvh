@@ -26,6 +26,8 @@ import io.didwebvh.resolve.LogBasedResolver;
  */
 public final class DidWebVh {
 
+    private static final HttpResolver DEFAULT_RESOLVER = new HttpResolver();
+
     private DidWebVh() {}
 
     // -------------------------------------------------------------------------
@@ -58,7 +60,7 @@ public final class DidWebVh {
      * @return the resolution result; errors are encoded in {@link ResolveResult#resolutionMetadata()}
      */
     public static ResolveResult resolve(String did, ResolveOptions options) {
-        return new HttpResolver().resolve(did, options);
+        return DEFAULT_RESOLVER.resolve(did, options);
     }
 
     /**

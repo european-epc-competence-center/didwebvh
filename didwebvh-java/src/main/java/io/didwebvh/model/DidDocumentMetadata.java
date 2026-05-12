@@ -8,6 +8,18 @@ import java.util.List;
  * <p>This corresponds to {@code didDocumentMetadata} in the W3C DID Resolution spec.
  * It contains properties that describe the DID document itself, such as version
  * information, timestamps, and parameter state.
+ *
+ * @param versionId     the version identifier of the resolved document
+ * @param versionNumber the integer version number
+ * @param versionTime   the ISO-8601 timestamp of this version
+ * @param created       the ISO-8601 timestamp when the DID was created
+ * @param updated       the ISO-8601 timestamp of the latest update
+ * @param scid          the self-certifying identifier
+ * @param portable      whether the DID is portable across domains
+ * @param deactivated   whether the DID has been deactivated
+ * @param ttl           cache time-to-live in seconds
+ * @param witness       active witness configuration
+ * @param watchers      active watcher URLs
  */
 public record DidDocumentMetadata(
         String versionId,

@@ -8,6 +8,8 @@ package io.didwebvh.exception;
  */
 public class LogValidationException extends DidWebVhException {
 
+    private static final long serialVersionUID = 1L;
+
     public LogValidationException(String message) {
         super(message);
     }

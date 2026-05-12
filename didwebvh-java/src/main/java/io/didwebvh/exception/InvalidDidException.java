@@ -11,6 +11,8 @@ package io.didwebvh.exception;
  */
 public class InvalidDidException extends DidWebVhException {
 
+    private static final long serialVersionUID = 1L;
+
     public InvalidDidException(String message) {
         super(message);
     }

@@ -41,7 +41,7 @@ public final class DataIntegrity {
     /**
      * Creates a signed Data Integrity proof for the given document.
      *
-     * @param document             the JSON document to sign (must not contain a {@code proof} field)
+     * @param unsecuredDocument    the JSON document to sign (must not contain a {@code proof} field)
      * @param verificationMethodId the {@code verificationMethod} URI to embed in the proof
      * @param signer               the key holder
      * @return a fully populated {@link DataIntegrityProof}

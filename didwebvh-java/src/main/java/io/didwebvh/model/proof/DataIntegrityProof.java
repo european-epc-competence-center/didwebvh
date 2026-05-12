@@ -11,6 +11,13 @@ import io.didwebvh.DidWebVhConstants;
  * <p>The spec mandates {@code eddsa-jcs-2022} as the cryptosuite and
  * {@code assertionMethod} as the proof purpose for controller update proofs.
  *
+ * @param type               the proof type (e.g. {@code DataIntegrityProof})
+ * @param cryptosuite        the cryptosuite identifier (e.g. {@code eddsa-jcs-2022})
+ * @param verificationMethod the verification method URI used to sign
+ * @param created            the ISO-8601 creation timestamp
+ * @param proofPurpose       the proof purpose (e.g. {@code assertionMethod})
+ * @param proofValue         the base58btc-encoded signature
+ * @param id                 optional proof identifier
  * @see <a href="https://www.w3.org/TR/vc-data-integrity/">W3C Data Integrity</a>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)

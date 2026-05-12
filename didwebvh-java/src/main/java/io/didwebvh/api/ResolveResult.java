@@ -29,6 +29,12 @@ import io.didwebvh.model.ResolutionMetadata;
  * <p>If resolution fails, {@code didDocument} and {@code contentStream} are
  * {@code null} and {@code didResolutionMetadata} contains an {@code error} code
  * and optional {@code problemDetails}.</p>
+ *
+ * @param did                the DID that was resolved
+ * @param document           the resolved DID document
+ * @param documentMetadata   metadata about the document
+ * @param resolutionMetadata metadata about the resolution process
+ * @param contentStream      dereferenced resource content, if a path was resolved
  */
 public record ResolveResult(
         @JsonIgnore String did,

@@ -1,20 +1,13 @@
 package io.didwebvh.operation;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.didwebvh.DidDocument;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.DeactivateOptions;
-import io.didwebvh.util.JsonMapper;
 import io.didwebvh.api.DeactivateResult;
-import io.didwebvh.crypto.DataIntegrity;
-import io.didwebvh.crypto.JcsCanonicalizer;
-import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
 import io.didwebvh.model.DidDocumentMetadata;
-import io.didwebvh.model.proof.DataIntegrityProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +34,6 @@ import java.util.Objects;
 public final class DeactivateOperation {
 
     private static final Logger log = LoggerFactory.getLogger(DeactivateOperation.class);
-    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
 
     private DeactivateOperation() {}
 
@@ -80,45 +72,22 @@ public final class DeactivateOperation {
             DidDocument document = previous.state();
             String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
 
-            DidLogEntry preliminaryEntry = new DidLogEntry(
-                    previous.versionId(),
-                    versionTime,
-                    delta,
-                    document,
-                    null);
-
-            JsonNode hashInput = MAPPER.valueToTree(preliminaryEntry);
-            String entryHash = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(hashInput));
-
             int newVersionNumber = previous.versionNumber() + 1;
-            String versionId = newVersionNumber + "-" + entryHash;
-
-            DidLogEntry entryWithVersionId = new DidLogEntry(
-                    versionId,
+            DidLogEntry finalEntry = OperationSupport.buildHashedAndSignedEntry(
+                    previous.versionId(),
+                    newVersionNumber,
                     versionTime,
                     delta,
                     document,
-                    null);
-
-            JsonNode documentToSign = MAPPER.valueToTree(entryWithVersionId);
-            DataIntegrityProof proof = DataIntegrity.createProof(
-                    documentToSign,
-                    options.getSigner().getVerificationMethodId(),
                     options.getSigner());
-
-            DidLogEntry finalEntry = new DidLogEntry(
-                    versionId,
-                    versionTime,
-                    delta,
-                    document,
-                    List.of(proof));
 
             DidLog updatedLog = currentLog.append(finalEntry);
 
             String genesisTime = currentLog.first().versionTime();
             String scid = currentLog.first().parameters().scid();
+            String finalVersionId = finalEntry.versionId();
             DidDocumentMetadata metadata = new DidDocumentMetadata(
-                    versionId,
+                    finalVersionId,
                     finalEntry.versionNumber(),
                     versionTime,
                     genesisTime,
@@ -132,7 +101,7 @@ public final class DeactivateOperation {
                     newEffective.witness(),
                     newEffective.watchers());
 
-            log.trace("Successfully deactivated DID log, new versionId={}", versionId);
+            log.trace("Successfully deactivated DID log, new versionId={}", finalVersionId);
             return new DeactivateResult(metadata, updatedLog);
         } catch (RuntimeException e) {
             log.debug("Failed to deactivate DID log: {}", e.getMessage());

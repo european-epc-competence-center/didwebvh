@@ -25,6 +25,9 @@ import java.util.Set;
  *
  * <p>Call {@link #validate()} whenever a non-empty witness configuration is set or changed
  * in a log entry to enforce the above constraints before accepting the entry.
+ *
+ * @param threshold the minimum number of distinct witness signatures required
+ * @param witnesses the list of witness entries (did:key DIDs)
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)

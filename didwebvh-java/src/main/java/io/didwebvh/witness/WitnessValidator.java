@@ -19,12 +19,12 @@ import java.util.Map;
 /**
  * Validates witness proofs during DID log resolution.
  *
- * <h3>Watermark rule (spec §8.2)</h3>
+ * <h2>Watermark rule (spec §8.2)</h2>
  * <p>A valid proof from a witness for version {@code N'} implies approval of <strong>all</strong>
  * prior entries up to and including {@code N'}. For an epoch {@code [first, last]} and a query
  * at version {@code V}, the resolver only needs a proof for some {@code N' >= min(last, V)}.
  *
- * <h3>Thread safety</h3>
+ * <h2>Thread safety</h2>
  * <p>Instances are stateless after construction and safe for concurrent use.
  *
  * @see LogValidationException

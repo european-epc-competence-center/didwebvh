@@ -25,6 +25,12 @@ import java.util.List;
  *   "proof": [ { ... } ]
  * }
  * </pre>
+ *
+ * @param versionId   the version identifier in {@code {n}-{hash}} form
+ * @param versionTime the ISO-8601 UTC timestamp when this entry was created
+ * @param parameters  the parameter delta (or full params for genesis) for this entry
+ * @param state       the DID document state at this version
+ * @param proof       the Data Integrity proofs authorising this entry
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)

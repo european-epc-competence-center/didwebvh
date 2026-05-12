@@ -38,6 +38,8 @@ public final class DidDocument {
      *
      * <p><strong>Library internal use only.</strong> Consumers should prefer
      * {@link #fromJson}, {@link #fromMap}, or the {@link Builder}.</p>
+     *
+     * @param node the Jackson {@link JsonNode} to wrap
      */
     public DidDocument(JsonNode node) {
         this.node = Objects.requireNonNull(node);
@@ -68,34 +70,67 @@ public final class DidDocument {
     // Typed accessors
     // -------------------------------------------------------------------------
 
-    /** Returns the string value of the given field, or {@code null} if missing. */
+    /**
+     * Returns the string value of the given field, or {@code null} if missing.
+     *
+     * @param field the JSON field name
+     * @return the string value, or {@code null} if the field is missing
+     */
     public String getString(String field) {
         return getString(field, null);
     }
 
-    /** Returns the string value of the given field, or {@code defaultValue} if missing. */
+    /**
+     * Returns the string value of the given field, or {@code defaultValue} if missing.
+     *
+     * @param field        the JSON field name
+     * @param defaultValue the value to return if the field is missing
+     * @return the string value, or {@code defaultValue} if the field is missing
+     */
     public String getString(String field, String defaultValue) {
         JsonNode value = node.path(field);
         return value.isMissingNode() ? defaultValue : value.asText(defaultValue);
     }
 
-    /** Returns the boolean value of the given field, or {@code false} if missing. */
+    /**
+     * Returns the boolean value of the given field, or {@code false} if missing.
+     *
+     * @param field the JSON field name
+     * @return the boolean value, or {@code false} if the field is missing
+     */
     public boolean getBoolean(String field) {
         return getBoolean(field, false);
     }
 
-    /** Returns the boolean value of the given field, or {@code defaultValue} if missing. */
+    /**
+     * Returns the boolean value of the given field, or {@code defaultValue} if missing.
+     *
+     * @param field        the JSON field name
+     * @param defaultValue the value to return if the field is missing
+     * @return the boolean value, or {@code defaultValue} if the field is missing
+     */
     public boolean getBoolean(String field, boolean defaultValue) {
         JsonNode value = node.path(field);
         return value.isMissingNode() ? defaultValue : value.asBoolean(defaultValue);
     }
 
-    /** Returns the int value of the given field, or {@code 0} if missing. */
+    /**
+     * Returns the int value of the given field, or {@code 0} if missing.
+     *
+     * @param field the JSON field name
+     * @return the int value, or {@code 0} if the field is missing
+     */
     public int getInt(String field) {
         return getInt(field, 0);
     }
 
-    /** Returns the int value of the given field, or {@code defaultValue} if missing. */
+    /**
+     * Returns the int value of the given field, or {@code defaultValue} if missing.
+     *
+     * @param field        the JSON field name
+     * @param defaultValue the value to return if the field is missing
+     * @return the int value, or {@code defaultValue} if the field is missing
+     */
     public int getInt(String field, int defaultValue) {
         JsonNode value = node.path(field);
         return value.isMissingNode() ? defaultValue : value.asInt(defaultValue);
@@ -104,13 +139,21 @@ public final class DidDocument {
     /**
      * Returns the nested object at the given field as a {@code DidDocument},
      * or {@code null} if the field is missing or not an object.
+     *
+     * @param field the JSON field name
+     * @return the nested object as a {@code DidDocument}, or {@code null}
      */
     public DidDocument getObject(String field) {
         JsonNode value = node.path(field);
         return value.isObject() ? new DidDocument(value) : null;
     }
 
-    /** Returns the array of strings at the given field, or an empty list if missing / not an array. */
+    /**
+     * Returns the array of strings at the given field, or an empty list if missing / not an array.
+     *
+     * @param field the JSON field name
+     * @return the list of strings, or an empty list if the field is missing or not an array
+     */
     public List<String> getStrings(String field) {
         JsonNode value = node.path(field);
         if (!value.isArray()) {

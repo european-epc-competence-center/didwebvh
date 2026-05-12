@@ -17,7 +17,7 @@ import java.util.Objects;
  * <ul>
  *   <li>{@link #validate(Parameters)} — verifies that this set of parameters is
  *       a legal transition from the previous entry's parameters.</li>
- *   <li>{@link #merge(Parameters)} — produces the effective parameter set for an
+ *   <li>{@link #validate(Parameters)} — produces the effective parameter set for an
  *       entry by merging it with the previous (inherited) parameter set.</li>
  * </ul>
  *
@@ -29,6 +29,16 @@ import java.util.Objects;
  *   <li>When pre-rotation is active ({@code nextKeyHashes} is non-empty), every entry
  *       MUST contain both {@code updateKeys} and {@code nextKeyHashes}.</li>
  * </ul>
+ *
+ * @param method       the did:webvh method version string
+ * @param scid         the self-certifying identifier (genesis only)
+ * @param updateKeys   the multikey-encoded public keys authorised to sign updates
+ * @param nextKeyHashes pre-rotation key hashes (SHA-256 multihash of future update keys)
+ * @param portable     whether the DID may be moved to a new domain
+ * @param deactivated  whether the DID has been deactivated
+ * @param ttl          cache time-to-live in seconds
+ * @param witness      witness configuration for multi-party approval
+ * @param watchers     URLs of watcher services monitoring the DID log
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)

@@ -6,6 +6,12 @@ package io.didwebvh.model;
  * <p>This corresponds to {@code didResolutionMetadata} in the W3C DID Resolution spec.
  * It contains properties that describe the resolution process, such as error codes
  * and content type.
+ *
+ * @param contentType   the MIME type of the resolved document
+ * @param did           the DID that was resolved
+ * @param driver        the resolver implementation name
+ * @param error         the error code if resolution failed
+ * @param problemDetails structured problem details per RFC 9457
  */
 public record ResolutionMetadata(
         String contentType,
@@ -75,6 +81,10 @@ public record ResolutionMetadata(
 
     /**
      * An RFC 9457 problem details object for structured error reporting.
+     *
+     * @param type  the problem type URI
+     * @param title short human-readable summary
+     * @param detail longer explanation
      */
     public record ProblemDetails(
             String type,

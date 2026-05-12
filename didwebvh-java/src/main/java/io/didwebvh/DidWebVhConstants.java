@@ -27,7 +27,7 @@ public final class DidWebVhConstants {
     public static final String PROOF_PURPOSE = "assertionMethod";
 
     /** The content-type for the DID log file. */
-    public static final String CONTENT_TYPE_JSONL = "text/jsonl";
+    public static final String CONTENT_TYPE_JSONL = "application/jsonl";
 
     /** The filename for the DID log. */
     public static final String DID_LOG_FILENAME = "did.jsonl";

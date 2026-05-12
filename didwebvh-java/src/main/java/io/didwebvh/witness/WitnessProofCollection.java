@@ -26,6 +26,8 @@ import java.util.List;
  *   <li>Resolvers MUST ignore proofs for {@code versionId}s not yet present in the log.</li>
  *   <li>A valid witness proof implies approval of ALL prior entries.</li>
  * </ul>
+ *
+ * @param entries the list of witness proof entries
  */
 public record WitnessProofCollection(List<Entry> entries) {
 
@@ -46,6 +48,9 @@ public record WitnessProofCollection(List<Entry> entries) {
 
     /**
      * One entry in the witness proof file, covering one log version.
+     *
+     * @param versionId the versionId of the log entry this proof covers
+     * @param proof     the Data Integrity proofs from witnesses for this version
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Entry(

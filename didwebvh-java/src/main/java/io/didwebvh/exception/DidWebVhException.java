@@ -13,6 +13,8 @@ package io.didwebvh.exception;
  */
 public class DidWebVhException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public DidWebVhException(String message) {
         super(message);
     }

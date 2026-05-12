@@ -20,7 +20,7 @@ This guide explains how to use `didwebvh-java` to create, update, resolve, and d
 
 ## Installation
 
-**Requirements:** Java 21+, Maven 3.9+
+**Requirements:** Java 17+, Maven 3.9+
 
 The library is not yet published to Maven Central. Install it to your local `~/.m2` repository:
 

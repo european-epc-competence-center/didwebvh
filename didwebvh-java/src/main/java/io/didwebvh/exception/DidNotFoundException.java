@@ -8,6 +8,8 @@ package io.didwebvh.exception;
  */
 public class DidNotFoundException extends DidWebVhException {
 
+    private static final long serialVersionUID = 1L;
+
     public DidNotFoundException(String message) {
         super(message);
     }

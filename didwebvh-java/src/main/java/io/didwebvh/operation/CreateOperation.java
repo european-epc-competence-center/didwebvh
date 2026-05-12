@@ -3,19 +3,16 @@ package io.didwebvh.operation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.didwebvh.DidDocument;
 import io.didwebvh.DidWebVhConstants;
 import io.didwebvh.api.CreateOptions;
 import io.didwebvh.util.JsonMapper;
 import io.didwebvh.api.CreateResult;
-import io.didwebvh.crypto.DataIntegrity;
 import io.didwebvh.crypto.JcsCanonicalizer;
 import io.didwebvh.crypto.Multiformats;
 import io.didwebvh.model.DidLog;
 import io.didwebvh.model.DidLogEntry;
 import io.didwebvh.model.Parameters;
 import io.didwebvh.model.DidDocumentMetadata;
-import io.didwebvh.model.proof.DataIntegrityProof;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,37 +86,20 @@ public final class CreateOperation {
             DidLogEntry scidEntry = replaceScidPlaceholder(preliminaryEntry, scid);
             String did = DidWebVhConstants.DID_METHOD_PREFIX + scid + ":" + options.getDomain();
 
-            // Compute entry hash; for the first entry the predecessor versionId is the SCID itself,
-            // which is already the versionId after placeholder replacement
-            JsonNode hashInput = MAPPER.valueToTree(scidEntry);
-            String entryHash = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(hashInput));
-            String versionId = "1-" + entryHash;
-
-            DidLogEntry entryWithVersionId = new DidLogEntry(
-                    versionId,
+            // Build the final entry: hash with predecessor = SCID, version = 1, then sign
+            DidLogEntry finalEntry = OperationSupport.buildHashedAndSignedEntry(
+                    scid,
+                    1,
                     scidEntry.versionTime(),
                     scidEntry.parameters(),
                     scidEntry.state(),
-                    null);
-
-            // Create Data Integrity proof signed by the signer's key
-            JsonNode documentToSign = MAPPER.valueToTree(entryWithVersionId);
-            DataIntegrityProof proof = DataIntegrity.createProof(
-                    documentToSign,
-                    options.getSigner().getVerificationMethodId(),
                     options.getSigner());
-
-            DidLogEntry finalEntry = new DidLogEntry(
-                    versionId,
-                    scidEntry.versionTime(),
-                    scidEntry.parameters(),
-                    scidEntry.state(),
-                    List.of(proof));
 
             DidLog didLog = DidLog.empty().append(finalEntry);
 
+            String finalVersionId = finalEntry.versionId();
             DidDocumentMetadata metadata = new DidDocumentMetadata(
-                    versionId,
+                    finalVersionId,
                     1,
                     versionTime,
                     versionTime,
