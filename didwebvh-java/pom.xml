@@ -4,14 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>io.github.european-epc-competence-center</groupId>
-  <artifactId>didwebvh-java</artifactId>
+  <groupId>de.eecc.did</groupId>
+  <artifactId>webvh</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>didwebvh-java</name>
+  <name>webvh</name>
   <description>Java implementation of the did:webvh DID method (W3C/DIF spec v1.0)</description>
   <url>https://github.com/european-epc-competence-center/didwebvh</url>
+  <inceptionYear>2026</inceptionYear>
 
   <licenses>
     <license>
@@ -160,7 +161,6 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.13.0</version>
         <configuration>
-          <release>17</release>
           <compilerArgs>
             <arg>-Xlint:all</arg>
           </compilerArgs>
@@ -172,6 +172,23 @@
         <configuration>
           <useModulePath>false</useModulePath>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>enforce</id>
+            <goals><goal>enforce</goal></goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion><version>3.9.0</version></requireMavenVersion>
+                <requireJavaVersion><version>17</version></requireJavaVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
