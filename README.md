@@ -30,8 +30,8 @@ Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-  <groupId>io.github.european-epc-competence-center</groupId>
-  <artifactId>didwebvh-java</artifactId>
+  <groupId>de.eecc.did</groupId>
+  <artifactId>webvh</artifactId>
   <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
@@ -39,10 +39,10 @@ Add the dependency to your `pom.xml`:
 ## Quick Start
 
 ```java
-import io.didwebvh.api.*;
-import io.didwebvh.crypto.Multiformats;
-import io.didwebvh.crypto.Signer;
-import io.didwebvh.log.LogSerializer;
+import de.eecc.did.webvh.api.*;
+import de.eecc.did.webvh.crypto.Multiformats;
+import de.eecc.did.webvh.crypto.Signer;
+import de.eecc.did.webvh.log.LogSerializer;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
@@ -132,7 +132,7 @@ mvn package
 
 ```
 didwebvh-java/
-├── src/main/java/io/didwebvh/
+├── src/main/java/de/eecc/did/webvh/
 │   ├── api/                 # Public API: DidWebVh, *Options, *Result
 │   ├── crypto/              # Signer, Verifier, DefaultVerifier, canonicalization
 │   ├── log/                 # LogParser, LogSerializer, LogValidator
@@ -140,7 +140,7 @@ didwebvh-java/
 │   ├── operation/           # CreateOperation, UpdateOperation, DeactivateOperation
 │   ├── resolve/             # HttpResolver, LogBasedResolver, LogFetcher
 │   └── witness/             # Witness validation and proof collection
-└── src/test/java/io/didwebvh/
+└── src/test/java/de/eecc/did/webvh/
     ├── operation/           # Tests for create, update, deactivate
     ├── resolve/             # Tests for HTTP and log-based resolution
     ├── crypto/              # Tests for canonicalization, multiformats, proofs

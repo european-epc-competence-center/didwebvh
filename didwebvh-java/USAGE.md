@@ -33,8 +33,8 @@ Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-  <groupId>io.github.european-epc-competence-center</groupId>
-  <artifactId>didwebvh-java</artifactId>
+  <groupId>de.eecc.did</groupId>
+  <artifactId>webvh</artifactId>
   <version>0.1.0-SNAPSHOT</version>
 </dependency>
 ```
