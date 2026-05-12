@@ -101,8 +101,9 @@ public record Parameters(
         return new Parameters(
                 Objects.equals(method, previous.method) ? null : method,
                 null, // scid never appears in a diff
-                // If pre-rotation is active and updateKeys are unchanged, omit them from the diff to avoid redundancy 
-                // (they must be present in every entry while pre-rotation is active, so no need to include them if they haven't changed)
+                // While pre-rotation is active, both updateKeys and nextKeyHashes MUST appear in every entry
+                // (spec §3.6.3). Therefore we only omit unchanged values when pre-rotation is INACTIVE.
+                // When pre-rotation is active, we always include them regardless of whether they changed.
                 (!preRot && Objects.equals(updateKeys, previous.updateKeys)) ? null : updateKeys,
                 (!preRot && Objects.equals(nextKeyHashes, previous.nextKeyHashes)) ? null : nextKeyHashes,
                 Objects.equals(portable, previous.portable) ? null : portable,
