@@ -1,0 +1,88 @@
+package de.eecc.did.webvh.log;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import de.eecc.did.webvh.exception.LogValidationException;
+import de.eecc.did.webvh.model.DidLog;
+import de.eecc.did.webvh.util.JsonMapper;
+import de.eecc.did.webvh.model.DidLogEntry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Parses a did:webvh log from its JSONL (JSON Lines) wire format.
+ *
+ * <p>Each line of the {@code did.jsonl} file is an independent JSON object
+ * representing one {@link DidLogEntry}. Lines are separated by {@code \n}.
+ * No trailing whitespace or blank lines should be present.
+ *
+ * @see LogSerializer
+ */
+public final class LogParser {
+
+    private static final Logger log = LoggerFactory.getLogger(LogParser.class);
+
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
+
+    private LogParser() {}
+
+    /**
+     * Parses a full JSONL string into a {@link DidLog}.
+     *
+     * <p>Blank lines (empty or whitespace-only) are silently skipped to tolerate
+     * trailing newlines, which are common in JSONL files.
+     *
+     * <p>If a non-blank line fails to parse, parsing stops and only the successfully
+     * parsed entries are returned. This allows the resolver to still serve earlier
+     * valid versions from a partially corrupt log.
+     *
+     * @param jsonl the raw content of {@code did.jsonl}
+     * @return the parsed log (may be empty if no lines could be parsed)
+     */
+    public static DidLog parse(String jsonl) {
+        Objects.requireNonNull(jsonl, "jsonl must not be null");
+        log.trace("Parsing DID log ({} chars)", jsonl.length());
+
+        String[] lines = jsonl.split("\n", -1);
+        List<DidLogEntry> entries = new ArrayList<>();
+        boolean complete = true;
+
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].strip();
+            if (line.isEmpty()) {
+                continue;
+            }
+            try {
+                entries.add(parseLine(line));
+            } catch (LogValidationException e) {
+                log.trace("Stopped parsing at line {} ({}); returning {} entries parsed so far",
+                        i + 1, e.getMessage(), entries.size());
+                complete = false;
+                break;
+            }
+        }
+
+        log.trace("Parsed DID log with {} entries (complete={})", entries.size(), complete);
+        return new DidLog(entries, complete);
+    }
+
+    /**
+     * Parses a single JSONL line into a {@link DidLogEntry}.
+     *
+     * @param line a single JSON object string (must not be null or blank)
+     * @return the parsed entry
+     * @throws LogValidationException if the line is not valid JSON or cannot be mapped to a {@link DidLogEntry}
+     */
+    public static DidLogEntry parseLine(String line) {
+        Objects.requireNonNull(line, "line must not be null");
+        try {
+            return MAPPER.readValue(line, DidLogEntry.class);
+        } catch (JsonProcessingException e) {
+            throw new LogValidationException("Failed to parse log entry: " + e.getMessage(), e);
+        }
+    }
+}

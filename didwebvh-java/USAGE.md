@@ -61,12 +61,12 @@ Creating a DID generates the SCID, builds the genesis log entry, and signs it wi
 ### Minimal Example
 
 ```java
-import io.didwebvh.DidDocument;
-import io.didwebvh.api.CreateOptions;
-import io.didwebvh.api.CreateResult;
-import io.didwebvh.api.DidWebVh;
-import io.didwebvh.crypto.Multiformats;
-import io.didwebvh.crypto.Signer;
+import de.eecc.did.webvh.DidDocument;
+import de.eecc.did.webvh.api.CreateOptions;
+import de.eecc.did.webvh.api.CreateResult;
+import de.eecc.did.webvh.api.DidWebVh;
+import de.eecc.did.webvh.crypto.Multiformats;
+import de.eecc.did.webvh.crypto.Signer;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
@@ -142,8 +142,8 @@ A `Signer` wraps your private key and knows its public identifier. The recommend
 The example below shows the **full flow** from raw key generation to a working `Signer`, exactly as the test suite does internally:
 
 ```java
-import io.didwebvh.crypto.Multiformats;
-import io.didwebvh.crypto.Signer;
+import de.eecc.did.webvh.crypto.Multiformats;
+import de.eecc.did.webvh.crypto.Signer;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
@@ -191,7 +191,7 @@ https://{domain}/.well-known/did.jsonl
 (If your domain contains a path component, the URL structure follows the `did:webvh` spec transformation rules.)
 
 ```java
-import io.didwebvh.log.LogSerializer;
+import de.eecc.did.webvh.log.LogSerializer;
 
 String jsonl = LogSerializer.serialize(result.log());
 // Write jsonl to your web server's did.jsonl endpoint
@@ -206,9 +206,9 @@ String jsonl = LogSerializer.serialize(result.log());
 The library fetches `did.jsonl`, validates every entry (signatures, hash chain, SCID), and returns the latest DID document.
 
 ```java
-import io.didwebvh.DidDocument;
-import io.didwebvh.api.ResolveOptions;
-import io.didwebvh.api.ResolveResult;
+import de.eecc.did.webvh.DidDocument;
+import de.eecc.did.webvh.api.ResolveOptions;
+import de.eecc.did.webvh.api.ResolveResult;
 
 ResolveResult result = DidWebVh.resolve(
     "did:webvh:Qm...:example.com",
@@ -232,7 +232,7 @@ if (result.isSuccess()) {
 Use this when you already have the log (e.g. from a local file, watcher, or cache):
 
 ```java
-import io.didwebvh.model.DidLog;
+import de.eecc.did.webvh.model.DidLog;
 
 DidLog log = ...; // parsed from a file or received from a watcher
 ResolveResult result = DidWebVh.resolveFromLog(
@@ -279,9 +279,9 @@ Updating appends a new entry to the log. You provide the current log, the new do
 ### Document-Only Update
 
 ```java
-import io.didwebvh.DidDocument;
-import io.didwebvh.api.UpdateOptions;
-import io.didwebvh.api.UpdateResult;
+import de.eecc.did.webvh.DidDocument;
+import de.eecc.did.webvh.api.UpdateOptions;
+import de.eecc.did.webvh.api.UpdateResult;
 
 // Build the new document (use the real SCID, not {SCID})
 DidDocument newDoc = DidDocument.builder()
@@ -320,8 +320,8 @@ DidLog updatedLog = result.log(); // currentLog + new entry
 Rotate to a new key by generating a second key pair, supplying the new public key in `updateKeys`, and signing the update with the **old** (currently authorised) private key:
 
 ```java
-import io.didwebvh.crypto.Multiformats;
-import io.didwebvh.crypto.Signer;
+import de.eecc.did.webvh.crypto.Multiformats;
+import de.eecc.did.webvh.crypto.Signer;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
@@ -390,8 +390,8 @@ Pre-rotation lets you commit to future keys via their hashes before revealing th
 **1. Generate both key pairs:**
 
 ```java
-import io.didwebvh.crypto.Multiformats;
-import io.didwebvh.crypto.Signer;
+import de.eecc.did.webvh.crypto.Multiformats;
+import de.eecc.did.webvh.crypto.Signer;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;
@@ -479,8 +479,8 @@ Rules enforced by the library:
 Deactivation is permanent. After deactivation, resolvers will return `deactivated: true` in the metadata and no DID document.
 
 ```java
-import io.didwebvh.api.DeactivateOptions;
-import io.didwebvh.api.DeactivateResult;
+import de.eecc.did.webvh.api.DeactivateOptions;
+import de.eecc.did.webvh.api.DeactivateResult;
 
 DeactivateResult result = DidWebVh.deactivate(
     DeactivateOptions.builder()
@@ -504,7 +504,7 @@ DidLog deactivatedLog = result.log();
 Convert a `DidLog` to the JSONL wire format:
 
 ```java
-import io.didwebvh.log.LogSerializer;
+import de.eecc.did.webvh.log.LogSerializer;
 
 String jsonl = LogSerializer.serialize(log);
 Files.writeString(Path.of("did.jsonl"), jsonl);
@@ -517,7 +517,7 @@ Each entry is one compact JSON object per line, newline-terminated.
 Parse a JSONL string back into a `DidLog`:
 
 ```java
-import io.didwebvh.log.LogParser;
+import de.eecc.did.webvh.log.LogParser;
 
 String jsonl = Files.readString(Path.of("did.jsonl"));
 DidLog log = LogParser.parse(jsonl);
@@ -528,7 +528,7 @@ DidLog log = LogParser.parse(jsonl);
 Validate an entire log manually:
 
 ```java
-import io.didwebvh.log.LogValidator;
+import de.eecc.did.webvh.log.LogValidator;
 
 LogValidator validator = new LogValidator(verifier);
 int validCount = validator.validate(log);
@@ -603,7 +603,7 @@ CreateResult result = DidWebVh.create(
 If you need a different cryptographic backend (e.g. HSM, AWS KMS, or a different Ed25519 provider), implement `Verifier`:
 
 ```java
-import io.didwebvh.crypto.Verifier;
+import de.eecc.did.webvh.crypto.Verifier;
 
 Verifier myVerifier = (signature, message, publicKeyMultibase) -> {
     // your verification logic
@@ -623,9 +623,9 @@ ResolveResult result = DidWebVh.resolve(
 For unit tests, avoid real HTTP by injecting a `LogFetcher`:
 
 ```java
-import io.didwebvh.resolve.HttpResolver;
-import io.didwebvh.resolve.DidResolver;
-import io.didwebvh.resolve.LogFetcher;
+import de.eecc.did.webvh.resolve.HttpResolver;
+import de.eecc.did.webvh.resolve.DidResolver;
+import de.eecc.did.webvh.resolve.LogFetcher;
 
 String cannedJsonl = LogSerializer.serialize(myTestLog);
 LogFetcher testFetcher = url -> cannedJsonl;
@@ -662,11 +662,11 @@ if (!result.isSuccess()) {
 ## Full Lifecycle Example
 
 ```java
-import io.didwebvh.DidDocument;
-import io.didwebvh.api.*;
-import io.didwebvh.crypto.Multiformats;
-import io.didwebvh.crypto.Signer;
-import io.didwebvh.log.LogSerializer;
+import de.eecc.did.webvh.DidDocument;
+import de.eecc.did.webvh.api.*;
+import de.eecc.did.webvh.crypto.Multiformats;
+import de.eecc.did.webvh.crypto.Signer;
+import de.eecc.did.webvh.log.LogSerializer;
 import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
 import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator;
 import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters;

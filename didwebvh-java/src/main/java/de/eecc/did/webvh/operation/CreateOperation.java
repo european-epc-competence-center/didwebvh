@@ -1,0 +1,151 @@
+package de.eecc.did.webvh.operation;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import de.eecc.did.webvh.DidWebVhConstants;
+import de.eecc.did.webvh.api.CreateOptions;
+import de.eecc.did.webvh.util.JsonMapper;
+import de.eecc.did.webvh.api.CreateResult;
+import de.eecc.did.webvh.crypto.JcsCanonicalizer;
+import de.eecc.did.webvh.crypto.Multiformats;
+import de.eecc.did.webvh.model.DidLog;
+import de.eecc.did.webvh.model.DidLogEntry;
+import de.eecc.did.webvh.model.Parameters;
+import de.eecc.did.webvh.model.DidDocumentMetadata;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Implements the did:webvh {@code Create} operation.
+ *
+ * <p>Produces a genesis log entry following the spec §6.1 flow:
+ * <ol>
+ *   <li>Build a preliminary log entry with {@code {SCID}} placeholders and no proof.</li>
+ *   <li>Compute the SCID: {@code base58btc(multihash(JCS(preliminary_entry)))}.</li>
+ *   <li>Replace all {@code {SCID}} placeholders with the real SCID.</li>
+ *   <li>Compute the entry hash and set {@code versionId = "1-{entryHash}"}.</li>
+ *   <li>Generate a Data Integrity proof signed by the signer's key.</li>
+ *   <li>Append the proof to the entry and return a single-entry log.</li>
+ * </ol>
+ *
+ * <p>No I/O is performed. The caller is responsible for publishing the resulting
+ * {@code did.jsonl} and, if witnesses are configured, the {@code did-witness.json}.
+ */
+public final class CreateOperation {
+
+    private static final Logger log = LoggerFactory.getLogger(CreateOperation.class);
+    private static final ObjectMapper MAPPER = JsonMapper.INSTANCE;
+
+    private CreateOperation() {}
+
+    /**
+     * Creates the genesis DID log entry.
+     *
+     * @param options creation options (domain, initial document, update keys, signer, etc.)
+     * @return the result containing the DID string, resolved document, metadata, and single-entry log
+     * @throws IllegalArgumentException if required options are missing or invalid
+     */
+    public static CreateResult create(CreateOptions options) {
+        log.trace("Received request to create DID for domain: {}", options.getDomain());
+
+        validateOptions(options);
+
+        try {
+            // Build preliminary log entry with {SCID} placeholders and no proof
+            String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+
+            Parameters parameters = new Parameters(
+                    DidWebVhConstants.METHOD_V1_0,
+                    DidWebVhConstants.SCID_PLACEHOLDER,
+                    List.copyOf(options.getUpdateKeys()),
+                    hasContent(options.getNextKeyHashes()) ? List.copyOf(options.getNextKeyHashes()) : null,
+                    options.isPortable() ? Boolean.TRUE : null,
+                    null,
+                    options.getTtl(),
+                    options.getWitness(),
+                    hasContent(options.getWatchers()) ? List.copyOf(options.getWatchers()) : null);
+
+            DidLogEntry preliminaryEntry = new DidLogEntry(
+                    DidWebVhConstants.SCID_PLACEHOLDER,
+                    versionTime,
+                    parameters,
+                    options.getInitialDocument(),
+                    null);
+
+            // Compute SCID = base58btc(multihash(SHA-256(JCS(preliminary_entry))))
+            JsonNode preliminaryJson = MAPPER.valueToTree(preliminaryEntry);
+            String scid = Multiformats.sha256Multihash(JcsCanonicalizer.canonicalize(preliminaryJson));
+
+            // Text-replace all {SCID} placeholders with the real SCID
+            DidLogEntry scidEntry = replaceScidPlaceholder(preliminaryEntry, scid);
+            String did = DidWebVhConstants.DID_METHOD_PREFIX + scid + ":" + options.getDomain();
+
+            // Build the final entry: hash with predecessor = SCID, version = 1, then sign
+            DidLogEntry finalEntry = OperationSupport.buildHashedAndSignedEntry(
+                    scid,
+                    1,
+                    scidEntry.versionTime(),
+                    scidEntry.parameters(),
+                    scidEntry.state(),
+                    options.getSigner());
+
+            DidLog didLog = DidLog.empty().append(finalEntry);
+
+            String finalVersionId = finalEntry.versionId();
+            DidDocumentMetadata metadata = new DidDocumentMetadata(
+                    finalVersionId,
+                    1,
+                    versionTime,
+                    versionTime,
+                    versionTime,
+                    scid,
+                    options.isPortable(),
+                    false,
+                    String.valueOf(finalEntry.parameters().ttl() != null
+                            ? finalEntry.parameters().ttl()
+                            : DidWebVhConstants.DEFAULT_TTL_SECONDS),
+                    options.getWitness(),
+                    options.getWatchers());
+
+            log.trace("Successfully created DID: {}", did);
+            return new CreateResult(did, finalEntry.state(), metadata, didLog);
+        } catch (RuntimeException e) {
+            log.debug("Failed to create DID for domain {}: {}", options.getDomain(), e.getMessage());
+            throw e;
+        }
+    }
+
+    private static void validateOptions(CreateOptions options) {
+        Objects.requireNonNull(options.getDomain(), "domain is required");
+        Objects.requireNonNull(options.getInitialDocument(), "initialDocument is required");
+        Objects.requireNonNull(options.getUpdateKeys(), "updateKeys is required");
+        Objects.requireNonNull(options.getSigner(), "signer is required");
+        if (options.getUpdateKeys().isEmpty()) {
+            throw new IllegalArgumentException("updateKeys must not be empty");
+        }
+    }
+
+    /**
+     * Serializes the entry to JSON, text-replaces all {@code {SCID}} occurrences
+     * with the real SCID, and parses back — exactly as specified by the spec.
+     */
+    private static DidLogEntry replaceScidPlaceholder(DidLogEntry entry, String scid) {
+        try {
+            String json = MAPPER.writeValueAsString(entry);
+            json = json.replace(DidWebVhConstants.SCID_PLACEHOLDER, scid);
+            return MAPPER.readValue(json, DidLogEntry.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to replace SCID placeholder", e);
+        }
+    }
+
+    private static boolean hasContent(List<?> list) {
+        return list != null && !list.isEmpty();
+    }
+}
