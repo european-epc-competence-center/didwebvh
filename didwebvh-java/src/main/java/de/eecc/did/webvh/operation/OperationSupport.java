@@ -14,6 +14,8 @@ import de.eecc.did.webvh.model.proof.DataIntegrityProof;
 import de.eecc.did.webvh.util.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -84,6 +86,31 @@ final class OperationSupport {
                 signer);
 
         return new DidLogEntry(versionId, versionTime, parameters, state, List.of(proof));
+    }
+
+    /**
+     * Computes the {@code versionTime} for a create entry.
+     * Uses {@code provided} if non-null; otherwise falls back to the current wall-clock time.
+     */
+    static String computeVersionTime(Instant provided) {
+        return provided != null
+                ? provided.truncatedTo(ChronoUnit.SECONDS).toString()
+                : Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+    }
+
+    /**
+     * Computes the {@code versionTime} for an update or deactivate entry.
+     * Uses {@code provided} if non-null; otherwise uses the current wall-clock time,
+     * advancing by one second past {@code previousVersionTime} if needed to guarantee
+     * strict monotonicity (required by the spec and enforced by all compliant resolvers).
+     */
+    static String computeVersionTime(Instant provided, String previousVersionTime) {
+        if (provided != null) {
+            return provided.truncatedTo(ChronoUnit.SECONDS).toString();
+        }
+        Instant prev = Instant.parse(previousVersionTime);
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        return now.isAfter(prev) ? now.toString() : prev.plusSeconds(1).toString();
     }
 
     /**

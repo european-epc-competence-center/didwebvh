@@ -11,8 +11,6 @@ import de.eecc.did.webvh.model.DidDocumentMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 
@@ -70,7 +68,8 @@ public final class DeactivateOperation {
             Parameters delta = newEffective.diff(activeParams);
 
             DidDocument document = previous.state();
-            String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+            String versionTime = OperationSupport.computeVersionTime(
+                    options.getVersionTime(), previous.versionTime());
 
             int newVersionNumber = previous.versionNumber() + 1;
             DidLogEntry finalEntry = OperationSupport.buildHashedAndSignedEntry(

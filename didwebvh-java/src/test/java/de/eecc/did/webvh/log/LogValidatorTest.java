@@ -198,7 +198,29 @@ class LogValidatorTest {
 
             assertThatThrownBy(() -> validator.validate(badLog))
                     .isInstanceOf(LogValidationException.class)
-                    .hasMessageContaining("before previous");
+                    .hasMessageContaining("strictly after");
+        }
+
+        @Test
+        void versionTimeEqualToPrevious_rejected() {
+            CreateResult created = createDid();
+            String scid = created.metadata().scid();
+            UpdateResult updated = updateDid(created.log(), scid);
+            DidLogEntry first = updated.log().first();
+            DidLogEntry second = updated.log().latest();
+
+            // Replace update entry's versionTime with the genesis timestamp (equal, not after)
+            DidLogEntry sameTime = new DidLogEntry(
+                    second.versionId(),
+                    first.versionTime(),
+                    second.parameters(),
+                    second.state(),
+                    second.proof());
+            DidLog badLog = replaceEntry(updated.log(), 1, sameTime);
+
+            assertThatThrownBy(() -> validator.validate(badLog))
+                    .isInstanceOf(LogValidationException.class)
+                    .hasMessageContaining("strictly after");
         }
 
         @Test

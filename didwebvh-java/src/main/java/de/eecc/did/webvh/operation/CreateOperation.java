@@ -16,8 +16,6 @@ import de.eecc.did.webvh.model.DidDocumentMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 
@@ -58,7 +56,7 @@ public final class CreateOperation {
 
         try {
             // Build preliminary log entry with {SCID} placeholders and no proof
-            String versionTime = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString();
+            String versionTime = OperationSupport.computeVersionTime(options.getVersionTime());
 
             Parameters parameters = new Parameters(
                     DidWebVhConstants.METHOD_V1_0,

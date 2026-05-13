@@ -227,9 +227,11 @@ class LogBasedResolverTest {
             String scid = scidFrom(created.log());
             UpdateResult updated = updateDid(created.log(), scid);
 
+            // Query 10 s ahead so the filter reliably lands after the update entry's timestamp,
+            // which may be 1 s in the future when create and update run in the same wall-clock second.
             ResolveOptions options = ResolveOptions.builder()
                     .verifier(Ed25519TestFixture.verifier())
-                    .versionTime(Instant.now())
+                    .versionTime(Instant.now().plusSeconds(10))
                     .build();
 
             ResolveResult result = resolver.resolve(created.did(), updated.log(), options);

@@ -77,6 +77,13 @@ public final class UpdateOptions {
      */
     private final Integer ttl;
 
+    /**
+     * The {@code versionTime} to record in the new log entry. {@code null} means the
+     * library picks the current wall-clock time, guaranteeing it is strictly after the
+     * previous entry's time by advancing by one second if needed.
+     */
+    private final java.time.Instant versionTime;
+
     private UpdateOptions(Builder builder) {
         this.log = builder.log;
         this.updatedDocument = builder.updatedDocument;
@@ -86,6 +93,7 @@ public final class UpdateOptions {
         this.witness = builder.witness;
         this.watchers = builder.watchers;
         this.ttl = builder.ttl;
+        this.versionTime = builder.versionTime;
     }
 
     public DidLog getLog() { return log; }
@@ -96,6 +104,7 @@ public final class UpdateOptions {
     public WitnessParameter getWitness() { return witness; }
     public List<String> getWatchers() { return watchers; }
     public Integer getTtl() { return ttl; }
+    public java.time.Instant getVersionTime() { return versionTime; }
 
     public static Builder builder() {
         return new Builder();
@@ -110,6 +119,7 @@ public final class UpdateOptions {
         private WitnessParameter witness;
         private List<String> watchers;
         private Integer ttl;  // null → inherit current value
+        private java.time.Instant versionTime;  // null → auto-advance past previous entry
 
         private Builder() {}
 
@@ -150,6 +160,11 @@ public final class UpdateOptions {
 
         public Builder ttl(Integer ttl) {
             this.ttl = ttl;
+            return this;
+        }
+
+        public Builder versionTime(java.time.Instant versionTime) {
+            this.versionTime = versionTime;
             return this;
         }
 

@@ -68,6 +68,12 @@ public final class CreateOptions {
      */
     private final Integer ttl;
 
+    /**
+     * The {@code versionTime} to record in the genesis log entry. {@code null} means the
+     * library uses the current wall-clock time.
+     */
+    private final java.time.Instant versionTime;
+
     private CreateOptions(Builder builder) {
         this.domain = builder.domain;
         this.initialDocument = builder.initialDocument;
@@ -78,6 +84,7 @@ public final class CreateOptions {
         this.witness = builder.witness;
         this.watchers = builder.watchers;
         this.ttl = builder.ttl;
+        this.versionTime = builder.versionTime;
     }
 
     public String getDomain() { return domain; }
@@ -89,6 +96,7 @@ public final class CreateOptions {
     public WitnessParameter getWitness() { return witness; }
     public List<String> getWatchers() { return watchers; }
     public Integer getTtl() { return ttl; }
+    public java.time.Instant getVersionTime() { return versionTime; }
 
     public static Builder builder() {
         return new Builder();
@@ -104,6 +112,7 @@ public final class CreateOptions {
         private WitnessParameter witness;
         private List<String> watchers;
         private Integer ttl;  // null → use spec default
+        private java.time.Instant versionTime;  // null → use Instant.now()
 
         private Builder() {}
 
@@ -149,6 +158,11 @@ public final class CreateOptions {
 
         public Builder ttl(Integer ttl) {
             this.ttl = ttl;
+            return this;
+        }
+
+        public Builder versionTime(java.time.Instant versionTime) {
+            this.versionTime = versionTime;
             return this;
         }
 

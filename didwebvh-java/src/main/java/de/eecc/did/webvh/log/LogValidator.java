@@ -210,32 +210,33 @@ public final class LogValidator {
         }
     }
 
-    /** Ensures {@code versionTime} is a valid ISO-8601 UTC timestamp and 
-     * is not in the future and is not before the previous entry's version time. */
+    /** Ensures {@code versionTime} is a valid ISO-8601 UTC timestamp,
+     * is not in the future, and is strictly after the previous entry's version time. */
     private static void validateVersionTime(DidLogEntry entry, DidLogEntry previous) {
         if (entry.versionTime() == null || entry.versionTime().isBlank()) {
             throw new LogValidationException("Entry is missing 'versionTime'");
         }
         Instant entryTime;
         try {
-            // Entry time exists and is valid format (ISO-8601 UTC)
             entryTime = Instant.parse(entry.versionTime());
         } catch (DateTimeParseException e) {
             throw new LogValidationException(
                     "versionTime '" + entry.versionTime() + "' is not a valid ISO-8601 UTC timestamp", e);
         }
-        if (entryTime.isAfter(Instant.now())) {
-            // Entry time from the future is not valid
+        // Allow up to 5 seconds of clock skew so that an auto-advanced timestamp
+        // (prev + 1 s) produced in the same wall-clock second is not rejected.
+        if (entryTime.isAfter(Instant.now().plusSeconds(5))) {
             throw new LogValidationException(
                     "versionTime '" + entry.versionTime() + "' is in the future");
         }
         if (previous != null) {
-            // If not checking genesis, entry time must be >= previous entry time
+            // Spec requires strictly increasing timestamps — equal is not allowed
             Instant prevTime = Instant.parse(previous.versionTime());
-            if (entryTime.isBefore(prevTime)) {
+            if (!entryTime.isAfter(prevTime)) {
                 throw new LogValidationException(
                         "versionTime '" + entry.versionTime()
-                                + "' is before previous entry's versionTime '" + previous.versionTime() + "'");
+                                + "' must be strictly after previous entry's versionTime '"
+                                + previous.versionTime() + "'");
             }
         }
     }
