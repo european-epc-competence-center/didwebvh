@@ -25,7 +25,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
   <groupId>de.eecc.did</groupId>
   <artifactId>webvh</artifactId>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
 </dependency>
 ```
 

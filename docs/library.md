@@ -1,11 +1,20 @@
 # Java Library Architecture
 
-**Location:** `didwebvh-java/` (Maven, Java 21 LTS)
+## Installation
+
+**Requirements:** Java 21+, Maven 3.9+
+
+The library is published to Maven Central:  
+https://central.sonatype.com/artifact/de.eecc.did/webvh
+
+Add the dependency to your `pom.xml`:
 
 ```xml
-<groupId>io.didwebvh</groupId>
-<artifactId>didwebvh-java</artifactId>
-<version>0.1.0-SNAPSHOT</version>
+<dependency>
+  <groupId>de.eecc.did</groupId>
+  <artifactId>webvh</artifactId>
+  <version>0.2.0</version>
+</dependency>
 ```
 
 ## Package Structure
