@@ -19,22 +19,18 @@ This library targets `did:webvh` **v1.0**:
 
 ## Installation
 
-The library is not yet published to Maven Central. Install it to your local `~/.m2` repository:
-
-```bash
-cd didwebvh-java
-mvn install
-```
-
 Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
   <groupId>de.eecc.did</groupId>
   <artifactId>webvh</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
 </dependency>
 ```
+
+The library is published to Maven Central:  
+https://central.sonatype.com/artifact/de.eecc.did/webvh
 
 ## Quick Start
 

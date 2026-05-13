@@ -51,6 +51,9 @@
     <maven-javadoc-plugin.version>3.6.3</maven-javadoc-plugin.version>
     <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
     <central-publishing-maven-plugin.version>0.7.0</central-publishing-maven-plugin.version>
+
+    <!-- Release signing: set via -Dgpg.passphrase=... or environment -->
+    <gpg.passphrase />
   </properties>
 
   <dependencyManagement>
@@ -248,6 +251,7 @@
                 <arg>--no-tty</arg>
                 <arg>--batch</arg>
               </gpgArguments>
+              <passphrase>${gpg.passphrase}</passphrase>
             </configuration>
           </plugin>
           <plugin>

@@ -22,12 +22,8 @@ This guide explains how to use `didwebvh-java` to create, update, resolve, and d
 
 **Requirements:** Java 17+, Maven 3.9+
 
-The library is not yet published to Maven Central. Install it to your local `~/.m2` repository:
-
-```bash
-cd didwebvh-java
-mvn install
-```
+The library is published to Maven Central:  
+https://central.sonatype.com/artifact/de.eecc.did/webvh
 
 Add the dependency to your `pom.xml`:
 
@@ -35,7 +31,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
   <groupId>de.eecc.did</groupId>
   <artifactId>webvh</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
 </dependency>
 ```
 
