@@ -261,8 +261,8 @@
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
-              <autoPublish>false</autoPublish>
-              <waitForClose>false</waitForClose>
+              <autoPublish>true</autoPublish>
+              <waitUntilPublished>true</waitUntilPublished>
             </configuration>
           </plugin>
         </plugins>
