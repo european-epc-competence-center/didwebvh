@@ -20,7 +20,7 @@ This guide explains how to use `didwebvh-java` to create, update, resolve, and d
 
 ## Installation
 
-**Requirements:** Java 17+, Maven 3.9+
+**Requirements:** Java 21+, Maven 3.9+
 
 The library is published to Maven Central:  
 https://central.sonatype.com/artifact/de.eecc.did/webvh

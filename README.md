@@ -14,7 +14,7 @@ This library targets `did:webvh` **v1.0**:
 
 ## Requirements
 
-- Java 17 JDK
+- Java 21 JDK
 - Maven 3.9+
 
 ## Installation
@@ -148,7 +148,7 @@ didwebvh-java/
 ```
 /
 ├── .github/workflows/       # CI: tests on push to main (ci.yml)
-├── didwebvh-java/           # Java library (Maven, Java 17)
+├── didwebvh-java/           # Java library (Maven, Java 21)
 ├── spec/                    # did:webvh specification v1.0 source files
 ├── docs/                    # Thesis documentation
 ├── README.md
