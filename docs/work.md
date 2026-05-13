@@ -15,13 +15,10 @@ All four DID operations (create, update, deactivate, resolve) are implemented an
 4. **Reject unknown parameters** — `Parameters` uses `@JsonIgnoreProperties(ignoreUnknown = true)`; spec requires the `parameters` object to only include defined properties
 5. **IDNA2008 compliance** — `DidUrlTransformer` uses Java's `IDN.toASCII` (IDNA2003); spec requires IDNA2008 (RFC 9233)
 6. **Deactivated DID document** — When a DID is deactivated the library returns `null` for `didDocument`. The TS test vectors include the last valid document with `deactivated: true`. Both are arguably spec-compliant (DID Resolution spec shows `null` examples, DID Core says the document should indicate deactivation). Needs community decision.
+
 ### P3 — Future Enhancements
 
 - Watchers API integration
 - DNS-over-HTTPS (RFC 8484)
 - CORS header guidance
 - Method version dispatch (v0.5 compat like TS impl)
-
-## Deliberate Design Choices
-
-- **`versionTime` strictness** — `LogValidator` allows equal timestamps between consecutive entries. The spec requires strictly greater, but this simplifies testing and does not materially affect security or correctness.

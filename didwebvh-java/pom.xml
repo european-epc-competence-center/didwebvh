@@ -6,7 +6,7 @@
 
   <groupId>de.eecc.did</groupId>
   <artifactId>webvh</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>0.1.0</version>
   <packaging>jar</packaging>
 
   <name>webvh</name>
@@ -245,6 +245,8 @@
               <gpgArguments>
                 <arg>--pinentry-mode</arg>
                 <arg>loopback</arg>
+                <arg>--no-tty</arg>
+                <arg>--batch</arg>
               </gpgArguments>
             </configuration>
           </plugin>
