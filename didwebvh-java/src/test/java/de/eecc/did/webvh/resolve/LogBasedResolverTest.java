@@ -541,21 +541,20 @@ class LogBasedResolverTest {
      *               active config for v1 = A  (genesis uses its own config)
      *
      * Entry 2 (v2): parameters.witness = {B, threshold:1}
-     *               active config for v2 = B  (rotation: new config governs the transition entry)
+     *               active config for v2 = A  (B only becomes active AFTER this entry is published)
      *
      * Entry 3 (v3): parameters.witness = {}   (witnesses turned off)
-     *               active config for v3 = B  (deactivation: old witnesses must approve; spec §witness-lists)
+     *               active config for v3 = B  (B became active after v2 was published)
      * </pre>
      *
      * <p>This produces two epochs:
      * <ul>
-     *   <li>Epoch A: {@code [1, 1]}. A witness from config A must have signed v&ge;min(1,V).</li>
-     *   <li>Epoch B: {@code [2, 3]}. A witness from config B must have signed v&ge;min(3,V).</li>
+     *   <li>Epoch A: {@code [1, 2]}. A witness from config A must have signed v&ge;min(2,V).</li>
+     *   <li>Epoch B: {@code [3, 3]}. A witness from config B must have signed v&ge;3.</li>
      * </ul>
      *
-     * <p>Both epochs must pass independently. The deactivation entry (v3) is governed by
-     * the still-active configB, per the spec: "if witnesses are active when the witness
-     * parameter is set to {}, that log entry MUST be witnessed."
+     * <p>Both epochs must pass independently. B signing v3 does NOT cover epoch A,
+     * because B is not listed in config A.
      */
     @Nested
     class WitnessEpochTransition {
@@ -597,7 +596,7 @@ class LogBasedResolverTest {
 
             String scid = scidFrom(created.log());
 
-            // v2: rotate witness config to B (new config governs the transition entry)
+            // v2: switch witness config to B (A is still active for this entry)
             ObjectNode doc2 = MAPPER.createObjectNode();
             doc2.putArray("@context").add("https://www.w3.org/ns/did/v1");
             doc2.put("id", "did:webvh:" + scid + ":" + DOMAIN);
@@ -630,8 +629,8 @@ class LogBasedResolverTest {
             String versionId2 = log.entries().get(1).versionId(); // v2
             String versionId3 = log.entries().get(2).versionId(); // v3
 
-            // Epoch A [1,1]: A signs v2 → 2 ≥ min(1,MAX)=1 ✓
-            // Epoch B [2,3]: B signs v3 → 3 ≥ min(3,MAX)=3 ✓
+            // Epoch A (lastVersion=2): A signs v2 → covers v2 ≥ 2 ✓
+            // Epoch B (lastVersion=3): B signs v3 → covers v3 ≥ 3 ✓
             WitnessProofCollection proofs = new WitnessProofCollection(List.of(
                     proofFrom(witnessA, versionId2),
                     proofFrom(witnessB, versionId3)));
@@ -699,7 +698,7 @@ class LogBasedResolverTest {
 
         @Test
         void historicalVersion1_failsWhenEpochCoversV1ButNoProof() {
-            // Epoch A covers [1, 1]. When resolving v1 (atVersion=1), the epoch applies
+            // Epoch A covers [1, 2]. When resolving v1 (atVersion=1), the epoch applies
             // because firstVersion=1 <= 1. No proofs given → must fail.
             DidLog log = buildThreeEntryLog();
 
@@ -714,7 +713,7 @@ class LogBasedResolverTest {
 
         @Test
         void historicalVersion1_succeedsWhenProofProvided() {
-            // Epoch A covers [1, 1]. Witness A signs v2 → watermark covers v1 (2 ≥ min(1,1)=1).
+            // Epoch A covers [1, 2]. Witness A signs v2 → watermark covers v1.
             DidLog log = buildThreeEntryLog();
             String versionId2 = log.entries().get(1).versionId(); // v2
 
@@ -784,21 +783,15 @@ class LogBasedResolverTest {
         }
 
         @Test
-        void historicalVersion2_succeedsWhenBothEpochsSatisfied() {
-            // Under the "new config governs transition entry" interpretation:
-            //   Epoch A = [1, 1] (configA, firstVersion=1 ≤ 2 → checked, requiredVersion=min(1,2)=1)
-            //   Epoch B = [2, 3] (configB, firstVersion=2 ≤ 2 → checked, requiredVersion=min(3,2)=2)
-            //
-            // Both epochs must be satisfied for a historical v=2 resolution.
-            // A signing v2 covers epoch A (2 ≥ 1).
-            // B signing v3 covers epoch B (3 ≥ 2, and v3 is a valid entry in the full log).
+        void historicalVersion2_succeedsWhenEpochASatisfied() {
+            // Resolving v2 (atVersion=2):
+            //   Epoch A: lastVersion=2 ≤ 2 → checked. A must have signed v≥2.
+            //   Epoch B: lastVersion=3 > 2 → skipped.
             DidLog log = buildThreeEntryLog();
             String versionId2 = log.entries().get(1).versionId();
-            String versionId3 = log.entries().get(2).versionId();
 
             WitnessProofCollection proofs = new WitnessProofCollection(List.of(
-                    proofFrom(witnessA, versionId2),
-                    proofFrom(witnessB, versionId3)));
+                    proofFrom(witnessA, versionId2)));
 
             ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()
                     .verifier(Ed25519TestFixture.verifier())
@@ -812,7 +805,7 @@ class LogBasedResolverTest {
 
         @Test
         void historicalVersion2_failsWhenEpochAProofMissing() {
-            // Resolving v2 (atVersion=2): epoch A [1,1] and epoch B [2,3] are both checked. No proofs given → must fail.
+            // Resolving v2 (atVersion=2): epoch A (lastVersion=2) is checked but no proofs given.
             DidLog log = buildThreeEntryLog();
 
             ResolveResult result = resolver.resolve(didFrom(log), log, ResolveOptions.builder()

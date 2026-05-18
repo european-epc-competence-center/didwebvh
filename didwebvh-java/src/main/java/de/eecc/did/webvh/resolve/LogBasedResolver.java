@@ -344,10 +344,11 @@ public final class LogBasedResolver {
      * witness configuration. The active witness config for entry {@code i} is:
      * <ul>
      *   <li>Genesis (i=0): the genesis entry's own effective witness config.</li>
-     *   <li>Later entries (i&gt;0): normally the <em>previous</em> entry's effective witness
-     *       config, because a new witness parameter only becomes active after publication.
-     *       When witnesses are activated from an empty state ({@code {}} → non-empty),
-     *       the change is <em>immediately active</em> for that same entry per the spec.</li>
+     *   <li>Later entries (i&gt;0): the <em>previous</em> entry's effective witness config,
+     *       because a new (replacement) witness list only becomes active <em>after</em> the
+     *       log entry declaring it has been published. The exception is activation from
+     *       an empty state ({@code {}} → non-empty), which is <em>immediately active</em>
+     *       for the same entry per the spec.</li>
      * </ul>
      *
      * <p>Each epoch tracks {@code firstVersion} (where the config started) and
@@ -397,18 +398,22 @@ public final class LogBasedResolver {
                 WitnessParameter currConfig = validEntries.get(i).effectiveParams().witness();
                 boolean wasEmpty = (prevConfig == null || prevConfig.isEmpty());
                 boolean nowActive = (currConfig != null && !currConfig.isEmpty());
-                if (!wasEmpty && !nowActive) {
-                    // Deactivation (active → {}): old witnesses must witness their own removal.
-                    // Spec §witness-lists: "If witnesses are active when the witness parameter is
-                    // set to {}, that log entry MUST be witnessed."
-                    activeConfig = prevConfig;
-                } else {
-                    // Activation ({} → active): spec says "immediately active".
-                    // Rotation (active → active): the new config declared in this entry
-                    // is what governs this entry. The "becomes active AFTER published" sentence
-                    // is about operational ordering (witnesses sign before HTTP publication),
-                    // not about which config the resolver checks for the transition entry.
+                if (wasEmpty && nowActive) {
+                    // Activation ({} → active). Spec §Witness Lists: "If the witness property
+                    // is updated from {}, the change is immediately active, and the corresponding
+                    // log entry MUST be witnessed." The new config governs this entry.
                     activeConfig = currConfig;
+                } else {
+                    // Rotation (active → active) and deactivation (active → {}). Spec §Witness Lists:
+                    // "If a DID log entry contains a new (replacement) list of witnesses … that
+                    // new list becomes active AFTER the new DID log has been published." And:
+                    // "If witnesses are active when the witness parameter is set to {}, that log
+                    // entry MUST be witnessed."
+                    //
+                    // In both cases the previous config still governs the transition entry. This
+                    // preserves the safety property that a witness cannot be removed (whether by
+                    // replacement or by deactivation) without that witness's own approval.
+                    activeConfig = prevConfig;
                 }
             }
 
