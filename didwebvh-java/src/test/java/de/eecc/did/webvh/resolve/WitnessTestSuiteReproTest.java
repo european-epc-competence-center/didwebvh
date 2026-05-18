@@ -33,9 +33,36 @@ import java.nio.charset.StandardCharsets;
  * <p>This is an investigation harness — tests do not assert. Look at the captured log
  * lines to see what our resolver reports.
  *
+ * <h2>Expected outcomes per vector (see docs/work.md §P2)</h2>
+ *
+ * <p>All {@code witness-update*} vectors share the log shape
+ * {@code v1: witness={threshold:2, witnesses:[A,B]} → v2: witness={threshold:1, witnesses:[A]}}.
+ * Under the spec-literal "prev config governs the rotation entry" rule that this resolver
+ * implements:
+ *
+ * <ul>
+ *   <li>{@code witness-update-python} — proofs A+B at v1, A at v2; expected {@code invalidDid}.
+ *       Our resolver agrees: v2 governed by A+B threshold=2, only A signed v2 → 1 &lt; 2.</li>
+ *   <li>{@code witness-update-ts} — same proofs; upstream expects success, we report
+ *       {@code invalidDid}. The TS generator encodes the permissive "new config governs"
+ *       interpretation; under spec-literal the vector is under-witnessed at v2.</li>
+ *   <li>{@code witness-update-java} (ivir3zam) — same as TS. Upstream expects success;
+ *       ivir3zam's validator uses the merged-current config, which is the same interpretation.</li>
+ *   <li>{@code witness-update-rust} — proofs at v2 only (A+B); upstream expects success.
+ *       Our resolver rejects on a separate spec violation: the Rust generator emits witness
+ *       {@code id} as a bare multibase key (e.g. {@code z6Mkrv5…}) instead of a
+ *       {@code did:key:} DID. Spec §Witness Lists requires {@code did:key}.</li>
+ *   <li>{@code witness-threshold-rust} — single entry; same Rust-generator
+ *       witness-{@code id} problem.</li>
+ *   <li>{@code witness-update-java-eecc} — self-generated under the previous (buggy)
+ *       rotation interpretation. Entries 1 and 2 also share the same {@code versionTime}
+ *       because they were generated before the {@code computeVersionTime} fix in commit
+ *       {@code 374e73e}. Will reject on entry 2 until regenerated.</li>
+ * </ul>
+ *
  * <p>Disabled on CI: these tests exist for manual investigation and depend on external
- * vectors that are still in flux upstream. Re-enable locally with {@code -Dtests.investigation}
- * or by removing the {@code @Disabled} annotation.
+ * vectors that are still in flux upstream. Re-enable locally by removing the
+ * {@code @Disabled} annotation.
  */
 @Disabled("investigation harness — enable locally to inspect cross-impl resolution outcomes")
 class WitnessTestSuiteReproTest {
@@ -44,36 +71,49 @@ class WitnessTestSuiteReproTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String BASE = "/witness-suite/";
 
+    // Expected: invalidDid under spec-literal (rotation governed by prev config).
+    // Upstream expects success → diverges; ivir3zam validator uses curr config for rotation.
     @Test
-    @DisplayName("witness-update — java-impl-generated log")
+    @DisplayName("witness-update — java-impl (ivir3zam) generated log")
     void witnessUpdate_java() throws Exception {
         runVector("witness-update-java");
     }
 
+    // Expected: invalidDid — Rust generator emits non-did:key witness id (spec violation),
+    // rejected at parameter validation before witness check is reached.
     @Test
     @DisplayName("witness-update — rust-impl-generated log")
     void witnessUpdate_rust() throws Exception {
         runVector("witness-update-rust");
     }
 
+    // Expected: invalidDid under spec-literal (rotation governed by prev config).
+    // Upstream expects success → diverges; TS only validates witness at the last entry
+    // using the merged-current config.
     @Test
     @DisplayName("witness-update — ts-impl-generated log")
     void witnessUpdate_ts() throws Exception {
         runVector("witness-update-ts");
     }
 
+    // Expected: invalidDid — same Rust generator bug (non-did:key witness id).
     @Test
     @DisplayName("witness-threshold — rust-impl-generated log")
     void witnessThreshold_rust() throws Exception {
         runVector("witness-threshold-rust");
     }
 
+    // Expected: log-validation failure on entry 2 — generated under the old (buggy) rotation
+    // interpretation AND before the versionTime auto-advance fix (commit 374e73e), so v1 and v2
+    // share the same versionTime. Needs regeneration.
     @Test
     @DisplayName("witness-update — java-eecc self-generated log")
     void witnessUpdate_javaEecc() throws Exception {
         runVector("witness-update-java-eecc");
     }
 
+    // Expected: invalidDid (and upstream agrees) — under spec-literal v2 is governed by
+    // A+B threshold=2 but only A signed v2.
     @Test
     @DisplayName("witness-update — python-impl-generated log")
     void witnessUpdate_python() throws Exception {
