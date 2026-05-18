@@ -62,13 +62,10 @@ With the fix the epoch structure for the three-entry test log (v1:A, v2:B, v3:{}
 
 And `witness-update-java` (ivir3zam) and `witness-update-ts` now resolve successfully.
 
-Python's resolver has the same bug in the opposite direction — `(prev_state or state).witness_rule` picks `prev_state` (old config) and stores it at the current `version_number`, causing it to reject. Python's expected `resolutionResult.json` therefore records failure. Our old code agreed with Python's bug, which made us look "consistent" — both were wrong.
-
 #### Remaining issues (upstream)
 
-- **`witness-update-rust` / `witness-threshold-rust`**: Rust generator emits witness `id` as a bare multibase key (`z6Mkrv5Cm2…`) instead of a `did:key:` DID. Spec §Witness Lists line 1061 mandates `did:key`. [`WitnessParameter.validate`](../didwebvh-java/src/main/java/de/eecc/did/webvh/model/WitnessParameter.java) correctly rejects. This is a Rust generator bug to fix upstream.
+- **`witness-update-rust` / `witness-threshold-rust`**: Rust generator emits witness `id` as a bare multibase key (`z6Mkrv5Cm2…`) instead of a `did:key:` DID.
 - **`witness-update-java-eecc`** (test-suite harness): equal `versionTime` on entries 1 and 2 (generated in the same second, before our local `OperationSupport.computeVersionTime` fix). Vectors need to be re-generated. The resolutionResult.json was also produced under the old (buggy) strict interpretation and says "no didDocument" — it should also be regenerated to expect success.
-- **`witness-update-rust`**: additionally has equal `versionTime` on entries 1 and 2 for the same reason.
 
 ### P3 — Future Enhancements
 
