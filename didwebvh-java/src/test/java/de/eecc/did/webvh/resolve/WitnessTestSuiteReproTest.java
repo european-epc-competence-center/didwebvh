@@ -62,6 +62,18 @@ class WitnessTestSuiteReproTest {
         runVector("witness-threshold-rust");
     }
 
+    @Test
+    @DisplayName("witness-update — java-eecc self-generated log")
+    void witnessUpdate_javaEecc() throws Exception {
+        runVector("witness-update-java-eecc");
+    }
+
+    @Test
+    @DisplayName("witness-update — python-impl-generated log")
+    void witnessUpdate_python() throws Exception {
+        runVector("witness-update-python");
+    }
+
     private void runVector(String name) throws Exception {
         log.info("================ {} ================", name);
         String jsonl = load(BASE + name + "/did.jsonl");

@@ -397,12 +397,18 @@ public final class LogBasedResolver {
                 WitnessParameter currConfig = validEntries.get(i).effectiveParams().witness();
                 boolean wasEmpty = (prevConfig == null || prevConfig.isEmpty());
                 boolean nowActive = (currConfig != null && !currConfig.isEmpty());
-                if (wasEmpty && nowActive) {
-                    // Spec: when witness is updated from {}, the change is immediately active
-                    activeConfig = currConfig;
-                } else {
-                    // Spec: new witness lists take effect after the new log entry is published
+                if (!wasEmpty && !nowActive) {
+                    // Deactivation (active → {}): old witnesses must witness their own removal.
+                    // Spec §witness-lists: "If witnesses are active when the witness parameter is
+                    // set to {}, that log entry MUST be witnessed."
                     activeConfig = prevConfig;
+                } else {
+                    // Activation ({} → active): spec says "immediately active".
+                    // Rotation (active → active): the new config declared in this entry
+                    // is what governs this entry. The "becomes active AFTER published" sentence
+                    // is about operational ordering (witnesses sign before HTTP publication),
+                    // not about which config the resolver checks for the transition entry.
+                    activeConfig = currConfig;
                 }
             }
 
