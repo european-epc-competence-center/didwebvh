@@ -330,9 +330,8 @@ class LogValidatorTest {
         }
 
         /**
-         * Portable DIDs MAY change their document "id" across entries.
-         * The per-entry check should accept the move because genesis set
-         * portable=true.
+         * Portable DIDs MAY change their document "id" across entries when the
+         * new entry also carries the prior DID in alsoKnownAs (spec §DID Portability).
          */
         @Test
         void portableDid_documentIdChange_accepted() {
@@ -346,13 +345,14 @@ class LogValidatorTest {
                             .portable(true)
                             .build());
             String scid = created.metadata().scid();
+            String prevDid = "did:webvh:" + scid + ":" + DOMAIN;
 
-            // 2. Build an update whose document id points to a new domain
+            // 2. Build a moved doc that includes the prior DID in alsoKnownAs
             ObjectNode movedDoc = MAPPER.createObjectNode();
             movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
             movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
+            movedDoc.putArray("alsoKnownAs").add(prevDid);
 
-            // 3. Append the move entry
             UpdateResult moved = UpdateOperation.update(
                     UpdateOptions.builder()
                             .log(created.log())
@@ -360,9 +360,76 @@ class LogValidatorTest {
                             .signer(fixture.signer())
                             .build());
 
-            // 4. Validation must accept both entries
             int valid = validator.validate(moved.log());
             assertThat(valid).isEqualTo(2);
+        }
+
+        /**
+         * A portable DID move that fails to include the prior DID in alsoKnownAs
+         * MUST be rejected. The alsoKnownAs link is the only public signal that
+         * the new DID continues the prior identifier (spec §DID Portability).
+         */
+        @Test
+        void portableDid_documentIdChange_missingAlsoKnownAs_rejected() {
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .portable(true)
+                            .build());
+            String scid = created.metadata().scid();
+
+            // Moved doc deliberately omits alsoKnownAs.
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
+
+            UpdateResult moved = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(movedDoc))
+                            .signer(fixture.signer())
+                            .build());
+
+            assertThatThrownBy(() -> validator.validate(moved.log()))
+                    .isInstanceOf(LogValidationException.class)
+                    .hasMessageContaining("alsoKnownAs");
+        }
+
+        /**
+         * The alsoKnownAs entry must reference the *prior* DID, not some other
+         * arbitrary identifier. A move that lists an unrelated alsoKnownAs is rejected.
+         */
+        @Test
+        void portableDid_documentIdChange_alsoKnownAsHasWrongDid_rejected() {
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .portable(true)
+                            .build());
+            String scid = created.metadata().scid();
+
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
+            // Unrelated DID — not the prior one.
+            movedDoc.putArray("alsoKnownAs").add("did:web:unrelated.example");
+
+            UpdateResult moved = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(movedDoc))
+                            .signer(fixture.signer())
+                            .build());
+
+            assertThatThrownBy(() -> validator.validate(moved.log()))
+                    .isInstanceOf(LogValidationException.class)
+                    .hasMessageContaining("alsoKnownAs");
         }
     }
 

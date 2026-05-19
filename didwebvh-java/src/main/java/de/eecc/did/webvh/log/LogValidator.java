@@ -136,10 +136,11 @@ public final class LogValidator {
 
         // Per-entry portability check.
         // If the DID document "id" changed from the previous entry, the
-        // previous entry's effective parameters MUST have portable=true.
-        // This prevents a non-portable DID from being silently "moved"
-        // to a new domain — only DIDs explicitly created with portable=true
-        // may change their document id across entries.
+        // previous entry's effective parameters MUST have portable=true,
+        // and the new entry's DIDDoc MUST contain the prior DID in alsoKnownAs
+        // (spec §DID Portability). The alsoKnownAs link is the only public
+        // signal that the new DID is the continuation of the old identifier;
+        // without it, consumers cannot follow the move.
         if (previous != null) {
             String prevDocId = previous.state().getString("id");
             String currDocId = entry.state().getString("id");
@@ -148,6 +149,11 @@ public final class LogValidator {
                     throw new LogValidationException(
                             "DID document id changed from '" + prevDocId + "' to '" + currDocId
                                     + "' but 'portable' is not true");
+                }
+                if (!entry.state().getStrings("alsoKnownAs").contains(prevDocId)) {
+                    throw new LogValidationException(
+                            "DID document id changed from '" + prevDocId + "' to '" + currDocId
+                                    + "' but the new entry's 'alsoKnownAs' does not contain the prior DID");
                 }
             }
         }
