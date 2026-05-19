@@ -308,6 +308,7 @@ DidLog updatedLog = result.log(); // currentLog + new entry
 | `.witness(WitnessParameter)` | No | New witness configuration. Supply only when changing witnesses. |
 | `.watchers(List<String>)` | No | New watcher URLs. Supply only when changing watchers. |
 | `.ttl(Integer)` | No | New cache TTL. Supply only when changing TTL. |
+| `.domain(String)` | No | New web domain for a portable DID move. The library rewrites the supplied document's `id`/`controller` to `did:webvh:{SCID}:{domain}` and prepends the previous DID to `alsoKnownAs`. Requires `portable: true` at creation. See [Portability](#portability). |
 
 > **Important:** Only supply optional fields when that aspect of the DID is actually changing. Unchanged fields are inherited automatically from the previous log entry. This produces a compact *parameter delta*.
 
@@ -583,7 +584,7 @@ CreateResult result = DidWebVh.create(
 
 ### Portability
 
-A portable DID can be moved to a new domain. This can only be enabled at creation time:
+A portable DID can be moved to a new web location while keeping the same SCID. Portability is opt-in and can only be enabled at creation time:
 
 ```java
 CreateResult result = DidWebVh.create(
@@ -593,6 +594,30 @@ CreateResult result = DidWebVh.create(
         .build()
 );
 ```
+
+#### Moving to a new domain
+
+Once a DID is portable, perform a move by calling `update` with `.domain(newDomain)`. The library:
+
+1. Verifies the DID was created with `portable: true` (throws `IllegalStateException` otherwise).
+2. Rewrites the supplied document's `id` (and `controller`, if present) to `did:webvh:{SCID}:{newDomain}`.
+3. Prepends the previous DID to `alsoKnownAs`, preserving any existing entries and deduplicating.
+
+```java
+UpdateResult moved = DidWebVh.update(
+    UpdateOptions.builder()
+        .log(currentLog)
+        .updatedDocument(currentDoc) // id/controller/alsoKnownAs are rewritten for you
+        .signer(signer)
+        .domain("example.org")
+        .build()
+);
+
+String newDid = moved.log().latest().state().getString("id");
+// e.g. did:webvh:Qm...:example.org
+```
+
+After publishing the updated `did.jsonl` at the new domain, resolvers reaching either the old or new DID will follow the chain and find the move in the log. The previous DID is retained in `alsoKnownAs` so consumers can still recognise references to it.
 
 ### Custom Verifier for Resolution
 
