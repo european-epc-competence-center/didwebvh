@@ -84,6 +84,16 @@ public final class UpdateOptions {
      */
     private final java.time.Instant versionTime;
 
+    /**
+     * New web domain for a portable DID move (spec §DID Portability).
+     * When set, the library rewrites the supplied document's {@code id} and
+     * {@code controller} to {@code did:webvh:{SCID}:{domain}} and appends the
+     * previous DID to {@code alsoKnownAs}. The genesis entry must have
+     * {@code portable: true}; otherwise the operation is rejected.
+     * {@code null} means no domain change.
+     */
+    private final String domain;
+
     private UpdateOptions(Builder builder) {
         this.log = builder.log;
         this.updatedDocument = builder.updatedDocument;
@@ -94,6 +104,7 @@ public final class UpdateOptions {
         this.watchers = builder.watchers;
         this.ttl = builder.ttl;
         this.versionTime = builder.versionTime;
+        this.domain = builder.domain;
     }
 
     public DidLog getLog() { return log; }
@@ -105,6 +116,7 @@ public final class UpdateOptions {
     public List<String> getWatchers() { return watchers; }
     public Integer getTtl() { return ttl; }
     public java.time.Instant getVersionTime() { return versionTime; }
+    public String getDomain() { return domain; }
 
     public static Builder builder() {
         return new Builder();
@@ -120,6 +132,7 @@ public final class UpdateOptions {
         private List<String> watchers;
         private Integer ttl;  // null → inherit current value
         private java.time.Instant versionTime;  // null → auto-advance past previous entry
+        private String domain;  // null → no portable move
 
         private Builder() {}
 
@@ -165,6 +178,11 @@ public final class UpdateOptions {
 
         public Builder versionTime(java.time.Instant versionTime) {
             this.versionTime = versionTime;
+            return this;
+        }
+
+        public Builder domain(String domain) {
+            this.domain = domain;
             return this;
         }
 

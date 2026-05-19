@@ -1,5 +1,6 @@
 package de.eecc.did.webvh.operation;
 
+import de.eecc.did.webvh.DidDocument;
 import de.eecc.did.webvh.DidWebVhConstants;
 import de.eecc.did.webvh.api.UpdateOptions;
 import de.eecc.did.webvh.api.UpdateResult;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -78,6 +80,11 @@ public final class UpdateOperation {
 
             Parameters delta = newEffective.diff(activeParams);
 
+            // Spec §DID Portability: if a new domain is supplied, rewrite the document's
+            // id/controller to the new DID and append the previous DID to alsoKnownAs.
+            DidDocument documentToWrite = applyPortableMoveIfRequested(
+                    options, previous, currentLog, activeParams);
+
             String versionTime = OperationSupport.computeVersionTime(
                     options.getVersionTime(), previous.versionTime());
 
@@ -87,7 +94,7 @@ public final class UpdateOperation {
                     newVersionNumber,
                     versionTime,
                     delta,
-                    options.getUpdatedDocument(),
+                    documentToWrite,
                     options.getSigner());
 
             DidLog updatedLog = currentLog.append(finalEntry);
@@ -145,6 +152,61 @@ public final class UpdateOperation {
                 options.getTtl() != null ? options.getTtl() : active.ttl(),
                 options.getWitness() != null ? options.getWitness() : active.witness(),
                 options.getWatchers() != null ? options.getWatchers() : active.watchers());
+    }
+
+    /**
+     * If {@link UpdateOptions#getDomain()} is set, returns a copy of the supplied document
+     * with its {@code id} and {@code controller} rewritten to the new DID
+     * ({@code did:webvh:{SCID}:{domain}}) and the previous DID prepended to {@code alsoKnownAs}.
+     * Otherwise returns the supplied document unchanged.
+     *
+     * @throws IllegalStateException if the DID is not portable (genesis must have {@code portable: true})
+     */
+    private static DidDocument applyPortableMoveIfRequested(
+            UpdateOptions options,
+            DidLogEntry previous,
+            DidLog currentLog,
+            Parameters activeParams) {
+
+        String newDomain = options.getDomain();
+        if (newDomain == null) {
+            return options.getUpdatedDocument();
+        }
+
+        if (!Boolean.TRUE.equals(activeParams.portable())) {
+            throw new IllegalStateException(
+                    "Cannot move DID to domain '" + newDomain + "': the DID is not portable "
+                            + "(genesis entry must have parameters.portable=true).");
+        }
+
+        String scid = currentLog.first().parameters().scid();
+        if (scid == null || scid.isBlank()) {
+            throw new IllegalStateException("Cannot move DID: genesis entry has no SCID.");
+        }
+
+        String previousDid = previous.state().getString("id");
+        if (previousDid == null || previousDid.isBlank()) {
+            throw new IllegalStateException("Cannot move DID: previous entry has no document id.");
+        }
+
+        String newDid = "did:webvh:" + scid + ":" + newDomain;
+
+        DidDocument supplied = options.getUpdatedDocument();
+        DidDocument.Builder builder = supplied.toBuilder()
+                .setString("id", newDid);
+        if (supplied.has("controller")) {
+            builder.setString("controller", newDid);
+        }
+
+        List<String> existingAka = supplied.getStrings("alsoKnownAs");
+        if (!existingAka.contains(previousDid)) {
+            List<String> updatedAka = new ArrayList<>(existingAka.size() + 1);
+            updatedAka.add(previousDid);
+            updatedAka.addAll(existingAka);
+            builder.setStrings("alsoKnownAs", updatedAka);
+        }
+
+        return builder.build();
     }
 
     /**

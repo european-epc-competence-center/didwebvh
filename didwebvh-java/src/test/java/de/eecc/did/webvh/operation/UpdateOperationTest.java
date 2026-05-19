@@ -2,6 +2,7 @@ package de.eecc.did.webvh.operation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.eecc.did.webvh.DidDocument;
 import de.eecc.did.webvh.api.CreateOptions;
@@ -1019,6 +1020,130 @@ class UpdateOperationTest {
 
             assertThat(entry4.log().size()).isEqualTo(4);
             assertLogPassesValidation(entry4.log());
+        }
+    }
+
+    // =========================================================================
+    // Portable DID move (spec §DID Portability)
+    // =========================================================================
+
+    @Nested
+    class PortableMove {
+
+        private CreateResult createPortableDid() {
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:webvh:{SCID}:" + DOMAIN);
+            return CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(new DidDocument(doc))
+                            .updateKeys(List.of(keyA))
+                            .signer(signerA)
+                            .portable(true)
+                            .build());
+        }
+
+        @Test
+        void domainOption_rewritesIdAndAddsAlsoKnownAs() {
+            CreateResult created = createPortableDid();
+            String scid = created.metadata().scid();
+            String oldDid = "did:webvh:" + scid + ":" + DOMAIN;
+            String newDomain = "example.org";
+            String newDid = "did:webvh:" + scid + ":" + newDomain;
+
+            // Caller supplies a doc whose id still references the OLD DID.
+            // The library should rewrite it.
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", oldDid);
+            doc.put("controller", oldDid);
+
+            UpdateResult moved = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .domain(newDomain)
+                            .build());
+
+            DidLogEntry entry = moved.log().latest();
+            assertThat(entry.state().getString("id")).isEqualTo(newDid);
+            assertThat(entry.state().getString("controller")).isEqualTo(newDid);
+            assertThat(entry.state().getStrings("alsoKnownAs")).containsExactly(oldDid);
+            assertLogPassesValidation(moved.log());
+        }
+
+        @Test
+        void domainOption_preservesExistingAlsoKnownAs_andDoesNotDuplicate() {
+            CreateResult created = createPortableDid();
+            String scid = created.metadata().scid();
+            String oldDid = "did:webvh:" + scid + ":" + DOMAIN;
+            String newDomain = "example.org";
+            String newDid = "did:webvh:" + scid + ":" + newDomain;
+            String preExisting = "did:web:legacy.example";
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", oldDid);
+            doc.putArray("alsoKnownAs").add(preExisting);
+
+            UpdateResult moved = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .domain(newDomain)
+                            .build());
+
+            DidLogEntry entry = moved.log().latest();
+            assertThat(entry.state().getString("id")).isEqualTo(newDid);
+            // Previous DID is prepended; existing entries preserved.
+            assertThat(entry.state().getStrings("alsoKnownAs"))
+                    .containsExactly(oldDid, preExisting);
+
+            // Second move: re-supplying a doc that already has oldDid in alsoKnownAs
+            // must not duplicate it.
+            String thirdDomain = "example.net";
+            String thirdDid = "did:webvh:" + scid + ":" + thirdDomain;
+            ObjectNode doc2 = MAPPER.createObjectNode();
+            doc2.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc2.put("id", newDid);
+            ArrayNode aka = doc2.putArray("alsoKnownAs");
+            aka.add(oldDid);
+            aka.add(preExisting);
+
+            UpdateResult moved2 = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(moved.log())
+                            .updatedDocument(new DidDocument(doc2))
+                            .signer(signerA)
+                            .domain(thirdDomain)
+                            .build());
+
+            DidLogEntry entry2 = moved2.log().latest();
+            assertThat(entry2.state().getString("id")).isEqualTo(thirdDid);
+            // newDid (the previous entry's id) gets prepended; oldDid already present, not duplicated.
+            assertThat(entry2.state().getStrings("alsoKnownAs"))
+                    .containsExactly(newDid, oldDid, preExisting);
+            assertLogPassesValidation(moved2.log());
+        }
+
+        @Test
+        void domainOption_onNonPortableDid_throws() {
+            // createDid() (the default helper) does not set portable=true.
+            CreateResult created = createDid();
+            String scid = created.metadata().scid();
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(buildDocument(scid))
+                            .signer(signerA)
+                            .domain("example.org")
+                            .build()))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("not portable");
         }
     }
 }
