@@ -35,7 +35,7 @@ public final class DidDocument {
     /**
      * Constructs a wrapper around the given Jackson node.
      *
-     * <p><strong>Library internal use only.</strong> Consumers should prefer
+     * <p>Must remain {@code public} for Jackson deserialization. Consumers should prefer
      * {@link #fromJson}, {@link #fromMap}, or the {@link Builder}.</p>
      *
      * @param node the Jackson {@link JsonNode} to wrap

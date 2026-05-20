@@ -15,10 +15,10 @@ import java.util.Objects;
  *
  * <p>Encodes all per-entry spec parameters. The two most important methods are:
  * <ul>
- *   <li>{@link #validate(Parameters)} — verifies that this set of parameters is
- *       a legal transition from the previous entry's parameters.</li>
- *   <li>{@link #validate(Parameters)} — produces the effective parameter set for an
- *       entry by merging it with the previous (inherited) parameter set.</li>
+ *   <li>{@link #validate(Parameters)} — verifies the transition and returns the merged
+ *       effective parameter set for this entry.</li>
+ *   <li>{@link #diff(Parameters)} — produces the minimal parameter delta between this
+ *       effective state and the previous one (used when writing update log entries).</li>
  * </ul>
  *
  * <p>Key invariants (from spec):
