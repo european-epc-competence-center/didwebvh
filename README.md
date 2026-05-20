@@ -1,6 +1,7 @@
 # did:webvh Java Library
 
 [![CI](https://github.com/european-epc-competence-center/didwebvh/actions/workflows/ci.yml/badge.svg)](https://github.com/european-epc-competence-center/didwebvh/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/de.eecc.did/webvh)](https://central.sonatype.com/artifact/de.eecc.did/webvh)
 
 A Java implementation of the [`did:webvh`](https://identity.foundation/didwebvh/v1.0/) DID method (DID Web + Verifiable History).
 
