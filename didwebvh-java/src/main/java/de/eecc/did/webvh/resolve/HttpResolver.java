@@ -14,11 +14,14 @@ import de.eecc.did.webvh.witness.WitnessProofCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -67,6 +70,9 @@ public final class HttpResolver implements DidResolver {
 
     private static final Logger log = LoggerFactory.getLogger(HttpResolver.class);
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
+
+    /** Hard cap on the response body the built-in fetcher will buffer, to bound memory use. */
+    private static final long MAX_RESPONSE_BYTES = 5L * 1024 * 1024; // 5 MiB
 
     private final LogBasedResolver delegate;
     private final LogFetcher logFetcher;
@@ -212,11 +218,13 @@ public final class HttpResolver implements DidResolver {
             String targetUrl = DidUrlPathResolver.resolvePath(document, baseDid, path);
             log.trace("Dereferencing path '{}' for {} to URL: {}", path, didUrl, targetUrl);
 
-            // Validate that the endpoint uses a supported scheme.
-            if (!targetUrl.startsWith("https://") && !targetUrl.startsWith("http://")) {
+            // The spec requires all resolution fetches to use HTTPS. Service endpoints
+            // come from an untrusted DID document, so a plaintext fetch would be a
+            // downgrade vector; reject anything that is not https://.
+            if (!targetUrl.startsWith("https://")) {
                 return new ResolveResult(didUrl, null, DidDocumentMetadata.EMPTY,
                         ResolutionMetadata.error("invalidDid", "Invalid DID",
-                                "Unsupported service endpoint scheme: " + targetUrl));
+                                "Service endpoint must use HTTPS: " + targetUrl));
             }
 
             String content = logFetcher.fetch(targetUrl);
@@ -287,16 +295,41 @@ public final class HttpResolver implements DidResolver {
                     .GET()
                     .build();
             try {
-                var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                var response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
                 if (response.statusCode() >= 400) {
+                    response.body().close();
                     throw new IOException("HTTP " + response.statusCode() + " for " + url);
                 }
-                log.trace("Fetched {} bytes from {}", response.body().length(), url);
-                return response.body();
+                byte[] body = readCapped(response.body(), url);
+                log.trace("Fetched {} bytes from {}", body.length, url);
+                return new String(body, StandardCharsets.UTF_8);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new IOException("Interrupted while fetching " + url, e);
             }
         };
+    }
+
+    /**
+     * Reads the stream fully into memory, aborting if it exceeds {@link #MAX_RESPONSE_BYTES}.
+     * Guards against a hostile or runaway response exhausting the heap.
+     */
+    private static byte[] readCapped(InputStream in, String url) throws IOException {
+        try (in) {
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] chunk = new byte[8192];
+            long total = 0;
+            int read;
+            while ((read = in.read(chunk)) != -1) {
+                total += read;
+                if (total > MAX_RESPONSE_BYTES) {
+                    throw new IOException(
+                            "Response from " + url + " exceeds the maximum allowed size of "
+                                    + MAX_RESPONSE_BYTES + " bytes");
+                }
+                buffer.write(chunk, 0, read);
+            }
+            return buffer.toByteArray();
+        }
     }
 }

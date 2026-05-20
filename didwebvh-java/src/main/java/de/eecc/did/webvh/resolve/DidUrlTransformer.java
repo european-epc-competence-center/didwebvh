@@ -18,7 +18,7 @@ import java.util.Arrays;
  *   <li>Remove the {@code did:webvh:} prefix.</li>
  *   <li>Remove the SCID segment (first colon-delimited segment).</li>
  *   <li>Decode percent-encoded port ({@code %3A} → {@code :}).</li>
- *   <li>Apply Unicode normalization (RFC 3491) and IDNA/Punycode (RFC 9233) to the domain via {@link IDN#toASCII}.</li>
+ *   <li>Apply IDNA2003 ToASCII (RFC 3490, including Nameprep RFC 3491) to the domain via {@link IDN#toASCII}.</li>
  *   <li>Percent-encode path segments (RFC 3986) and replace {@code :} with {@code /}.</li>
  *   <li>Reconstruct URL:
  *     <ul>

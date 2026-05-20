@@ -68,7 +68,9 @@ public final class LogBasedResolver {
             log.trace("Resolution failed (invalidDid) for {}: {}", did, e.getMessage());
             return errorResult(did, ERROR_INVALID_DID, "Invalid DID", e.getMessage());
         } catch (Exception e) {
-            log.trace("Resolution failed (unexpected) for {}: {}", did, e.getMessage());
+            // Unexpected (non-DidWebVh) failures indicate a defect, not an invalid DID.
+            // Log with the stack trace so it is debuggable; the caller still gets a result.
+            log.warn("Unexpected error resolving {}", did, e);
             return errorResult(did, ERROR_INVALID_DID, "Resolution Error", e.getMessage());
         }
     }
