@@ -665,6 +665,51 @@ String newDid = moved.log().latest().state().getString("id");
 
 After publishing the updated `did.jsonl` at the new domain, resolvers reaching either the old or new DID will follow the chain and find the move in the log. The previous DID is retained in `alsoKnownAs` so consumers can still recognise references to it.
 
+### Publishing a Parallel `did:web` DID
+
+You may publish an equivalent `did:web` document (`did.json`) alongside your
+`did:webvh` (`did.jsonl`) at the same web location. This lets resolvers that do
+not understand `did:webvh` keep resolving your DID, while `did:webvh`-aware
+clients can follow the `alsoKnownAs` link back to the verifiable history. The
+trade-off: `did:web` consumers lose the verifiable properties of `did:webvh`.
+
+`DidWebPublisher.toDidWeb(...)` implements the spec §3.7.10 transformation. Pass it
+the **resolved** `did:webvh` document (the resolver has already injected the
+implicit `#files`/`#whois` services, which the `did:web` document must carry):
+
+```java
+import de.eecc.did.webvh.DidDocument;
+import de.eecc.did.webvh.didweb.DidWebPublisher;
+import de.eecc.did.webvh.api.DidWebVh;
+import de.eecc.did.webvh.api.ResolveOptions;
+import de.eecc.did.webvh.api.ResolveResult;
+
+// 1. Resolve the did:webvh to its canonical document
+ResolveResult resolved = DidWebVh.resolve(did, ResolveOptions.builder().build());
+
+// 2. Generate the parallel did:web document
+DidDocument didWeb = DidWebPublisher.toDidWeb(resolved.document());
+
+// 3. Publish it as did.json beside did.jsonl
+String json = didWeb.toJson();
+// Write json to https://{domain}/.well-known/did.json
+```
+
+The transformation:
+- adds the implicit `#files` and `#whois` services if absent (idempotent on a
+  resolved document);
+- rewrites `did:webvh:<scid>:` to `did:web:` throughout the document — including
+  `controller` and verification-method IDs, per the literal spec;
+- adds the full `did:webvh` DID to `alsoKnownAs` and removes the `did:web`
+  self-reference.
+
+`DidWebPublisher.toDidWebId(webVhDid)` converts just the DID string (e.g.
+`did:webvh:Qm...:example.com` → `did:web:example.com`).
+
+> **Note:** This is the *publish* direction (`did:webvh` → `did:web`). The inverse
+> *import* direction (`did:web` → `did:webvh`) is covered by `DidWebImporter` in
+> [Importing an Existing `did:web` DID](#importing-an-existing-didweb-did).
+
 ### Custom Verifier for Resolution
 
 If you need a different cryptographic backend (e.g. HSM, AWS KMS, or a different Ed25519 provider), implement `Verifier`:
