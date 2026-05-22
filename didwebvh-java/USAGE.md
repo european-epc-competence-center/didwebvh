@@ -193,6 +193,52 @@ String jsonl = LogSerializer.serialize(result.log());
 // Write jsonl to your web server's did.jsonl endpoint
 ```
 
+### Importing an Existing `did:web` DID
+
+If you already have a `did:web` DID document, you can turn it into a `did:webvh`
+without rebuilding the document by hand. `DidWebImporter` rewrites the document's
+own identifier (the `id`, `controller`, verification-method IDs, fragments, and
+same-domain paths) to `did:webvh:{SCID}:{domain}` and records the original
+`did:web` DID in `alsoKnownAs`. References to *other* DIDs are left untouched.
+
+This is the spec-supported transition path: `did:web` and `did:webvh` are
+identical except for the method name and the added `{SCID}` element, so the
+existing document is reused as the genesis state.
+
+```java
+import de.eecc.did.webvh.DidDocument;
+import de.eecc.did.webvh.didweb.DidWebImporter;
+import de.eecc.did.webvh.api.CreateOptions;
+import de.eecc.did.webvh.api.CreateResult;
+import de.eecc.did.webvh.api.DidWebVh;
+
+import java.util.List;
+
+// 1. Load the existing did:web document (e.g. the published did.json)
+DidDocument didWeb = DidDocument.fromJson(existingDidJson);
+
+// 2. Convert it into a did:webvh genesis document ({SCID} placeholders)
+DidDocument genesis = DidWebImporter.toWebVhDocument(didWeb);
+
+// 3. Create the did:webvh — the domain is derived from the did:web id
+CreateResult result = DidWebVh.create(
+    CreateOptions.builder()
+        .domain(DidWebImporter.domainOf(didWeb))   // e.g. "example.com:dids:issuer"
+        .initialDocument(genesis)
+        .updateKeys(List.of(publicKeyMultibase))
+        .signer(signer)
+        .build());
+```
+
+Notes:
+- The resulting document keeps the original `did:web` DID in `alsoKnownAs`. Pass
+  `DidWebImporter.toWebVhDocument(didWeb, false)` to skip that.
+- `DidWebImporter.domainOf(...)` returns everything after `did:web:`, which is
+  exactly the `domain` component `did:webvh` expects.
+- This is the *import* direction only. Generating a parallel `did:web` document
+  to publish **alongside** a `did:webvh` (spec §3.7.10) is a separate, not-yet-
+  implemented feature.
+
 ---
 
 ## Resolving a DID

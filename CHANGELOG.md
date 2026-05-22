@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - path dereferencing now enforces HTTPS-only for service endpoints
 
+### Added
+
+- import an existing `did:web` document into a `did:webvh` via `DidWebImporter`
+
+
 ## [0.2.1] - 2026-05-19
 
 ### Added
