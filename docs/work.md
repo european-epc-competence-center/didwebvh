@@ -2,17 +2,24 @@
 
 ## Current Status
 
-All four DID operations (create, update, deactivate, resolve) are implemented and tested. The library targets `did:webvh` v1.0.
+All four DID operations (create, update, deactivate, resolve) are implemented and tested. The library targets `did:webvh` v1.0. Current release: **0.3.0**.
+
+Since the last revision of this document the following landed:
+
+- **`did:web` interoperability** (`didweb/` package). `DidWebImporter` converts an existing `did:web` document into a `did:webvh` genesis document; `DidWebPublisher` generates the parallel `did:web` `did.json` from a resolved `did:webvh` document (spec §3.7.10). Both are no-I/O.
+- **Portable domain migration** via `UpdateOptions.domain(...)` — rewrites `id`/`controller` and appends the previous DID to `alsoKnownAs`, with strict `alsoKnownAs` validation after the move.
+- **Full DID-URL dereferencing** — `DidUrlPathResolver` (path → HTTPS via `#files`/`#whois`, HTTPS-enforced) and `FragmentDereferencer` (`#fragment` lookup), plus `ImplicitServiceInjector`.
+- **`DidDocument` POJO** now wraps the DID document across the public API, hiding Jackson's `JsonNode` from consumers.
 
 ## Open Work Packages
 
 ### P1 — Spec Compliance Gaps
 
-1. **Parallel `did:web` publishing** (partial)  
-   Implicit `#files`/`#whois` services are injected during resolution so the resolved document is compatible, but there is no explicit publishing helper that writes a parallel `did.json`.
-2. **`method` version downgrade validation** — `Parameters.validateTransition()` does not enforce that `method` semver is equal to or higher than the previous entry
-3. **Reject unknown parameters** — `Parameters` uses `@JsonIgnoreProperties(ignoreUnknown = true)`; spec requires the `parameters` object to only include defined properties
-4. **Deactivated DID document** — When a DID is deactivated the library returns `null` for `didDocument`. The TS test vectors include the last valid document with `deactivated: true`. Both are arguably spec-compliant (DID Resolution spec shows `null` examples, DID Core says the document should indicate deactivation). Needs community decision.
+1. **`method` version downgrade validation** — `Parameters.validateTransition()` does not enforce that `method` semver is equal to or higher than the previous entry (currently only an equality check against `v1.0` in `Parameters.validate`)
+2. **Reject unknown parameters** — `Parameters` uses `@JsonIgnoreProperties(ignoreUnknown = true)`; spec requires the `parameters` object to only include defined properties
+3. **Deactivated DID document** — When a DID is deactivated the library returns `null` for `didDocument`. The TS test vectors include the last valid document with `deactivated: true`. Both are arguably spec-compliant (DID Resolution spec shows `null` examples, DID Core says the document should indicate deactivation). Needs community decision.
+
+> **Done:** Parallel `did:web` publishing (was P1 #1) is implemented via `DidWebPublisher.toDidWeb()` — it returns the parallel `did.json` for the caller to publish (no I/O, per the source-of-truth design). `DidWebImporter` adds the reverse direction. See Current Status.
 
 ### P2 — Issue #1: `witness-update` / `witness-threshold` test-suite findings
 
