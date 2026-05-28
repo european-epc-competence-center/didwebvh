@@ -2,7 +2,7 @@
 
 ## Current Status
 
-All four DID operations (create, update, deactivate, resolve) are implemented and tested. The library targets `did:webvh` v1.0. Current release: **0.3.0**.
+All four DID operations (create, update, deactivate, resolve) are implemented and tested. The library targets `did:webvh` v1.0.
 
 Since the last revision of this document the following landed:
 
