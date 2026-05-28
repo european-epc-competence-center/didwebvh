@@ -147,6 +147,41 @@ class DidUrlTransformerTest {
     }
 
     // -------------------------------------------------------------------------
+    // Spec rejection rules (test-suite negative vectors): IP hosts, leaked
+    // fragments, and path traversal — directly and via percent-encoding.
+    // -------------------------------------------------------------------------
+
+    @ParameterizedTest(name = "rejects {0}")
+    @CsvSource({
+            // IPv4 literal host — spec: "MUST NOT include IP addresses"
+            "did:webvh:" + SCID + ":127.0.0.1",
+            // IPv4 literal host with port
+            "did:webvh:" + SCID + ":127.0.0.1%3a8080",
+            // Percent-encoded IPv4 (127%2E0%2E0%2E1 → 127.0.0.1)
+            "did:webvh:" + SCID + ":127%2E0%2E0%2E1",
+            // Bracketed IPv6 literal host
+            "did:webvh:" + SCID + ":[::1]",
+            // Fragment leaked into the host segment
+            "did:webvh:" + SCID + ":127.0.0.1#x",
+            "did:webvh:" + SCID + ":example.com#x",
+            // Path traversal via dot-segments
+            "did:webvh:" + SCID + ":example.com:..:..:admin",
+            // Path traversal via percent-encoded dot-segments (%2E%2E → ..)
+            "did:webvh:" + SCID + ":example.com:%2E%2E:admin",
+    })
+    void toLogUrl_rejectsForbiddenIdentifiers(String did) {
+        assertThatThrownBy(() -> DidUrlTransformer.toLogUrl(did))
+                .isInstanceOf(InvalidDidException.class);
+    }
+
+    @Test
+    void toBaseUrl_rejectsPathTraversal() {
+        assertThatThrownBy(() -> DidUrlTransformer.toBaseUrl(
+                "did:webvh:" + SCID + ":example.com:..:admin"))
+                .isInstanceOf(InvalidDidException.class);
+    }
+
+    // -------------------------------------------------------------------------
     // extractFragment / stripFragment
     // -------------------------------------------------------------------------
 
