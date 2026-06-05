@@ -98,6 +98,30 @@ Conclusion: under the spec-literal reading our resolver is now consistent with P
 4. **TS / ivir3zam-Java rotation semantics** — the TS and ivir3zam generators encode a permissive interpretation of the rotation rule. Either the spec should be tightened (preferred — it already implies the safe reading) or the upstream impls should fix the generator and validator to use prev-config for rotation entries.
 5. **Activation enforcement in Python and Rust** — both fail to enforce the new threshold at the entry that introduces witnesses from `{}`. Spec says "immediately active, and the corresponding log entry MUST be witnessed". Our resolver already handles this via the `wasEmpty && nowActive` branch.
 
+#### Root cause of `witness-update-java-eecc`: the vector *generator*, not our library
+
+The single missing proof on entry 2 is a bug in the **test-suite generator**, not in this
+library. The library never produces `did-witness.json` (Create/Update emit only `did.jsonl`);
+the witness file is built by [`GenerateVectors.java`](https://github.com/decentralized-identity/didwebvh-test-suite/blob/main/implementations/java-eecc/src/main/java/org/didwebvh/compliance/GenerateVectors.java)
+in the test suite.
+
+- [`makeWitnessEntry` (L419-438)](https://github.com/decentralized-identity/didwebvh-test-suite/blob/main/implementations/java-eecc/src/main/java/org/didwebvh/compliance/GenerateVectors.java#L419-L438)
+  signs the entry with `params.get("witness")` — i.e. the witnesses declared by **that step**.
+- The update call site [L237-240](https://github.com/decentralized-identity/didwebvh-test-suite/blob/main/implementations/java-eecc/src/main/java/org/didwebvh/compliance/GenerateVectors.java#L237-L240)
+  passes the update step's own `params`. For the v2 rotation that config is the **new**
+  replacement list `{threshold:1, witnesses:[A]}`, so only **A** signs v2.
+
+But the resolver (correctly, per spec) governs the rotation entry v2 with the **previous**
+config `[A,B]`/threshold 2 — so v2 needs proofs from **both A and B**. The generator signs
+with the new list while the resolver checks against the old list → the vector is
+self-inconsistent and fails `1 < 2`. Genesis is fine only by coincidence: `create` uses its
+own config, which *is* the governing config for v1.
+
+**Fix (in the test suite):** sign each entry with the config that *governs* it — mirror
+`buildWitnessEpochs` (genesis → own; activation → new; rotation/deactivation → previous).
+Track the previously-active witness config and pass it to `makeWitnessEntry` for updates, so
+v2 is signed by A **and** B. (Then regenerate alongside the `versionTime` fix from item 2.)
+
 #### ivir3zam pre-rotation-consume (upstream, not ours)
 
 ivir3zam uses the *previous* entry's `updateKeys` to verify proofs even when pre-rotation is active. The spec (§Authorized Keys) is explicit: when pre-rotation is active the *current* entry's `updateKeys` are the authorized keys. java-eecc and Rust are spec-correct; ivir3zam has the bug.
