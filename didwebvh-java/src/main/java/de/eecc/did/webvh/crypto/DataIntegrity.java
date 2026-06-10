@@ -102,6 +102,15 @@ public final class DataIntegrity {
             Verifier verifier) {
         log.trace("Received request to verify Data Integrity proof, verificationMethod={}", proof.verificationMethod());
 
+        // Fail closed on a malformed did:key verificationMethod whose body and fragment name
+        // different keys. Otherwise a caller could treat the body as the proof's identity while
+        // the signature is verified against the fragment: a witness-threshold-bypass forgery.
+        try {
+            Multiformats.validateVerificationMethod(proof.verificationMethod());
+        } catch (IllegalArgumentException e) {
+            throw new LogValidationException(e.getMessage());
+        }
+
         // Per spec §3.3.2 step 1: unsecuredDocument = securedDocument without the proof field
         JsonNode unsecuredDocument = document.has("proof")
                 ? ((ObjectNode) document.deepCopy()).without("proof")

@@ -202,6 +202,46 @@ public final class Multiformats {
     }
 
     /**
+     * Validates that a {@code did:key} verification method is well-formed.
+     *
+     * <p>Per the <a href="https://w3c-ccg.github.io/did-method-key/">did:key</a> spec, the
+     * fragment of a {@code did:key} DID URL MUST be identical to the method-specific identifier
+     * (the multikey after {@code did:key:}). This method enforces that invariant: for an input of
+     * the form {@code did:key:<body>#<fragment>} it requires {@code body.equals(fragment)}.
+     *
+     * <p><strong>Why this matters (security):</strong> code that derives an <em>identity</em> from
+     * the body while verifying a signature against the <em>fragment</em> can be tricked into
+     * crediting a proof to one party that was actually signed by another. In the witness path that
+     * is a threshold-bypass forgery: an attacker writes
+     * {@code did:key:<honestWitness>#<attackerKey>}, signs with {@code attackerKey}, and the proof
+     * is counted as coming from {@code honestWitness}. Rejecting mismatched body/fragment closes
+     * this for every consumer of a {@code verificationMethod}.
+     *
+     * <p>Bare multikeys and fragment-less {@code did:key} DIDs have no body/fragment to disagree
+     * and are accepted unchanged.
+     *
+     * @param verificationMethod the verification method identifier to validate
+     * @throws IllegalArgumentException if a {@code did:key} body and fragment name different keys
+     */
+    public static void validateVerificationMethod(String verificationMethod) {
+        Objects.requireNonNull(verificationMethod, "verificationMethod");
+        if (!verificationMethod.startsWith("did:key:")) {
+            return; // bare multikey or non-did:key method — nothing to cross-check
+        }
+        int fragmentIdx = verificationMethod.indexOf('#');
+        if (fragmentIdx < 0) {
+            return; // no fragment — nothing to cross-check
+        }
+        String methodSpecificId = verificationMethod.substring("did:key:".length(), fragmentIdx);
+        String fragment = verificationMethod.substring(fragmentIdx + 1);
+        if (!methodSpecificId.equals(fragment)) {
+            throw new IllegalArgumentException(
+                    "Malformed did:key verification method: body '" + methodSpecificId
+                            + "' and fragment '" + fragment + "' name different keys");
+        }
+    }
+
+    /**
      * Decodes a multikey string to a raw Ed25519 public key.
      *
      * @param multikey the multikey string (must start with {@code z} and contain Ed25519 multicodec prefix)

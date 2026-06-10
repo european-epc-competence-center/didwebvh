@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MultiformatsTest {
@@ -169,5 +170,38 @@ class MultiformatsTest {
         String raw = Multiformats.base58btcEncode(data);
         String multibase = Multiformats.multibaseEncode(data);
         assertThat(multibase).isEqualTo("z" + raw);
+    }
+
+    // -------------------------------------------------------------------------
+    // validateVerificationMethod — did:key body/fragment well-formedness
+    // -------------------------------------------------------------------------
+
+    @Test
+    void validateVerificationMethod_rejectsMismatchedBodyAndFragment() {
+        assertThatThrownBy(() ->
+                Multiformats.validateVerificationMethod("did:key:z6MkBODY#z6MkFRAGMENT"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("different keys");
+    }
+
+    @Test
+    void validateVerificationMethod_acceptsMatchingBodyAndFragment() {
+        assertThatCode(() ->
+                Multiformats.validateVerificationMethod("did:key:z6MkABC#z6MkABC"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateVerificationMethod_acceptsFragmentlessDidKey() {
+        assertThatCode(() ->
+                Multiformats.validateVerificationMethod("did:key:z6MkABC"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void validateVerificationMethod_acceptsBareMultikey() {
+        assertThatCode(() ->
+                Multiformats.validateVerificationMethod("z6MkABC"))
+                .doesNotThrowAnyException();
     }
 }
