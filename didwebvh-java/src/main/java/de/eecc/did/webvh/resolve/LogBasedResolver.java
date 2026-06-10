@@ -195,6 +195,7 @@ public final class LogBasedResolver {
         List<ValidatedEntry> result = new ArrayList<>();
         Parameters activeParams = null;
         DidLogEntry previous = null;
+        DidWebVhException firstFailure = null;
 
         for (int i = 0; i < didLog.size(); i++) {
             DidLogEntry entry = didLog.entries().get(i);
@@ -204,8 +205,17 @@ public final class LogBasedResolver {
                 previous = entry;
             } catch (DidWebVhException e) {
                 log.trace("Log validation stopped at entry {}: {}", i + 1, e.getMessage());
+                firstFailure = e;
                 break;
             }
+        }
+
+        // If not a single entry validated, the genesis entry itself was rejected. Surface that
+        // specific reason (e.g. "Witness id '…' is not a did:key DID") rather than letting the
+        // caller fall back to a generic "No valid entries in the DID log" message. Re-throwing
+        // lets resolve() map it to the correct error code (notFound vs invalidDid) and detail.
+        if (result.isEmpty() && firstFailure != null) {
+            throw firstFailure;
         }
 
         return result;

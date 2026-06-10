@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.eecc.did.webvh.DidDocument;
 import de.eecc.did.webvh.api.*;
 import de.eecc.did.webvh.crypto.DataIntegrity;
+import de.eecc.did.webvh.log.LogParser;
 import de.eecc.did.webvh.model.DidLog;
 import de.eecc.did.webvh.model.DidLogEntry;
 import de.eecc.did.webvh.model.WitnessParameter;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.Test;
 //import org.slf4j.Logger;
 //import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -421,6 +424,32 @@ class LogBasedResolverTest {
                 .isEqualTo("https://www.w3.org/ns/did#INVALID_DID");
         assertThat(result.resolutionMetadata().problemDetails().detail()).isNotBlank();
     }
+
+        @Test
+        void genesisRejection_surfacesSpecificReason() throws Exception {
+            // Regression: when the genesis entry itself is rejected, the resolver must surface
+            // the underlying validation reason rather than the generic "No valid entries in the
+            // DID log". The Rust witness-update vector trips this: its witness id is a bare
+            // multibase key instead of a did:key DID, which is rejected on entry 1.
+            DidLog log = loadLog("/witness-suite/witness-update-rust/did.jsonl");
+            String did = "did:webvh:QmVArGEbmoYrzKp9wmpnCPYLjnvwHWhYC1jK8B8WCwgBd8:example.com";
+
+            ResolveResult result = resolver.resolve(did, log, defaultOptions());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
+            assertThat(result.resolutionMetadata().problemDetails().detail())
+                    .contains("is not a did:key DID");
+        }
+    }
+
+    private static DidLog loadLog(String resource) throws Exception {
+        try (InputStream is = LogBasedResolverTest.class.getResourceAsStream(resource)) {
+            if (is == null) {
+                throw new IllegalStateException("missing test resource: " + resource);
+            }
+            return LogParser.parse(new String(is.readAllBytes(), StandardCharsets.UTF_8));
+        }
     }
 
     // -------------------------------------------------------------------------
