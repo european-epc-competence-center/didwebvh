@@ -44,7 +44,7 @@ class NegativeSuiteHarnessTest {
     private static final Pattern DID_IN_SCRIPT = Pattern.compile("\"(did:webvh:[^\"]+)\"");
 
     private record Row(String scenario, String type, String expected,
-                       String upstreamVerdict, String fixedVerdict, String libraryResult) {}
+                       String upstreamVerdict, String fixedVerdict) {}
 
     @Test
     void runAllNegativeVectorsThroughFixedHarness() throws Exception {
@@ -67,8 +67,6 @@ class NegativeSuiteHarnessTest {
                     : runLogBased(dir, name, expectedError, rawJsonl));
         }
 
-        printTable(rows);
-
         // The harness-bug category: every LOG-BASED invalid log MUST be rejected by the
         // library (exception or error metadata). If any is silently accepted, that's a real
         // implementation gap, not a harness artifact — fail loudly so we notice.
@@ -85,7 +83,6 @@ class NegativeSuiteHarnessTest {
     private Row runLogBased(Path dir, String name, String expectedError, String rawJsonl) {
         String upstreamVerdict;
         String fixedVerdict;
-        String libraryResult;
         try {
             DidLog log = LogParser.parse(rawJsonl);
             String did = log.first().state().path("id").asText(null);
@@ -105,24 +102,12 @@ class NegativeSuiteHarnessTest {
             boolean rejected = !result.isSuccess()
                     && result.resolutionMetadata() != null
                     && result.resolutionMetadata().error() != null;
-            if (rejected) {
-                String detail = result.resolutionMetadata().problemDetails() != null
-                        ? result.resolutionMetadata().problemDetails().detail() : "";
-                fixedVerdict = "PASS";
-                libraryResult = "doc=null, error=" + result.resolutionMetadata().error()
-                        + " — " + detail;
-            } else {
-                fixedVerdict = "FAIL (truly accepted)";
-                libraryResult = "isSuccess=" + result.isSuccess()
-                        + ", error=" + (result.resolutionMetadata() == null ? "?"
-                        : result.resolutionMetadata().error());
-            }
+            fixedVerdict = rejected ? "PASS" : "FAIL (truly accepted)";
         } catch (Exception e) {
             upstreamVerdict = "PASS (threw " + e.getClass().getSimpleName() + ")";
             fixedVerdict = "PASS";
-            libraryResult = "threw " + e.getClass().getSimpleName() + ": " + e.getMessage();
         }
-        return new Row(name, "LOG", expectedError, upstreamVerdict, fixedVerdict, libraryResult);
+        return new Row(name, "LOG", expectedError, upstreamVerdict, fixedVerdict);
     }
 
     /** URL-only branch: UNCHANGED from upstream — parser MUST throw for every DID. */
@@ -139,11 +124,8 @@ class NegativeSuiteHarnessTest {
             }
         }
         String verdict = (accepted == null) ? "PASS" : "FAIL (parser accepted invalid DID)";
-        String detail = (accepted == null)
-                ? "all " + dids.size() + " DID(s) rejected by parser"
-                : "accepted: " + accepted;
         // URL branch is identical upstream and fixed.
-        return new Row(name, "URL", expectedError, verdict, verdict, detail);
+        return new Row(name, "URL", expectedError, verdict, verdict);
     }
 
     private static String readExpectedError(Path dir) throws Exception {
@@ -160,25 +142,5 @@ class NegativeSuiteHarnessTest {
         return dids;
     }
 
-    private static void printTable(List<Row> rows) {
-        System.out.println("\n================ NEGATIVE SUITE — FIXED HARNESS (all 16 vectors) ================");
-        System.out.printf("%-38s %-4s %-17s %-42s %-22s%n",
-                "scenario", "type", "expected", "upstream-harness verdict", "FIXED verdict");
-        System.out.println("-".repeat(128));
-        int upstreamPass = 0, fixedPass = 0;
-        for (Row r : rows) {
-            System.out.printf("%-38s %-4s %-17s %-42s %-22s%n",
-                    r.scenario, r.type, r.expected, r.upstreamVerdict, r.fixedVerdict);
-            if (r.upstreamVerdict.startsWith("PASS")) upstreamPass++;
-            if (r.fixedVerdict.startsWith("PASS")) fixedPass++;
-        }
-        System.out.println("-".repeat(128));
-        System.out.printf("UPSTREAM harness: %d/%d pass    FIXED harness: %d/%d pass%n",
-                upstreamPass, rows.size(), fixedPass, rows.size());
-        System.out.println("\n---- library detail per vector ----");
-        for (Row r : rows) {
-            System.out.printf("  %-38s -> %s%n", r.scenario, r.libraryResult);
-        }
-        System.out.println("================================================================================\n");
-    }
+
 }

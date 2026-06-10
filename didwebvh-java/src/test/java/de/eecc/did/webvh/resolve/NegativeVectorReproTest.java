@@ -42,17 +42,9 @@ class NegativeVectorReproTest {
         // This is EXACTLY how the test-suite adapter picks the DID: from the log's own genesis "id".
         String did = negLog.first().state().path("id").asText(null);
 
-        System.out.println("\n==================== NEGATIVE VECTOR REPRO ====================");
-        System.out.println("vector : negative-versiontime-non-monotonic (from swcurran/didwebvh-test-suite)");
-        System.out.println("did    : " + did);
-        System.out.println("expected resolutionResult.json:");
-        System.out.println("    didDocument            = " + expected.get("didDocument"));
-        System.out.println("    didResolutionMetadata  = " + expected.get("didResolutionMetadata"));
-
         // ---- Replicate the java-eecc adapter's NEGATIVE branch VERBATIM -------------------
         // try { resolveFromLog(...); fail++ "resolver accepted invalid log"; }
         // catch (Exception e) { pass++; }
-        String harnessOutcome;
         boolean threw;
         ResolveResult result = null;
         try {
@@ -60,34 +52,9 @@ class NegativeVectorReproTest {
                     did, negLog,
                     ResolveOptions.builder().verifier(Ed25519TestFixture.verifier()).build());
             threw = false;
-            harnessOutcome = "FAIL  (\"resolver accepted invalid log\")";
         } catch (Exception e) {
             threw = true;
-            harnessOutcome = "PASS  (caught " + e.getClass().getSimpleName() + ")";
         }
-
-        System.out.println("\n---- What actually happened in the library ----");
-        System.out.println("resolveFromLog threw an exception? " + threw);
-        if (result != null) {
-            System.out.println("result.isSuccess()                 = " + result.isSuccess());
-            System.out.println("result.document()                  = " + result.document());
-            System.out.println("result.resolutionMetadata().error()= "
-                    + result.resolutionMetadata().error());
-            if (result.resolutionMetadata().problemDetails() != null) {
-                System.out.println("problemDetails.detail              = "
-                        + result.resolutionMetadata().problemDetails().detail());
-            }
-        }
-
-        System.out.println("\n---- Adapter logic comparison ----");
-        System.out.println("java-eecc adapter (catch == pass)  would record: " + harnessOutcome);
-        boolean correctlyRejected = result != null
-                && !result.isSuccess()
-                && result.resolutionMetadata() != null
-                && result.resolutionMetadata().error() != null;
-        System.out.println("correct adapter (metadata check)   would record: "
-                + (correctlyRejected ? "PASS  (error=" + result.resolutionMetadata().error() + ")" : "FAIL"));
-        System.out.println("===============================================================\n");
 
         // ---- The empirical findings, as assertions --------------------------------------
         // 1. The library does NOT throw — it returns a result (this is what defeats the adapter).
