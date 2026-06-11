@@ -17,21 +17,24 @@ cannot be fooled into accepting a forged or unauthorized DID document state.
 
 | Severity | Count | Finding |
 |----------|-------|---------|
-| **Critical** | 1 | Witness-proof forgery via `did:key` body/fragment mismatch → witness threshold bypass |
+| **Critical** | 1 *(resolved)* | Witness-proof forgery via `did:key` body/fragment mismatch → witness threshold bypass — **fixed in [`7ef8ba5`](#critical-resolved)** |
 | **Medium** | 1 | SSRF: no DNS/private-IP filtering on log fetch and on explicit service-endpoint fetch |
 | **Low** | 3 | SCID not pinned across a portability transition; `LogValidator` NPEs on entries missing `state`; witness proofs skip cryptosuite/purpose field checks |
 
-The codebase is, overall, notably well-hardened: 14 of the 15 Mythos bug patterns are
-correctly defended (see [What this library gets right](#what-this-library-gets-right)). The
-single critical finding is a high-impact exception in the witness path — the same `did:key`
-body/fragment class as Mythos bug #1, which is correctly handled for *entry* proofs but
-**not** for *witness* proofs.
+The codebase is, overall, notably well-hardened: 14 of the 15 Mythos bug patterns were
+correctly defended at the time of review (see
+[What this library gets right](#what-this-library-gets-right)), and the lone critical finding
+— a high-impact exception in the witness path, the same `did:key` body/fragment class as
+Mythos bug #1 — **has since been fixed** (commit `7ef8ba5`, 2026-06-10). With that fix all 15
+Mythos bug patterns are now defended.
 
 ---
 
-## Critical
+## Critical (resolved)
 
-### [CRITICAL] Witness identity is taken from the `did:key` body, but the signature is verified against the fragment
+### [CRITICAL — RESOLVED] Witness identity is taken from the `did:key` body, but the signature is verified against the fragment
+
+> **Status: RESOLVED in commit `7ef8ba5` (2026-06-10).**
 
 **Location:**
 - [`witness/WitnessValidator.java:165`](src/main/java/de/eecc/did/webvh/witness/WitnessValidator.java#L165) (`buildValidatedMap` → `extractBaseDid`)
@@ -250,7 +253,7 @@ tests. Mapped to the 15 Mythos findings:
 
 | # | Mythos bug | Status here | Where |
 |---|------------|-------------|-------|
-| 1 | `did:key` body/fragment mismatch in proof auth | **Safe for entry proofs** (fragment used for both authz and verify; body ignored). **Vulnerable for witness proofs** — see Critical. | [LogValidator.java:371-377](src/main/java/de/eecc/did/webvh/log/LogValidator.java#L371-L377) |
+| 1 | `did:key` body/fragment mismatch in proof auth | **Defended.** Entry proofs always used the fragment for both authz and verify (body ignored); the witness-proof gap (see Critical) is now closed centrally — `DataIntegrity.verifyProof` rejects body≠fragment for every proof since `7ef8ba5`. | [DataIntegrity.java:105-113](src/main/java/de/eecc/did/webvh/crypto/DataIntegrity.java#L105-L113), [LogValidator.java:371-377](src/main/java/de/eecc/did/webvh/log/LogValidator.java#L371-L377) |
 | 2 | HTTP redirects → SSRF | **Defended** — Java `HttpClient` default `Redirect.NEVER`; redirects never followed. (Still recommend setting it explicitly; see Medium.) | [HttpResolver.java:286-288](src/main/java/de/eecc/did/webvh/resolve/HttpResolver.java#L286-L288) |
 | 3 | Duplicate witness IDs bypass threshold | **Defended** — duplicate witness `id`s rejected; threshold ∈ [1, n]; proofs de-duped by witness DID before counting. | [WitnessParameter.java:104-120](src/main/java/de/eecc/did/webvh/model/WitnessParameter.java#L104-L120) |
 | 4 | Path traversal in DID→HTTP path | **Defended** — each path segment is percent-decoded then rejected if empty / `.` / `..` / contains `/` or `\`. | [DidUrlTransformer.java:217-223](src/main/java/de/eecc/did/webvh/resolve/DidUrlTransformer.java#L217-L223) |
@@ -285,9 +288,11 @@ Additional good practices observed:
 ## Appendix — witness-forgery PoC
 
 Drop this into `src/test/java/.../witness/`, run with
-`mvn -o test -Dtest=WitnessForgeryPocTest`. Against the current tree the assertion **fails**
-(no throwable raised), proving the forged proof satisfies the threshold. After the Critical fix
-it should pass.
+`mvn -o test -Dtest=WitnessForgeryPocTest`. Against the unfixed tree the assertion **failed**
+(no throwable raised), proving the forged proof satisfied the threshold. **As of `7ef8ba5` it
+passes** — `verifyEpochs` now throws `LogValidationException` on the forged proof. The shipped
+regression lives in
+[`WitnessForgeryTest.java`](src/test/java/de/eecc/did/webvh/witness/WitnessForgeryTest.java).
 
 ```java
 @Test

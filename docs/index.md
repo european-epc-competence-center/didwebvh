@@ -11,7 +11,6 @@ Bachelor thesis project: security analysis of `did:webvh` (DID Web + Verifiable 
 /
 ├── .github/workflows/ci.yml   # GitHub Actions: mvn verify on push to main
 ├── docs/
-│   ├── AGENTS.md              # Conventions for AI agents working here
 │   ├── application.md         # Thesis application (motivation, research question)
 │   ├── index.md               # This file
 │   ├── library.md             # Java library architecture & design decisions
@@ -27,7 +26,6 @@ Bachelor thesis project: security analysis of `did:webvh` (DID Web + Verifiable 
 
 | Topic | File |
 |---|---|
-| Agent style guide (changelog, safety, notes hygiene) | [`AGENTS.md`](./AGENTS.md) |
 | Java package structure, key classes, dependencies | [`library.md`](./library.md) |
 | DID format, crypto pipeline, pre-rotation, validation rules | [`protocol.md`](./protocol.md) |
 | Remaining implementation gaps & future ideas | [`work.md`](./work.md) |
