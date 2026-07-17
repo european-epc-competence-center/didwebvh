@@ -235,8 +235,10 @@ public record Parameters(
         WitnessParameter effectiveWitness = coalesce(witness, previous != null ? previous.witness : null);
         List<String> effectiveWatchers = coalesceWithDefault(watchers, previous != null ? previous.watchers : null, List.of());
         
-        // scid is present in genesis and null in all subsequent effective params
-        String effectiveScid = previous == null ? scid : null;
+        // The SCID is set once in the genesis entry and is immutable for the life of the
+        // DID, so the effective state carries it forward. This does not affect on-wire
+        // entries: diff() never emits scid and validateTransition() rejects it after genesis.
+        String effectiveScid = previous == null ? scid : previous.scid;
 
         return new Parameters(effectiveMethod, effectiveScid, effectiveUpdateKeys, effectiveNextKeyHashes,
                 effectivePortable, effectiveDeactivated, effectiveTtl, effectiveWitness, effectiveWatchers);

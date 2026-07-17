@@ -41,6 +41,9 @@ import java.util.List;
  *   <li>Parameter transition: {@link Parameters#validate(Parameters)} must pass.</li>
  *   <li>Pre-rotation: if active, new {@code updateKeys} hashes must appear in
  *       previous {@code nextKeyHashes}.</li>
+ *   <li>Portability: a changed document {@code id} requires {@code portable=true},
+ *       a {@code did:webvh} id with the same SCID, and the prior DID in
+ *       {@code alsoKnownAs}.</li>
  * </ol>
  *
  * <p>Entries after the first invalid entry are also considered invalid.
@@ -137,10 +140,13 @@ public final class LogValidator {
         // Per-entry portability check.
         // If the DID document "id" changed from the previous entry, the
         // previous entry's effective parameters MUST have portable=true,
+        // the new id MUST still be a did:webvh DID with the same SCID,
         // and the new entry's DIDDoc MUST contain the prior DID in alsoKnownAs
         // (spec §DID Portability). The alsoKnownAs link is the only public
         // signal that the new DID is the continuation of the old identifier;
-        // without it, consumers cannot follow the move.
+        // without it, consumers cannot follow the move. Without the SCID check,
+        // a log could "move" a DID to an arbitrary identifier (e.g. did:web)
+        // and still resolve, silently detaching it from its verifiable history.
         if (previous != null) {
             String prevDocId = previous.state().getString("id");
             String currDocId = entry.state().getString("id");
@@ -149,6 +155,21 @@ public final class LogValidator {
                     throw new LogValidationException(
                             "DID document id changed from '" + prevDocId + "' to '" + currDocId
                                     + "' but 'portable' is not true");
+                }
+                if (currDocId == null) {
+                    throw new LogValidationException(
+                            "DID document id changed from '" + prevDocId
+                                    + "' but the new entry has no document id");
+                }
+                String scid = activeParams.scid();
+                String requiredPrefix = scid != null
+                        ? DidWebVhConstants.DID_METHOD_PREFIX + scid + ":"
+                        : DidWebVhConstants.DID_METHOD_PREFIX;
+                if (!currDocId.startsWith(requiredPrefix)) {
+                    throw new LogValidationException(
+                            "DID document id changed from '" + prevDocId + "' to '" + currDocId
+                                    + "' but a renamed DID must keep the did:webvh method"
+                                    + (scid != null ? " and the SCID '" + scid + "'" : ""));
                 }
                 if (!entry.state().getStrings("alsoKnownAs").contains(prevDocId)) {
                     throw new LogValidationException(

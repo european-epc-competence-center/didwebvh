@@ -85,6 +85,11 @@ public final class UpdateOperation {
             DidDocument documentToWrite = applyPortableMoveIfRequested(
                     options, previous, currentLog, activeParams);
 
+            // Spec §Update step 1: the document's id MUST be the DID; the only sanctioned
+            // exception is a portable rename. Reject anything else here — once appended,
+            // a mismatched entry poisons an append-only log at resolve time.
+            validateUpdatedDocumentId(documentToWrite, previous, currentLog, activeParams);
+
             String versionTime = OperationSupport.computeVersionTime(
                     options.getVersionTime(), previous.versionTime());
 
@@ -207,6 +212,70 @@ public final class UpdateOperation {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Validates that the document to be written carries the DID as its top-level
+     * {@code id} (spec §Update step 1), allowing only a spec-valid portable rename
+     * to differ from the previous entry's id (spec §DID Portability: same SCID,
+     * {@code did:webvh} method, prior DID in {@code alsoKnownAs}).
+     *
+     * @throws IllegalArgumentException if the document still contains the {@code {SCID}}
+     *                                  placeholder, has no id, or has an id that is neither
+     *                                  the DID nor a valid portable rename of it
+     * @throws IllegalStateException    if the id is a well-formed rename but the DID is
+     *                                  not portable
+     */
+    private static void validateUpdatedDocumentId(
+            DidDocument document,
+            DidLogEntry previous,
+            DidLog currentLog,
+            Parameters activeParams) {
+
+        if (document.toJson().contains(DidWebVhConstants.SCID_PLACEHOLDER)) {
+            throw new IllegalArgumentException(
+                    "updatedDocument contains the literal '" + DidWebVhConstants.SCID_PLACEHOLDER
+                            + "' placeholder, which is only valid in the genesis document passed to create. "
+                            + "Rewrite the document to the concrete DID first, e.g. "
+                            + "DidWebImporter.toWebVhDocument(didWebDocument, scid).");
+        }
+
+        String documentId = document.getString("id");
+        if (documentId == null || documentId.isBlank()) {
+            throw new IllegalArgumentException(
+                    "updatedDocument must contain the DID as its top-level 'id'");
+        }
+
+        String currentDid = previous.state().getString("id");
+        if (currentDid == null || currentDid.equals(documentId)) {
+            return;
+        }
+
+        // The id differs from the DID: only a portable rename is allowed, and it must
+        // keep the did:webvh method and the SCID. A did:web-shaped document (the dual-
+        // publishing case) fails here with a pointer to the supported conversion.
+        String scid = currentLog.first().parameters().scid();
+        if (scid != null && !documentId.startsWith(DidWebVhConstants.DID_METHOD_PREFIX + scid + ":")) {
+            throw new IllegalArgumentException(
+                    "updatedDocument id '" + documentId + "' does not match the DID '" + currentDid
+                            + "'. A renamed (moved) DID must keep the did:webvh method and the SCID '"
+                            + scid + "' (spec §DID Portability). If this document derives from a "
+                            + "did:web document, rewrite it to the DID first, e.g. "
+                            + "DidWebImporter.toWebVhDocument(didWebDocument, scid).");
+        }
+        if (!Boolean.TRUE.equals(activeParams.portable())) {
+            throw new IllegalStateException(
+                    "updatedDocument id '" + documentId + "' renames the DID '" + currentDid
+                            + "', but the DID is not portable (genesis entry must have "
+                            + "parameters.portable=true).");
+        }
+        if (!document.getStrings("alsoKnownAs").contains(currentDid)) {
+            throw new IllegalArgumentException(
+                    "updatedDocument id renames the DID '" + currentDid + "' to '" + documentId
+                            + "' but 'alsoKnownAs' does not contain the prior DID (spec §DID "
+                            + "Portability). Use UpdateOptions.domain(...) to perform a portable "
+                            + "move automatically.");
+        }
     }
 
     /**

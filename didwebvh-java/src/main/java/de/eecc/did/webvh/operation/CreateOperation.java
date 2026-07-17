@@ -127,6 +127,20 @@ public final class CreateOperation {
         if (options.getUpdateKeys().isEmpty()) {
             throw new IllegalArgumentException("updateKeys must not be empty");
         }
+
+        // Spec §Create step 3: the initial DIDDoc's id MUST be the DID string with the
+        // {SCID} placeholder. Anything else produces a log that hashes and signs fine
+        // but can never be resolved, so reject it before it is signed.
+        String expectedId = DidWebVhConstants.DID_METHOD_PREFIX
+                + DidWebVhConstants.SCID_PLACEHOLDER + ":" + options.getDomain();
+        String actualId = options.getInitialDocument().getString("id");
+        if (!expectedId.equals(actualId)) {
+            throw new IllegalArgumentException(
+                    "initialDocument id must be '" + expectedId + "' (the DID with the "
+                            + DidWebVhConstants.SCID_PLACEHOLDER + " placeholder, spec §Create step 3), "
+                            + "but was: " + actualId + ". For an existing did:web document, use "
+                            + "DidWebImporter.toWebVhDocument(didWebDocument) to prepare it.");
+        }
     }
 
     /**

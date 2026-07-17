@@ -122,7 +122,7 @@ All fields are set through the `CreateOptions.Builder`:
 | Builder Method | Required | Description |
 |----------------|----------|-------------|
 | `.domain(String)` | **Yes** | The domain for the DID, e.g. `example.com`. |
-| `.initialDocument(DidDocument)` | **Yes** | The initial DID document. Must use `{SCID}` as a placeholder wherever the DID identifier appears (e.g. in `id`, `controller`, `verificationMethod.id`). |
+| `.initialDocument(DidDocument)` | **Yes** | The initial DID document. Must use `{SCID}` as a placeholder wherever the DID identifier appears (e.g. in `id`, `controller`, `verificationMethod.id`). The top-level `id` must be exactly `did:webvh:{SCID}:<domain>` (spec §Create step 3); anything else is rejected. |
 | `.updateKeys(List<String>)` | **Yes** | One or more multikey-encoded Ed25519 public keys authorised to sign future updates. |
 | `.signer(Signer)` | **Yes** | The signing key that corresponds to one of the `updateKeys`. |
 | `.portable(boolean)` | No | Whether the DID may be moved to a new domain later. Can only be set `true` at creation. Default: `false`. |
@@ -235,9 +235,43 @@ Notes:
   `DidWebImporter.toWebVhDocument(didWeb, false)` to skip that.
 - `DidWebImporter.domainOf(...)` returns everything after `did:web:`, which is
   exactly the `domain` component `did:webvh` expects.
-- This is the *import* direction only. Generating a parallel `did:web` document
-  to publish **alongside** a `did:webvh` (spec §3.7.10) is a separate, not-yet-
-  implemented feature.
+- The reverse direction — generating a parallel `did:web` document to publish
+  **alongside** a `did:webvh` (spec §3.7.10) — is provided by
+  `DidWebPublisher.toDidWeb(resolvedWebVhDocument)`.
+
+### Dual Publishing: Updating from a `did:web` Document
+
+If the `did:web` document remains your editable source of truth after the import
+(dual publishing), every later change must be appended to the `did:webvh` log as
+an update. An update requires the document to carry the **concrete** DID (real
+SCID) — not the `{SCID}` placeholder and not the `did:web` id. Use the
+concrete-SCID conversion:
+
+```java
+// The did:web document changed (e.g. a key or service was added).
+DidDocument changedDidWeb = DidDocument.fromJson(currentDidWebJson);
+
+// Rewrite its own ids to the concrete did:webvh DID of the existing log.
+String scid = currentLog.first().parameters().scid();
+DidDocument updatedDoc = DidWebImporter.toWebVhDocument(changedDidWeb, scid);
+
+UpdateResult result = DidWebVh.update(
+    UpdateOptions.builder()
+        .log(currentLog)
+        .updatedDocument(updatedDoc)
+        .signer(signer)
+        .build());
+```
+
+The conversion keeps the `did:web` DID in `alsoKnownAs` and drops a forward
+`alsoKnownAs` reference to the `did:webvh` DID (which a dual-published `did:web`
+document carries, as produced by `DidWebPublisher.toDidWeb`) since it would
+become a self-reference.
+
+Passing the `did:web`-shaped (or placeholder-shaped) document to
+`DidWebVh.update` directly is rejected with an `IllegalArgumentException` —
+without that guard the entry would be appended successfully and the log would
+only fail later, at resolve time.
 
 ---
 
@@ -317,6 +351,13 @@ if (result.isSuccess()) {
 ## Updating a DID
 
 Updating appends a new entry to the log. You provide the current log, the new document, and a signer authorised by the current `updateKeys`.
+
+The new document's top-level `id` must be the DID (spec §Update step 1). The only
+exception is a portable rename: a portable DID may change its `id` to a
+`did:webvh` DID with the same SCID when the prior DID is listed in `alsoKnownAs`
+(usually done via `.domain(...)`, see below). Anything else — including a document
+that still contains the `{SCID}` placeholder — is rejected before the entry is
+signed, because a mismatched entry would poison an append-only log at resolve time.
 
 ### Document-Only Update
 

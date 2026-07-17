@@ -1146,4 +1146,221 @@ class UpdateOperationTest {
                     .hasMessageContaining("not portable");
         }
     }
+
+    // =========================================================================
+    // Updated-document id guard (spec §Update step 1: the document id MUST be
+    // the DID; only a spec-valid portable rename may differ)
+    // =========================================================================
+
+    @Nested
+    class UpdatedDocumentIdGuard {
+
+        private CreateResult createPortableDid() {
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:webvh:{SCID}:" + DOMAIN);
+            return CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(new DidDocument(doc))
+                            .updateKeys(List.of(keyA))
+                            .signer(signerA)
+                            .portable(true)
+                            .build());
+        }
+
+        private DidDocument docWithId(String id) {
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", id);
+            return new DidDocument(doc);
+        }
+
+        /**
+         * The dual-publishing mistake: passing the did:web-shaped document directly.
+         * Must fail at append time with a pointer to the supported conversion,
+         * instead of poisoning an append-only log.
+         */
+        @Test
+        void didWebShapedDocument_rejectedWithConversionHint() {
+            CreateResult created = createDid();
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(docWithId("did:web:" + DOMAIN))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("DidWebImporter.toWebVhDocument");
+        }
+
+        /**
+         * Same mistake on a portable DID with the forward alsoKnownAs link — the
+         * variant that previously validated and silently resolved to the did:web
+         * document. The shape check must fire regardless of portability.
+         */
+        @Test
+        void didWebShapedDocument_rejectedEvenWhenPortableWithForwardAlias() {
+            CreateResult created = createPortableDid();
+            String did = "did:webvh:" + created.metadata().scid() + ":" + DOMAIN;
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:web:" + DOMAIN);
+            doc.putArray("alsoKnownAs").add(did);
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("did:webvh");
+        }
+
+        @Test
+        void placeholderDocument_rejected() {
+            CreateResult created = createDid();
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(buildDocument("{SCID}"))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("{SCID}");
+        }
+
+        /** The placeholder is rejected anywhere in the document, not just in the id. */
+        @Test
+        void placeholderInVerificationMethod_rejected() {
+            CreateResult created = createDid();
+            String scid = created.metadata().scid();
+            String did = "did:webvh:" + scid + ":" + DOMAIN;
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", did);
+            ObjectNode vm = MAPPER.createObjectNode();
+            vm.put("id", "did:webvh:{SCID}:" + DOMAIN + "#key-1");
+            vm.put("type", "Multikey");
+            vm.put("controller", did);
+            doc.putArray("verificationMethod").add(vm);
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("{SCID}");
+        }
+
+        @Test
+        void missingId_rejected() {
+            CreateResult created = createDid();
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("top-level 'id'");
+        }
+
+        /** A well-formed rename (same SCID, alsoKnownAs) on a non-portable DID fails on portability. */
+        @Test
+        void manualRenameOnNonPortableDid_throwsIllegalState() {
+            CreateResult created = createDid();
+            String scid = created.metadata().scid();
+            String did = "did:webvh:" + scid + ":" + DOMAIN;
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:webvh:" + scid + ":newdomain.com");
+            doc.putArray("alsoKnownAs").add(did);
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("not portable");
+        }
+
+        @Test
+        void manualRenameToDifferentScid_rejected() {
+            CreateResult created = createPortableDid();
+            String did = "did:webvh:" + created.metadata().scid() + ":" + DOMAIN;
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:webvh:QmOtherScid123:" + DOMAIN);
+            doc.putArray("alsoKnownAs").add(did);
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("SCID");
+        }
+
+        @Test
+        void manualRenameWithoutAlsoKnownAs_rejected() {
+            CreateResult created = createPortableDid();
+            String scid = created.metadata().scid();
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:webvh:" + scid + ":newdomain.com");
+
+            assertThatThrownBy(() -> UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .build()))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("alsoKnownAs");
+        }
+
+        /**
+         * A spec-valid manual portable rename (without the domain option) must still
+         * be accepted: portable DID, same SCID, prior DID in alsoKnownAs.
+         */
+        @Test
+        void manualPortableRename_accepted() {
+            CreateResult created = createPortableDid();
+            String scid = created.metadata().scid();
+            String did = "did:webvh:" + scid + ":" + DOMAIN;
+
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            doc.put("id", "did:webvh:" + scid + ":newdomain.com");
+            doc.putArray("alsoKnownAs").add(did);
+
+            UpdateResult result = UpdateOperation.update(
+                    UpdateOptions.builder()
+                            .log(created.log())
+                            .updatedDocument(new DidDocument(doc))
+                            .signer(signerA)
+                            .build());
+
+            assertThat(result.log().size()).isEqualTo(2);
+            assertLogPassesValidation(result.log());
+        }
+    }
 }
