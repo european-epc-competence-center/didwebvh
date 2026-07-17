@@ -31,6 +31,11 @@ import java.util.regex.Pattern;
  * controller or an unrelated {@code alsoKnownAs} entry) are left untouched: only
  * the document's own identifier and identifiers derived from it are rewritten.
  *
+ * <p>For a DID that has already been created (e.g. a dual publisher whose editable
+ * {@code did:web} document changed and must be appended to the {@code did:webvh} log),
+ * use {@link #toWebVhDocument(DidDocument, String)} with the log's SCID to rewrite the
+ * document to the concrete DID expected by {@link de.eecc.did.webvh.api.DidWebVh#update}.
+ *
  * <p>This class performs no I/O and never computes the SCID; it only prepares the
  * {@code initialDocument}. Typical usage:
  * <pre>{@code
@@ -76,12 +81,71 @@ public final class DidWebImporter {
      * @throws IllegalArgumentException if the document has no {@code did:web:} {@code id}
      */
     public static DidDocument toWebVhDocument(DidDocument didWebDocument, boolean linkDidWeb) {
-        String didWeb = requireDidWebId(didWebDocument);
-        String placeholderDid = DidWebVhConstants.DID_METHOD_PREFIX
-                + DidWebVhConstants.SCID_PLACEHOLDER + ":" + domainComponent(didWeb);
+        return toWebVhDocument(didWebDocument, DidWebVhConstants.SCID_PLACEHOLDER, linkDidWeb);
+    }
 
-        DidDocument rewritten = rewriteOwnDid(didWebDocument, didWeb, placeholderDid);
-        return finalizeAliases(rewritten, placeholderDid, didWeb, linkDidWeb);
+    /**
+     * Converts a {@code did:web} document into the equivalent {@code did:webvh} document
+     * for an <em>existing</em> DID with the given SCID, recording the original
+     * {@code did:web} DID in {@code alsoKnownAs}.
+     *
+     * <p>This is the update-time counterpart of {@link #toWebVhDocument(DidDocument)}:
+     * use it when the {@code did:web} document is the editable source of truth and each
+     * change must be appended to the already-created {@code did:webvh} log via
+     * {@link de.eecc.did.webvh.api.DidWebVh#update}. The document's own identifiers are
+     * rewritten to the concrete DID ({@code did:webvh:<scid>:<domain>}); a forward
+     * {@code alsoKnownAs} reference to that DID (as produced by
+     * {@link DidWebPublisher#toDidWeb}) would become a self-reference and is removed.
+     * <pre>{@code
+     * String scid = log.first().parameters().scid();
+     * DidDocument updatedDoc = DidWebImporter.toWebVhDocument(changedDidWebDoc, scid);
+     *
+     * UpdateResult result = DidWebVh.update(
+     *     UpdateOptions.builder()
+     *         .log(log)
+     *         .updatedDocument(updatedDoc)
+     *         .signer(signer)
+     *         .build());
+     * }</pre>
+     *
+     * @param didWebDocument an existing {@code did:web} DID document
+     * @param scid           the SCID of the existing {@code did:webvh} DID, i.e.
+     *                       {@code log.first().parameters().scid()}
+     * @return the document with its own identifiers rewritten to
+     *         {@code did:webvh:<scid>:<domain>}, ready for
+     *         {@link de.eecc.did.webvh.api.DidWebVh#update}
+     * @throws IllegalArgumentException if the document has no {@code did:web:} {@code id}
+     *                                  or {@code scid} is blank
+     */
+    public static DidDocument toWebVhDocument(DidDocument didWebDocument, String scid) {
+        return toWebVhDocument(didWebDocument, scid, true);
+    }
+
+    /**
+     * Converts a {@code did:web} document into the equivalent {@code did:webvh} document
+     * for an existing DID with the given SCID.
+     *
+     * @param didWebDocument an existing {@code did:web} DID document
+     * @param scid           the SCID of the existing {@code did:webvh} DID (or the literal
+     *                       {@code {SCID}} placeholder to produce a genesis document)
+     * @param linkDidWeb     when {@code true}, the original {@code did:web} DID is
+     *                       added to {@code alsoKnownAs} (deduplicated); when
+     *                       {@code false}, {@code alsoKnownAs} is left as-is apart from
+     *                       dropping self-references
+     * @return the document with its own identifiers rewritten to
+     *         {@code did:webvh:<scid>:<domain>}
+     * @throws IllegalArgumentException if the document has no {@code did:web:} {@code id}
+     *                                  or {@code scid} is blank
+     */
+    public static DidDocument toWebVhDocument(DidDocument didWebDocument, String scid, boolean linkDidWeb) {
+        if (scid == null || scid.isBlank()) {
+            throw new IllegalArgumentException("scid must not be blank");
+        }
+        String didWeb = requireDidWebId(didWebDocument);
+        String webVhDid = DidWebVhConstants.DID_METHOD_PREFIX + scid + ":" + domainComponent(didWeb);
+
+        DidDocument rewritten = rewriteOwnDid(didWebDocument, didWeb, webVhDid);
+        return finalizeAliases(rewritten, webVhDid, didWeb, linkDidWeb);
     }
 
     /**
@@ -119,23 +183,24 @@ public final class DidWebImporter {
 
     /**
      * Rewrites the document's own DID (and any fragment/path identifiers derived
-     * from it) to the placeholder {@code did:webvh} DID, leaving references to other
-     * DIDs untouched. The lookahead restricts replacement to a full DID token: the
-     * base DID followed by a closing quote, a fragment ({@code #}), a path or
-     * percent-encoded port ({@code :}), or a slash.
+     * from it) to the target {@code did:webvh} DID (placeholder or concrete), leaving
+     * references to other DIDs untouched. The lookahead restricts replacement to a
+     * full DID token: the base DID followed by a closing quote, a fragment
+     * ({@code #}), a path or percent-encoded port ({@code :}), or a slash.
      */
-    private static DidDocument rewriteOwnDid(DidDocument document, String didWeb, String placeholderDid) {
+    private static DidDocument rewriteOwnDid(DidDocument document, String didWeb, String webVhDid) {
         String json = document.toJson();
         String rewritten = Pattern.compile(Pattern.quote(didWeb) + "(?=[\"#:/])")
                 .matcher(json)
-                .replaceAll(Matcher.quoteReplacement(placeholderDid));
+                .replaceAll(Matcher.quoteReplacement(webVhDid));
         return DidDocument.fromJson(rewritten);
     }
 
     /**
-     * Reconciles {@code alsoKnownAs}: drops any self-reference to the (placeholder)
-     * {@code did:webvh} DID that the rewrite step may have produced from an existing
-     * self {@code did:web} entry, deduplicates, and — when requested — appends the
+     * Reconciles {@code alsoKnownAs}: drops any self-reference to the target
+     * {@code did:webvh} DID — whether produced by the rewrite step from an existing
+     * self {@code did:web} entry or already present as a forward link in a
+     * dual-published document — deduplicates, and, when requested, appends the
      * original {@code did:web} DID. Leaves the document untouched when there is
      * nothing to add or change.
      */
