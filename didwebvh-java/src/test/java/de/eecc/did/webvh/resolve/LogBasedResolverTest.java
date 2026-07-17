@@ -14,6 +14,7 @@ import de.eecc.did.webvh.operation.CreateOperation;
 import de.eecc.did.webvh.operation.DeactivateOperation;
 import de.eecc.did.webvh.operation.UpdateOperation;
 import de.eecc.did.webvh.support.Ed25519TestFixture;
+import de.eecc.did.webvh.support.RawLogEntries;
 import de.eecc.did.webvh.witness.WitnessProofCollection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -486,19 +487,41 @@ class LogBasedResolverTest {
             CreateResult created = createDid();  // non-portable by default
             String scid = scidFrom(created.log());
 
-            // Manually build a moved document (UpdateOperation allows it)
+            // Build the moved entry raw: UpdateOperation refuses to append it.
             ObjectNode movedDoc = MAPPER.createObjectNode();
             movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
             movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
-            UpdateResult moved = UpdateOperation.update(
-                    UpdateOptions.builder()
-                            .log(created.log())
-                            .updatedDocument(new DidDocument(movedDoc))
-                            .signer(fixture.signer())
-                            .build());
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
 
             ResolveResult result = resolver.resolve(
-                    "did:webvh:" + scid + ":newdomain.com", moved.log(), defaultOptions());
+                    "did:webvh:" + scid + ":newdomain.com", moved, defaultOptions());
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");
+        }
+
+        /**
+         * Regression for the dual-publishing poison case: a portable DID whose log
+         * carries an entry with a did:web id and the prior DID in alsoKnownAs (the
+         * exact shape of a dual publisher's did:web document). Before the SCID/method
+         * rename check this log validated and the did:webvh DID silently resolved to
+         * a document whose id was the did:web DID.
+         */
+        @Test
+        void resolvePortableDidMovedToDidWeb_fails() {
+            CreateResult created = createPortableDid();
+            String scid = scidFrom(created.log());
+            String did = didFrom(created.log());
+
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:web:" + DOMAIN);
+            movedDoc.putArray("alsoKnownAs").add(did);
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
+
+            ResolveResult result = resolver.resolve(did, moved, defaultOptions());
 
             assertThat(result.isSuccess()).isFalse();
             assertThat(result.resolutionMetadata().error()).isEqualTo("invalidDid");

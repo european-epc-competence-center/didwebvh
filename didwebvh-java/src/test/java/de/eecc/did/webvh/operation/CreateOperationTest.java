@@ -541,6 +541,63 @@ class CreateOperationTest {
                     .isInstanceOf(NullPointerException.class)
                     .hasMessageContaining("signer");
         }
+
+        // Spec §Create step 3: the initial DIDDoc id MUST be the DID string with the
+        // {SCID} placeholder. A wrong id would produce a log that signs fine but can
+        // never be resolved.
+
+        private DidDocument documentWithId(String id) {
+            ObjectNode doc = MAPPER.createObjectNode();
+            doc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            if (id != null) {
+                doc.put("id", id);
+            }
+            return new DidDocument(doc);
+        }
+
+        private CreateOptions optionsWithDocument(DidDocument document) {
+            return CreateOptions.builder()
+                    .domain(DOMAIN)
+                    .initialDocument(document)
+                    .updateKeys(List.of(publicKeyMultibase))
+                    .signer(signer)
+                    .build();
+        }
+
+        /** A raw did:web document (importer skipped) must be rejected with a conversion hint. */
+        @Test
+        void create_rejectsDidWebInitialDocument() {
+            assertThatThrownBy(() -> CreateOperation.create(
+                    optionsWithDocument(documentWithId("did:web:" + DOMAIN))))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("initialDocument id must be")
+                    .hasMessageContaining("DidWebImporter.toWebVhDocument");
+        }
+
+        /** A concrete did:webvh id is wrong at create time — the SCID does not exist yet. */
+        @Test
+        void create_rejectsConcreteWebVhInitialDocumentId() {
+            assertThatThrownBy(() -> CreateOperation.create(
+                    optionsWithDocument(documentWithId("did:webvh:QmSomeScid123:" + DOMAIN))))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("initialDocument id must be");
+        }
+
+        @Test
+        void create_rejectsPlaceholderIdWithWrongDomain() {
+            assertThatThrownBy(() -> CreateOperation.create(
+                    optionsWithDocument(documentWithId("did:webvh:{SCID}:other.example"))))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("initialDocument id must be");
+        }
+
+        @Test
+        void create_rejectsMissingInitialDocumentId() {
+            assertThatThrownBy(() -> CreateOperation.create(
+                    optionsWithDocument(documentWithId(null))))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("initialDocument id must be");
+        }
     }
 
     // -------------------------------------------------------------------------
