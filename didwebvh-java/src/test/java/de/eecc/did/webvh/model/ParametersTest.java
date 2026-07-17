@@ -120,8 +120,8 @@ class ParametersTest {
         assertThat(effective2.portable()).isEqualTo(effective1.portable());
         assertThat(effective2.deactivated()).isEqualTo(effective1.deactivated());
         assertThat(effective2.ttl()).isEqualTo(effective1.ttl());
-        // scid is never inherited
-        assertThat(effective2.scid()).isNull();
+        // the immutable SCID is carried forward in the effective state
+        assertThat(effective2.scid()).isEqualTo(effective1.scid());
     }
 
     @Test
