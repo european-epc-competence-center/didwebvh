@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Added
+
+- `DidWebImporter.toWebVhDocument(document, scid)` for dual-publish updates
+
+### Fixed
+
+- reject create/update documents whose `id` is not the DID (or a valid portable rename)
+- portable renames must keep the `did:webvh` method and the same SCID
+
+
 ## [0.3.1] - 2026-05-28
 
 ### Fixed

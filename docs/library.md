@@ -76,7 +76,7 @@ de.eecc.did.webvh/
 - `DataIntegrity` — create and verify `eddsa-jcs-2022` proofs
 
 ### `didweb/` — `did:web` Interoperability (no I/O)
-- `DidWebImporter` — converts an existing `did:web` document into a `did:webvh` genesis document (rewrites the document's own DID to the `{SCID}` placeholder, records the original in `alsoKnownAs`); ready for `DidWebVh.create`. `domainOf(...)` extracts the `CreateOptions.domain` value
+- `DidWebImporter` — converts an existing `did:web` document into a `did:webvh` genesis document (rewrites the document's own DID to the `{SCID}` placeholder, records the original in `alsoKnownAs`); ready for `DidWebVh.create`. `domainOf(...)` extracts the `CreateOptions.domain` value. `toWebVhDocument(doc, scid)` is the update-time variant for dual publishers: rewrites to the concrete DID for `DidWebVh.update`, dropping a forward `alsoKnownAs` self-reference
 - `DidWebPublisher` — generates the parallel `did:web` document (spec §3.7.10) from a resolved `did:webvh` doc: injects implicit services, text-replaces `did:webvh:<scid>:` → `did:web:`, reconciles `alsoKnownAs`. Caller publishes the result as `did.json`
 
 ### `log/` — JSONL & Chain Validation
