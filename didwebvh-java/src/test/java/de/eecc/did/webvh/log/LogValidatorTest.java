@@ -16,6 +16,7 @@ import de.eecc.did.webvh.model.proof.DataIntegrityProof;
 import de.eecc.did.webvh.operation.CreateOperation;
 import de.eecc.did.webvh.operation.UpdateOperation;
 import de.eecc.did.webvh.support.Ed25519TestFixture;
+import de.eecc.did.webvh.support.RawLogEntries;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -301,8 +302,8 @@ class LogValidatorTest {
 
         /**
          * Non-portable DIDs may NOT change their document "id" across entries.
-         * If the controller tries to move a non-portable DID to a new domain,
-         * the per-entry portability check must reject the log.
+         * If a log carries such a move anyway (UpdateOperation refuses to build one,
+         * so the entry is appended raw), the per-entry portability check must reject it.
          */
         @Test
         void nonPortableDid_documentIdChange_rejected() {
@@ -315,16 +316,12 @@ class LogValidatorTest {
             movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
             movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
 
-            // 3. Append the move entry (UpdateOperation does not enforce portability)
-            UpdateResult moved = UpdateOperation.update(
-                    UpdateOptions.builder()
-                            .log(created.log())
-                            .updatedDocument(new DidDocument(movedDoc))
-                            .signer(fixture.signer())
-                            .build());
+            // 3. Append the move entry raw, bypassing UpdateOperation's id guard
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
 
             // 4. Validation must reject because portable was false in entry 1
-            assertThatThrownBy(() -> validator.validate(moved.log()))
+            assertThatThrownBy(() -> validator.validate(moved))
                     .isInstanceOf(LogValidationException.class)
                     .hasMessageContaining("portable");
         }
@@ -386,14 +383,10 @@ class LogValidatorTest {
             movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
             movedDoc.put("id", "did:webvh:" + scid + ":newdomain.com");
 
-            UpdateResult moved = UpdateOperation.update(
-                    UpdateOptions.builder()
-                            .log(created.log())
-                            .updatedDocument(new DidDocument(movedDoc))
-                            .signer(fixture.signer())
-                            .build());
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
 
-            assertThatThrownBy(() -> validator.validate(moved.log()))
+            assertThatThrownBy(() -> validator.validate(moved))
                     .isInstanceOf(LogValidationException.class)
                     .hasMessageContaining("alsoKnownAs");
         }
@@ -420,16 +413,103 @@ class LogValidatorTest {
             // Unrelated DID — not the prior one.
             movedDoc.putArray("alsoKnownAs").add("did:web:unrelated.example");
 
-            UpdateResult moved = UpdateOperation.update(
-                    UpdateOptions.builder()
-                            .log(created.log())
-                            .updatedDocument(new DidDocument(movedDoc))
-                            .signer(fixture.signer())
-                            .build());
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
 
-            assertThatThrownBy(() -> validator.validate(moved.log()))
+            assertThatThrownBy(() -> validator.validate(moved))
                     .isInstanceOf(LogValidationException.class)
                     .hasMessageContaining("alsoKnownAs");
+        }
+
+        /**
+         * A "move" to a non-did:webvh identifier MUST be rejected even when portable
+         * is true and alsoKnownAs contains the prior DID (spec §DID Portability: the
+         * SCID — and hence the method — must be retained). This is the dual-publishing
+         * poison case: a did:web-shaped document carries exactly this forward
+         * alsoKnownAs link, and before this check the log validated and silently
+         * resolved to a document with a did:web id.
+         */
+        @Test
+        void portableDid_renameToDidWeb_rejected() {
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .portable(true)
+                            .build());
+            String scid = created.metadata().scid();
+            String prevDid = "did:webvh:" + scid + ":" + DOMAIN;
+
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:web:" + DOMAIN);
+            movedDoc.putArray("alsoKnownAs").add(prevDid);
+
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
+
+            assertThatThrownBy(() -> validator.validate(moved))
+                    .isInstanceOf(LogValidationException.class)
+                    .hasMessageContaining("did:webvh");
+        }
+
+        /**
+         * A move that keeps the did:webvh method but changes the SCID detaches the
+         * DID from its verifiable history and MUST be rejected (spec §DID Portability:
+         * "The SCID MUST be the same in the original and renamed DID").
+         */
+        @Test
+        void portableDid_renameToDifferentScid_rejected() {
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .portable(true)
+                            .build());
+            String scid = created.metadata().scid();
+            String prevDid = "did:webvh:" + scid + ":" + DOMAIN;
+
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+            movedDoc.put("id", "did:webvh:QmOtherScid123:" + DOMAIN);
+            movedDoc.putArray("alsoKnownAs").add(prevDid);
+
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
+
+            assertThatThrownBy(() -> validator.validate(moved))
+                    .isInstanceOf(LogValidationException.class)
+                    .hasMessageContaining("SCID");
+        }
+
+        /**
+         * An entry whose document drops the id entirely is an id change to "absent"
+         * and MUST be rejected rather than slipping past the portability checks.
+         */
+        @Test
+        void portableDid_renameDropsId_rejected() {
+            CreateResult created = CreateOperation.create(
+                    CreateOptions.builder()
+                            .domain(DOMAIN)
+                            .initialDocument(initialDocument())
+                            .updateKeys(List.of(fixture.publicKeyMultibase()))
+                            .signer(fixture.signer())
+                            .portable(true)
+                            .build());
+
+            ObjectNode movedDoc = MAPPER.createObjectNode();
+            movedDoc.putArray("@context").add("https://www.w3.org/ns/did/v1");
+
+            DidLog moved = RawLogEntries.appendRawUpdate(
+                    created.log(), new DidDocument(movedDoc), fixture.signer());
+
+            assertThatThrownBy(() -> validator.validate(moved))
+                    .isInstanceOf(LogValidationException.class)
+                    .hasMessageContaining("no document id");
         }
     }
 
@@ -455,7 +535,7 @@ class LogValidatorTest {
 
             Parameters afterFirst = validator.validateEntry(first, null, null);
             Parameters afterSecond = validator.validateEntry(second, first, afterFirst);
-            assertThat(afterSecond.scid()).isNull();
+            assertThat(afterSecond.scid()).isEqualTo(created.metadata().scid());
             assertThat(afterSecond.updateKeys()).containsExactly(fixture.publicKeyMultibase());
         }
     }
