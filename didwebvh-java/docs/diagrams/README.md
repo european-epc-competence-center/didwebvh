@@ -9,18 +9,26 @@ here as PlantUML so it can be regenerated whenever the package structure
 changes. It tracks control flow rather than every import and leaves out the
 `util`/`exception` packages and the shared types in the root package.
 
-Control runs from the `api` facade (and `didweb`, which sits outside the
-core resolution path) down through `operation`/`resolve`, then `log`/
-`witness`, onto the shared `model`/`crypto` base. `operation`, `log`, and
-`witness` each use both `model` and `crypto` the same way, so each points at
-that shared group with a single arrow instead of drawing all 6 individual
-edges. `LogFetcher`, `Verifier`, and `Signer` are the host-provided
-extension points (dashed boxes, dashed arrows) that cross the `library`/
-`host` boundary — the same boundary Chapter 4 (Security Analysis) treats as
-the trust boundary. Each interface box carries a small sub-label stating
-whether it ships a built-in default: `LogFetcher` (an `HttpClient`-backed
-fetcher) and `Verifier` (`DefaultVerifier`, for `eddsa-jcs-2022`) both do;
-`Signer` does not, since a private key can only come from the host.
+Control runs from the `api` facade down through `operation`/`resolve`, then
+`log`/`witness`, onto the shared `model`/`crypto` base. `operation`, `log`,
+and `witness` each use both `model` and `crypto` the same way, so each
+points at that shared group with a single arrow instead of drawing all 6
+individual edges. `LogFetcher`, `Verifier`, and `Signer` are the
+host-provided extension points (dashed boxes, dashed arrows) that cross the
+`library`/`host` boundary — the same boundary Chapter 4 (Security Analysis)
+treats as the trust boundary. Each interface box carries a small sub-label
+stating whether it ships a built-in default: `LogFetcher` (an
+`HttpClient`-backed fetcher) and `Verifier` (`DefaultVerifier`, for
+`eddsa-jcs-2022`) both do; `Signer` does not, since a private key can only
+come from the host.
+
+`didweb` is intentionally left out. It only reaches into `resolve` for two
+small string-utility helpers (`DidUrlTransformer`, `ImplicitServiceInjector`),
+not the resolution machinery (`HttpResolver`/`LogBasedResolver`/`LogFetcher`)
+that the `resolve` box actually represents in this diagram, so a
+`didweb --> resolve` edge would overstate the coupling at this abstraction
+level. (`DidWebImporter`, the other class in that package, doesn't touch
+`resolve` at all.)
 
 ### Regenerate after editing
 

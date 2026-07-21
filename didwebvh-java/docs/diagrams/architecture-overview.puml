@@ -40,11 +40,7 @@ skinparam rectangle {
 skinparam ArrowColor #444444
 
 package "library" {
-  together {
-    component "api" as api
-    component "didweb" as didweb
-  }
-
+  component "api" as api
   component "resolve" as resolve
 
   together {
@@ -73,7 +69,6 @@ package "host" {
 
 api --> operation
 api --> resolve
-didweb --> resolve
 
 resolve -[hidden]-> operation
 resolve --> log
