@@ -1,0 +1,94 @@
+@startuml architecture-overview
+
+hide empty members
+skinparam shadowing false
+skinparam roundcorner 6
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 50
+
+skinparam class {
+  BackgroundColor White
+  BorderColor #555555
+  ArrowColor #555555
+  FontSize 13
+}
+skinparam package {
+  BackgroundColor #F8F8F8
+  BorderColor #999999
+  FontSize 14
+  FontStyle bold
+}
+skinparam note {
+  BackgroundColor #FFF9E3
+  BorderColor #D8C971
+}
+
+package "api" as api {
+  class DidWebVh <<facade>>
+}
+
+package "operation" as operation {
+  class CreateOperation
+  class UpdateOperation
+  class DeactivateOperation
+}
+
+package "resolve" as resolve {
+  class HttpResolver
+  class LogBasedResolver
+}
+
+package "model" as model {
+  class DidLog
+  class DidDocument
+}
+
+package "log" as log {
+  class LogParser
+  class LogValidator
+}
+
+package "witness" as witness {
+  class WitnessProofCollection
+  class WitnessValidator
+}
+
+package "crypto" as crypto {
+  class DataIntegrity
+  interface Signer <<host-provided>> #FFF4C2
+  interface Verifier <<host-provided>> #FFF4C2
+}
+
+' -- facade dispatch --
+DidWebVh --> operation
+DidWebVh --> resolve
+
+' -- write path --
+operation --> model : builds / signs
+operation --> crypto : DataIntegrity.createProof
+
+' -- read path --
+resolve --> log : parse + validate log
+resolve --> witness : parse + validate proofs
+resolve --> model
+HttpResolver --> LogBasedResolver : delegates after fetch
+
+' -- crypto is the shared verification core --
+log --> crypto : DataIntegrity.verifyProof
+witness --> crypto : DataIntegrity.verifyProof
+
+note bottom of Signer
+  Implemented by the host app:
+  wraps its own private key
+end note
+
+note bottom of Verifier
+  Implemented by the host app
+  (or use the built-in did:key
+  DefaultVerifier)
+end note
+
+@enduml
