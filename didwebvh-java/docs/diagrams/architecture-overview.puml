@@ -72,16 +72,19 @@ api --> resolve
 didweb --> resolve
 
 resolve -[hidden]-> operation
-
-operation --> base
 resolve --> log
 resolve --> witness
-log --> base
-witness --> base
 
-resolve -[hidden]right-> fetcher
-base -[hidden]right-> verifier
-base -[hidden]right-> signer
+' Declared witness/log/operation (not operation/log/witness) on purpose: with
+' 3 incoming edges into the same cluster, Graphviz picks boundary ports by
+' declaration order, not by the source's actual x-position. This order is
+' the one that lines each arrow up straight under its source; reordering
+' (or re-adding the `base -[hidden]right-> host` pins below) reliably makes
+' the witness edge detour sideways before dropping in -- verify with the
+' rendered output after touching this block.
+witness --> base
+log --> base
+operation --> base
 
 fetcher ..> resolve
 verifier ..> crypto
