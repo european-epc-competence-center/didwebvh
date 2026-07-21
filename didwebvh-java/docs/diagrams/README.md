@@ -17,7 +17,10 @@ that shared group with a single arrow instead of drawing all 6 individual
 edges. `LogFetcher`, `Verifier`, and `Signer` are the host-provided
 extension points (dashed boxes, dashed arrows) that cross the `library`/
 `host` boundary — the same boundary Chapter 4 (Security Analysis) treats as
-the trust boundary.
+the trust boundary. Each interface box carries a small sub-label stating
+whether it ships a built-in default: `LogFetcher` (an `HttpClient`-backed
+fetcher) and `Verifier` (`DefaultVerifier`, for `eddsa-jcs-2022`) both do;
+`Signer` does not, since a private key can only come from the host.
 
 ### Regenerate after editing
 
@@ -44,10 +47,32 @@ A PlantUML *component* diagram, not a class diagram: each package is a
 single `component "name" as alias` box (no class members), grouped into
 `package "library" { ... }` / `package "host" { ... }` boundaries, with
 `A --> B` for "uses" and `A ..> B` for the dashed host-plugin edges. There
-are deliberately no arrow labels or notes, matching the minimal style of the
-thesis figure it substitutes — the prose/caption carries that context
-instead. `skinparam linetype ortho` keeps every edge an axis-aligned bend
-(no diagonals, no stray curves); the `-[hidden]->` edges exist purely to
-pin node ranks/columns for a crossing-free layout and carry no semantic
-meaning. Prefer the `.svg` (or `.pdf`) output for embedding in the thesis
-(vector, scales without blur at any print size).
+are deliberately no arrow labels, matching the minimal style of the thesis
+figure it substitutes — the prose/caption carries that context instead. The
+one exception is the small `<size:9>...</size>` sub-label baked into each
+host interface's own name (not a separate note element), stating whether it
+has a built-in default; keep that distinction in mind if you ever add more
+annotations — a floating `note ... end note` attached to the whole `host`
+package was tried first and rejected because it reordered the unrelated
+`library` layout as a side effect (PlantUML/Graphviz add invisible
+connector edges for notes, which perturb ranking elsewhere in the graph).
+`skinparam linetype ortho` keeps every edge an axis-aligned bend (no
+diagonals, no stray curves).
+
+Two Graphviz quirks to know about if you touch the layout:
+
+- The `resolve -[hidden]-> operation` edge exists purely to pull `operation`
+  onto the same rank as `log`/`witness` (so its edge into `base` is a short
+  vertical drop instead of a multi-rank-spanning line); it carries no
+  semantic meaning.
+- The declaration order of `witness --> base`, `log --> base`,
+  `operation --> base` is significant: with 3 edges converging on the same
+  cluster, Graphviz assigns boundary "ports" by declaration order, not by
+  the source's actual on-screen position. The current order is the one that
+  keeps every arrow a straight drop under its source — reordering those
+  three lines (or adding more hidden edges anchored to `base`) can silently
+  make one of them detour sideways before entering the box. Always eyeball
+  the rendered output after editing anything near that block.
+
+Prefer the `.svg` (or `.pdf`) output for embedding in the thesis (vector,
+scales without blur at any print size).

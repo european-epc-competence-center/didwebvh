@@ -61,10 +61,14 @@ package "library" {
   }
 }
 
+' Sub-labels state which of the three host-provided interfaces ship a
+' built-in default (LogFetcher: HttpClient-backed; Verifier: DefaultVerifier
+' for eddsa-jcs-2022) and which does not (Signer -- a private key can only
+' come from the host).
 package "host" {
-  component "LogFetcher" as fetcher #line.dashed
-  component "Verifier" as verifier #line.dashed
-  component "Signer" as signer #line.dashed
+  component "LogFetcher\n<size:9><color:#888888>(default provided)</color></size>" as fetcher #line.dashed
+  component "Verifier\n<size:9><color:#888888>(default provided)</color></size>" as verifier #line.dashed
+  component "Signer\n<size:9><color:#888888>(no default)</color></size>" as signer #line.dashed
 }
 
 api --> operation
