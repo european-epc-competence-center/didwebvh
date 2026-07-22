@@ -121,9 +121,18 @@ mvn compile
 # Run tests
 mvn test
 
+# Run tests and generate the JaCoCo coverage report
+mvn clean verify
+# Open target/site/jacoco/index.html
+
 # Package as JAR
 mvn package
 ```
+
+The generated coverage results remain local under `didwebvh-java/target/site/jacoco/`:
+- `index.html` — browsable report by package, class, method, and line
+- `jacoco.csv` — tabular results suitable for analysis
+- `jacoco.xml` — machine-readable results
 
 ### Project Structure
 
