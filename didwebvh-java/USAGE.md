@@ -31,7 +31,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
   <groupId>de.eecc.did</groupId>
   <artifactId>webvh</artifactId>
-  <version>0.3.1</version>
+  <version>0.4.1</version>
 </dependency>
 ```
 
@@ -198,8 +198,10 @@ String jsonl = LogSerializer.serialize(result.log());
 If you already have a `did:web` DID document, you can turn it into a `did:webvh`
 without rebuilding the document by hand. `DidWebImporter` rewrites the document's
 own identifier (the `id`, `controller`, verification-method IDs, fragments, and
-same-domain paths) to `did:webvh:{SCID}:{domain}` and records the original
-`did:web` DID in `alsoKnownAs`. References to *other* DIDs are left untouched.
+DID URLs based on it) to `did:webvh:{SCID}:{domain}` and records the original
+`did:web` DID in `alsoKnownAs`. References to *other* DIDs are left untouched,
+including DIDs nested under its own, such as `did:web:example.com:company:subsidiary`
+in a document for `did:web:example.com:company`.
 
 This is the spec-supported transition path: `did:web` and `did:webvh` are
 identical except for the method name and the added `{SCID}` element, so the

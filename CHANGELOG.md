@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.4.1] - 2026-11-02
+
+### Changed
+
+- `create`, `update` and `deactivate` are stricter: calls that used to succeed now throw if the log or the new entry is invalid
+
 ### Fixed
 
 - `create`, `update` and `deactivate` now throw `LogValidationException` instead of returning an entry a resolver would reject (bad signature, unauthorized signer, invalid `versionTime`)
