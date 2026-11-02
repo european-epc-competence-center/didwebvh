@@ -168,4 +168,46 @@ class InvalidEntryGuardTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("partially parsed");
     }
+
+    /** Changes the state of one entry without re-signing it, so its hash no longer matches. */
+    private static DidLog tamperWithEntry(DidLog log, int lineIndex) {
+        String[] lines = LogSerializer.serialize(log).split("\n");
+        lines[lineIndex] = lines[lineIndex].replace("\"state\":{", "\"state\":{\"tampered\":true,");
+        return LogParser.parse(String.join("\n", lines));
+    }
+
+    @Test
+    void updateRejectsLogWithTamperedEarlierEntry() {
+        CreateResult created = createDid();
+        DidLog log = DidWebVh.update(updateOptions(created.log(), created, keyA.signer()).build()).log();
+        DidLog tampered = tamperWithEntry(log, 0);
+
+        assertThatThrownBy(() -> DidWebVh.update(updateOptions(tampered, created, keyA.signer()).build()))
+                .isInstanceOf(LogValidationException.class)
+                .hasMessageContaining("Refusing to append")
+                .hasMessageContaining("Log entry 1");
+    }
+
+    @Test
+    void updateRejectsLogWithTamperedLatestEntry() {
+        CreateResult created = createDid();
+        DidLog log = DidWebVh.update(updateOptions(created.log(), created, keyA.signer()).build()).log();
+        DidLog tampered = tamperWithEntry(log, 1);
+
+        assertThatThrownBy(() -> DidWebVh.update(updateOptions(tampered, created, keyA.signer()).build()))
+                .isInstanceOf(LogValidationException.class)
+                .hasMessageContaining("Refusing to append")
+                .hasMessageContaining("Log entry 2");
+    }
+
+    @Test
+    void deactivateRejectsLogWithTamperedEntry() {
+        DidLog tampered = tamperWithEntry(createDid().log(), 0);
+
+        assertThatThrownBy(() -> DidWebVh.deactivate(
+                        DeactivateOptions.builder().log(tampered).signer(keyA.signer()).build()))
+                .isInstanceOf(LogValidationException.class)
+                .hasMessageContaining("Refusing to append")
+                .hasMessageContaining("Log entry 1");
+    }
 }

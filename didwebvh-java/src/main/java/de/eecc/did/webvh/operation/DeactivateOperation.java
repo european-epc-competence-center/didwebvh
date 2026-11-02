@@ -42,7 +42,8 @@ public final class DeactivateOperation {
      * @return the result containing the updated log with the deactivation entry
      * @throws IllegalArgumentException if required options are missing or invalid
      * @throws IllegalStateException if the DID is already deactivated or pre-rotation is still active
-     * @throws de.eecc.did.webvh.exception.LogValidationException if the new entry would be rejected by a resolver
+     * @throws de.eecc.did.webvh.exception.LogValidationException if the current log is invalid,
+     *         or the new entry would be rejected by a resolver
      */
     public static DeactivateResult deactivate(DeactivateOptions options) {
         validateOptions(options);
@@ -52,6 +53,7 @@ public final class DeactivateOperation {
             DidLog currentLog = options.getLog();
             DidLogEntry previous = currentLog.latest();
 
+            OperationSupport.validateExistingLog(currentLog);
             Parameters activeParams = OperationSupport.effectiveParameters(currentLog);
 
             if (activeParams.isDeactivated()) {

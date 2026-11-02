@@ -123,6 +123,21 @@ final class OperationSupport {
     }
 
     /**
+     * Runs the existing entries through the same checks a resolver applies. Appending to a log
+     * that fails them would sign a new entry that resolvers can never reach. Witness proofs are
+     * not checked, because they are not part of the log and may still be being collected.
+     *
+     * @throws LogValidationException if a resolver would reject an existing entry
+     */
+    static void validateExistingLog(DidLog currentLog) {
+        try {
+            new LogValidator(null).validate(currentLog);
+        } catch (LogValidationException e) {
+            throw new LogValidationException("Refusing to append to an invalid log: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Computes the {@code versionTime} for a create entry.
      * Uses {@code provided} if non-null; otherwise falls back to the current wall-clock time.
      */

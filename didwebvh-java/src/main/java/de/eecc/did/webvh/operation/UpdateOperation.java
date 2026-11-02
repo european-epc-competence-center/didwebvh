@@ -22,7 +22,8 @@ import java.util.Objects;
  *
  * <p>Appends a new log entry to an existing log following the spec §3.6.3 flow:
  * <ol>
- *   <li>Validate inputs and compute the fully-merged active parameter state.</li>
+ *   <li>Validate inputs, verify the existing log, and compute the fully-merged active
+ *       parameter state.</li>
  *   <li>Reject if the DID is deactivated.</li>
  *   <li>Verify the signing key is authorized (spec "Authorized Keys"):
  *       without pre-rotation the signer must be in the previous {@code updateKeys};
@@ -60,6 +61,7 @@ public final class UpdateOperation {
             DidLog currentLog = options.getLog();
             DidLogEntry previous = currentLog.latest();
 
+            OperationSupport.validateExistingLog(currentLog);
             Parameters activeParams = OperationSupport.effectiveParameters(currentLog);
 
             if (activeParams.isDeactivated()) {

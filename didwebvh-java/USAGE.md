@@ -825,7 +825,7 @@ The library uses exceptions for programming errors and result objects for resolu
 
 - **IllegalArgumentException / NullPointerException** — missing or invalid options (e.g. missing domain, empty updateKeys, unauthorised signer, a log that was only partially parsed).
 - **IllegalStateException** — invalid operation state (e.g. updating a deactivated DID, deactivating while pre-rotation is active).
-- **LogValidationException** — log integrity failure (bad signature, broken hash chain, invalid SCID). `create`, `update` and `deactivate` also throw it instead of returning an entry a resolver would reject, for example a signature that does not verify, a signer outside the required `updateKeys`, an invalid `versionTime`, or a timestamp pushed too far ahead by many updates per second. Nothing has been appended when this happens, so do not publish anything; retry a timestamp failure after a few seconds.
+- **LogValidationException** — log integrity failure (bad signature, broken hash chain, invalid SCID). `create`, `update` and `deactivate` also throw it instead of returning an entry a resolver would reject, for example a signature that does not verify, a signer outside the required `updateKeys`, an invalid `versionTime`, or a timestamp pushed too far ahead by many updates per second. `update` and `deactivate` also verify the existing log first and throw it if a resolver would reject an existing entry; witness proofs are not part of this check. Nothing has been appended when this happens, so do not publish anything; retry a timestamp failure after a few seconds.
 - **ResolveResult** — resolution errors are *encoded in the result*. Always check `result.isSuccess()` and inspect `result.metadata().error()` and `result.metadata().problemDetails()`.
 
 Example:

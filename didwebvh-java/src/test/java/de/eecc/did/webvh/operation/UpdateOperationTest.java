@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import de.eecc.did.webvh.DidDocument;
 import de.eecc.did.webvh.api.CreateOptions;
 import de.eecc.did.webvh.api.CreateResult;
+import de.eecc.did.webvh.api.DeactivateOptions;
 import de.eecc.did.webvh.api.UpdateOptions;
 import de.eecc.did.webvh.api.UpdateResult;
 import de.eecc.did.webvh.crypto.DataIntegrity;
@@ -825,18 +826,8 @@ class UpdateOperationTest {
             CreateResult created = createDid();
             String scid = created.metadata().scid();
 
-            // Manually build a log where the DID is deactivated
-            DidLogEntry genesis = created.log().first();
-            Parameters deactivatedDelta = new Parameters(
-                    null, null, List.of(), null, null, true, null, null, null);
-            DidLogEntry deactivationEntry = new DidLogEntry(
-                    "2-fakehash1234567890123456789012345678901234",
-                    Instant.now().toString(),
-                    deactivatedDelta,
-                    genesis.state(),
-                    genesis.proof());
-
-            DidLog deactivatedLog = created.log().append(deactivationEntry);
+            DidLog deactivatedLog = DeactivateOperation.deactivate(
+                    DeactivateOptions.builder().log(created.log()).signer(signerA).build()).log();
 
             assertThatThrownBy(() -> UpdateOperation.update(
                     UpdateOptions.builder()
