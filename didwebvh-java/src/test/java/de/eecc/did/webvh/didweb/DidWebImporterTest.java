@@ -113,6 +113,35 @@ class DidWebImporterTest {
     }
 
     @Test
+    void leavesDidNestedUnderOwnDidUntouched() {
+        DidDocument didWeb = DidDocument.fromJson("""
+                {"id":"did:web:example.com:company","controller":"did:web:example.com:company:subsidiary"}""");
+
+        DidDocument result = DidWebImporter.toWebVhDocument(didWeb);
+
+        assertThat(result.getString("id")).isEqualTo("did:webvh:{SCID}:example.com:company");
+        assertThat(result.getString("controller")).isEqualTo("did:web:example.com:company:subsidiary");
+    }
+
+    @Test
+    void rewritesOwnDidUrlDelimiters() {
+        DidDocument didWeb = DidDocument.fromJson("""
+                {"id":"did:web:example.com","service":[
+                  {"id":"#a","type":"T","serviceEndpoint":"did:web:example.com/path"},
+                  {"id":"#b","type":"T","serviceEndpoint":"did:web:example.com?versionId=1"},
+                  {"id":"#c","type":"T","serviceEndpoint":"did:web:example.com;param=1"}]}""");
+
+        DidDocument result = DidWebImporter.toWebVhDocument(didWeb);
+
+        assertThat(result.getObjects("service"))
+                .extracting(service -> service.getString("serviceEndpoint"))
+                .containsExactly(
+                        "did:webvh:{SCID}:example.com/path",
+                        "did:webvh:{SCID}:example.com?versionId=1",
+                        "did:webvh:{SCID}:example.com;param=1");
+    }
+
+    @Test
     void canSkipAliasLinking() {
         DidDocument didWeb = DidDocument.fromJson("""
                 {"id":"did:web:example.com"}""");

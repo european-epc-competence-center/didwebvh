@@ -26,13 +26,24 @@ import java.util.List;
  *     .build();
  * }</pre>
  *
- * <p>Example (key rotation):
+ * <p>Example (key rotation without pre-rotation; the old key signs, the new key signs from the next update on):
  * <pre>{@code
  * var options = UpdateOptions.builder()
  *     .log(currentLog)
  *     .updatedDocument(newDoc)
  *     .updateKeys(List.of(newPublicKeyMultibase))
- *     .signer(newSigner)
+ *     .signer(oldSigner)
+ *     .build();
+ * }</pre>
+ *
+ * <p>Example (while pre-rotation is active; the revealed key signs, and a fresh key is committed):
+ * <pre>{@code
+ * var options = UpdateOptions.builder()
+ *     .log(currentLog)
+ *     .updatedDocument(newDoc)
+ *     .updateKeys(List.of(revealedPublicKeyMultibase))
+ *     .nextKeyHashes(List.of(hashOfNextKey))
+ *     .signer(revealedSigner)
  *     .build();
  * }</pre>
  */
@@ -44,18 +55,22 @@ public final class UpdateOptions {
     /** The new DID document state to record in this log entry. */
     private final DidDocument updatedDocument;
 
-    /** The signing key corresponding to the currently active {@code updateKeys}. */
+    /**
+     * The signing key: one from the previous entry's {@code updateKeys} or, while pre-rotation
+     * is active, one from this entry's {@code updateKeys}.
+     */
     private final Signer signer;
 
     /**
-     * New authorization keys; supply only when rotating keys.
-     * {@code null} means the current {@code updateKeys} remain unchanged.
+     * New authorization keys; supply when rotating keys, and on every update while pre-rotation
+     * is active. {@code null} means the current {@code updateKeys} remain unchanged.
      */
     private final List<String> updateKeys;
 
     /**
-     * New pre-rotation key hashes; supply only when changing pre-rotation configuration.
-     * {@code null} means the current {@code nextKeyHashes} remain unchanged.
+     * New pre-rotation key hashes; supply when changing pre-rotation configuration, and on every
+     * update while it is active. {@code null} means the current {@code nextKeyHashes} remain
+     * unchanged, which leaves an already revealed key committed and able to sign again.
      */
     private final List<String> nextKeyHashes;
 

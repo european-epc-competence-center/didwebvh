@@ -48,6 +48,7 @@ public final class CreateOperation {
      * @param options creation options (domain, initial document, update keys, signer, etc.)
      * @return the result containing the DID string, resolved document, metadata, and single-entry log
      * @throws IllegalArgumentException if required options are missing or invalid
+     * @throws de.eecc.did.webvh.exception.LogValidationException if the new entry would be rejected by a resolver
      */
     public static CreateResult create(CreateOptions options) {
         log.trace("Received request to create DID for domain: {}", options.getDomain());
@@ -92,6 +93,8 @@ public final class CreateOperation {
                     scidEntry.parameters(),
                     scidEntry.state(),
                     options.getSigner());
+
+            OperationSupport.validateNewEntry(finalEntry, null, null);
 
             DidLog didLog = DidLog.empty().append(finalEntry);
 

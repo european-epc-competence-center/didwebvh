@@ -86,7 +86,7 @@ de.eecc.did.webvh/
 
 ### `operation/` — Pure Business Logic
 - `CreateOperation`, `UpdateOperation`, `DeactivateOperation`
-- `OperationSupport` (package-private) — effective `Parameters` from a `DidLog`; signer authorization vs active `updateKeys` / `nextKeyHashes`
+- `OperationSupport` (package-private) — effective `Parameters` from a `DidLog`; signer authorization vs active `updateKeys` / `nextKeyHashes`; runs each new entry through `LogValidator` before it is returned; rejects partially parsed logs
 
 ### `resolve/`
 - `DidResolver` interface — network-facing contract

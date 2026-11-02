@@ -19,7 +19,8 @@ cannot be fooled into accepting a forged or unauthorized DID document state.
 |----------|-------|---------|
 | **Critical** | 1 *(resolved)* | Witness-proof forgery via `did:key` body/fragment mismatch → witness threshold bypass — **fixed in [`7ef8ba5`](#critical-resolved)** |
 | **Medium** | 1 | SSRF: no DNS/private-IP filtering on log fetch and on explicit service-endpoint fetch |
-| **Low** | 3 | SCID not pinned across a portability transition; `LogValidator` NPEs on entries missing `state`; witness proofs skip cryptosuite/purpose field checks |
+| **Low** | 1 *(resolved)* | SCID not pinned across a portability transition — **fixed in 0.4.0** |
+| **Low** | 2 | `LogValidator` NPEs on entries missing `state`; witness proofs skip cryptosuite/purpose field checks |
 
 The codebase is, overall, notably well-hardened: 14 of the 15 Mythos bug patterns were
 correctly defended at the time of review (see
@@ -174,7 +175,9 @@ and assert resolution fails closed.
 
 ## Low
 
-### [LOW] SCID is not pinned across a portability (domain-change) transition
+### [LOW — RESOLVED] SCID is not pinned across a portability (domain-change) transition
+
+**Status:** Fixed in 0.4.0. A renamed DID must now keep the `did:webvh` method and the genesis SCID ([`log/LogValidator.java`](src/main/java/de/eecc/did/webvh/log/LogValidator.java), portability check). The rest of this entry describes the code as reviewed.
 
 **Location:** [`log/LogValidator.java:144-159`](src/main/java/de/eecc/did/webvh/log/LogValidator.java#L144-L159) (portability check).
 

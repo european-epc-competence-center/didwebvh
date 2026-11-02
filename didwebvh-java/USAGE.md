@@ -350,7 +350,7 @@ if (result.isSuccess()) {
 
 ## Updating a DID
 
-Updating appends a new entry to the log. You provide the current log, the new document, and a signer authorised by the current `updateKeys`.
+Updating appends a new entry to the log. You provide the current log, the new document, and an authorised signer: a key from the previous entry's `updateKeys` or, while [pre-rotation](#pre-rotation) is active, a key revealed in this entry's `updateKeys`.
 
 The new document's top-level `id` must be the DID (spec §Update step 1). The only
 exception is a portable rename: a portable DID may change its `id` to a
@@ -389,17 +389,21 @@ DidLog updatedLog = result.log(); // currentLog + new entry
 |----------------|----------|-------------|
 | `.log(DidLog)` | **Yes** | The current log to append to. |
 | `.updatedDocument(DidDocument)` | **Yes** | The new DID document state. |
-| `.signer(Signer)` | **Yes** | The signing key matching the *currently active* `updateKeys`. |
-| `.updateKeys(List<String>)` | No | New authorization keys. Supply only when **rotating keys**. |
-| `.nextKeyHashes(List<String>)` | No | New pre-rotation hashes. Supply only when changing pre-rotation. |
+| `.signer(Signer)` | **Yes** | The signing key: one from the previous entry's `updateKeys` or, while pre-rotation is active, one from this entry's `updateKeys`. |
+| `.updateKeys(List<String>)` | No | New authorization keys. Supply when **rotating keys**, and on every update while pre-rotation is active. |
+| `.nextKeyHashes(List<String>)` | No | New pre-rotation hashes. Supply when changing pre-rotation, and on every update while it is active. |
 | `.witness(WitnessParameter)` | No | New witness configuration. Supply only when changing witnesses. |
 | `.watchers(List<String>)` | No | New watcher URLs. Supply only when changing watchers. |
 | `.ttl(Integer)` | No | New cache TTL. Supply only when changing TTL. |
 | `.domain(String)` | No | New web domain for a portable DID move. The library rewrites the supplied document's `id`/`controller` to `did:webvh:{SCID}:{domain}` and prepends the previous DID to `alsoKnownAs`. Requires `portable: true` at creation. See [Portability](#portability). |
 
-> **Important:** Only supply optional fields when that aspect of the DID is actually changing. Unchanged fields are inherited automatically from the previous log entry. This produces a compact *parameter delta*.
+> **Important:** Only supply optional fields when that aspect of the DID is actually changing. Unchanged fields are inherited automatically from the previous log entry. This produces a compact *parameter delta*. Pre-rotation is the exception: while it is active, every update is a rotation, so see [Pre-Rotation](#pre-rotation).
+
+> **Warning:** The library does not check that you hold the private keys behind `updateKeys` and `nextKeyHashes`, or that those values are well-formed. Publishing a value no key of yours can satisfy locks the DID permanently.
 
 ### Key Rotation
+
+This section applies when pre-rotation is not active; otherwise follow [Pre-Rotation](#pre-rotation).
 
 Rotate to a new key by generating a second key pair, supplying the new public key in `updateKeys`, and signing the update with the **old** (currently authorised) private key:
 
@@ -469,7 +473,9 @@ UpdateResult result = DidWebVh.update(
 
 ### Pre-Rotation
 
-Pre-rotation lets you commit to future keys via their hashes before revealing the public keys. This protects against key-compromise attacks.
+Pre-rotation lets you commit to future keys via their hashes before revealing the public keys. An attacker who steals the current key cannot take over the DID, as long as the committed keys stay safe. That protection only holds if each update commits to a **fresh** key (step 3).
+
+Once a commitment is published, the keys in the current `updateKeys` can no longer sign: key A below signs only the genesis entry. You can also activate pre-rotation on an existing log by passing `.nextKeyHashes(...)` in an update signed by the current key; the same applies from the next update on.
 
 **1. Generate both key pairs:**
 
@@ -538,23 +544,47 @@ CreateResult created = DidWebVh.create(
 );
 ```
 
-**3. Reveal the committed key on the next update:**
+**3. On the next update, reveal the committed key and commit to a fresh one:**
+
+Generate key C the same way as key B, then:
 
 ```java
+String hashC = Multiformats.sha256Multihash(keyCMultibase.getBytes(StandardCharsets.UTF_8));
+
 UpdateResult result = DidWebVh.update(
     UpdateOptions.builder()
         .log(created.log())
         .updatedDocument(newDoc)
         .updateKeys(List.of(keyBMultibase)) // reveal key B
+        .nextKeyHashes(List.of(hashC))      // commit to key C
         .signer(signerB)                    // must sign with key B
         .build()
 );
 ```
 
-Rules enforced by the library:
-- When pre-rotation is active, the next update **must** reveal one of the committed keys.
-- The update must be **signed by the revealed key**.
-- To disable pre-rotation, pass `.nextKeyHashes(List.of())` in an update.
+> **Warning:** If you omit `.nextKeyHashes(...)`, the previous list is copied forward, so key B stays committed and can sign again. The log remains valid, but anyone who obtains key B can then control the DID. Treat a revealed key as spent, as the spec recommends.
+
+Rules enforced by the library while pre-rotation is active:
+- **Every** update must list at least one key in `updateKeys`, and the hash of **each** listed key must be in the previous `nextKeyHashes`.
+- The update must be **signed by a key listed in its own `updateKeys`**.
+
+**4. To disable pre-rotation, reveal a committed key one last time and pass an empty list:**
+
+The disabling entry is still under pre-rotation rules, so `.nextKeyHashes(List.of())` alone is rejected. Continuing from step 3:
+
+```java
+UpdateResult disabled = DidWebVh.update(
+    UpdateOptions.builder()
+        .log(result.log())
+        .updatedDocument(newDoc)
+        .updateKeys(List.of(keyCMultibase)) // reveal key C
+        .nextKeyHashes(List.of())           // turn pre-rotation off
+        .signer(signerC)                    // must sign with key C
+        .build()
+);
+```
+
+Later updates follow the normal rules, with key C as the active key.
 
 ---
 
@@ -577,7 +607,7 @@ DidLog deactivatedLog = result.log();
 // Publish deactivatedLog to replace did.jsonl
 ```
 
-> **Restriction:** Deactivation is rejected while pre-rotation is still active. You must clear pre-rotation (`.nextKeyHashes(List.of())`) in an update before deactivating.
+> **Restriction:** Deactivation is rejected while pre-rotation is still active. You must first [disable pre-rotation](#pre-rotation) in an update (step 4), then deactivate with the key that update revealed.
 
 ---
 
@@ -793,9 +823,9 @@ ResolveResult result = resolver.resolve(did, ResolveOptions.builder().build());
 
 The library uses exceptions for programming errors and result objects for resolution failures:
 
-- **IllegalArgumentException / NullPointerException** — missing or invalid options (e.g. missing domain, empty updateKeys, unauthorised signer).
+- **IllegalArgumentException / NullPointerException** — missing or invalid options (e.g. missing domain, empty updateKeys, unauthorised signer, a log that was only partially parsed).
 - **IllegalStateException** — invalid operation state (e.g. updating a deactivated DID, deactivating while pre-rotation is active).
-- **LogValidationException** — log integrity failure (bad signature, broken hash chain, invalid SCID).
+- **LogValidationException** — log integrity failure (bad signature, broken hash chain, invalid SCID). `create`, `update` and `deactivate` also throw it instead of returning an entry a resolver would reject, for example a signature that does not verify, a signer outside the required `updateKeys`, an invalid `versionTime`, or a timestamp pushed too far ahead by many updates per second. Nothing has been appended when this happens, so do not publish anything; retry a timestamp failure after a few seconds.
 - **ResolveResult** — resolution errors are *encoded in the result*. Always check `result.isSuccess()` and inspect `result.metadata().error()` and `result.metadata().problemDetails()`.
 
 Example:

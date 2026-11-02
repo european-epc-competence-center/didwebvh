@@ -7,6 +7,8 @@ import de.eecc.did.webvh.crypto.DataIntegrity;
 import de.eecc.did.webvh.crypto.JcsCanonicalizer;
 import de.eecc.did.webvh.crypto.Multiformats;
 import de.eecc.did.webvh.crypto.Signer;
+import de.eecc.did.webvh.exception.LogValidationException;
+import de.eecc.did.webvh.log.LogValidator;
 import de.eecc.did.webvh.model.DidLog;
 import de.eecc.did.webvh.model.DidLogEntry;
 import de.eecc.did.webvh.model.Parameters;
@@ -86,6 +88,38 @@ final class OperationSupport {
                 signer);
 
         return new DidLogEntry(versionId, versionTime, parameters, state, List.of(proof));
+    }
+
+    /**
+     * Runs a newly built entry through the same checks a resolver applies. A log is append-only,
+     * so an entry that fails them must never reach the caller: once published, it makes the
+     * latest version of the DID unresolvable and later valid entries cannot repair it.
+     *
+     * @param entry        the newly built entry
+     * @param previous     the preceding entry, or {@code null} for genesis
+     * @param activeParams the effective parameters before this entry, or {@code null} for genesis
+     * @throws LogValidationException if the entry would be rejected by a resolver
+     */
+    static void validateNewEntry(DidLogEntry entry, DidLogEntry previous, Parameters activeParams) {
+        try {
+            new LogValidator(null).validateEntry(entry, previous, activeParams);
+        } catch (LogValidationException e) {
+            throw new LogValidationException(
+                    "Refusing to produce an invalid log entry: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Rejects a log that did not parse completely. Its corrupt tail is missing from the entries,
+     * so appending would reuse a version number and silently drop what the tail held.
+     *
+     * @throws IllegalArgumentException if {@code currentLog} was only partially parsed
+     */
+    static void requireCompleteLog(DidLog currentLog) {
+        if (!currentLog.isParsingComplete()) {
+            throw new IllegalArgumentException(
+                    "log was only partially parsed (a line is corrupt); cannot append to it");
+        }
     }
 
     /**

@@ -49,7 +49,8 @@ public final class UpdateOperation {
      * @param options update options (current log, new document, signer, and any parameter changes)
      * @return the result containing the updated log
      * @throws IllegalArgumentException if required options are missing or invalid
-     * @throws de.eecc.did.webvh.exception.LogValidationException if the current log state is invalid for updates
+     * @throws de.eecc.did.webvh.exception.LogValidationException if the current log state is invalid for updates,
+     *         or the new entry would be rejected by a resolver
      */
     public static UpdateResult update(UpdateOptions options) {
         validateOptions(options);
@@ -102,6 +103,8 @@ public final class UpdateOperation {
                     documentToWrite,
                     options.getSigner());
 
+            OperationSupport.validateNewEntry(finalEntry, previous, activeParams);
+
             DidLog updatedLog = currentLog.append(finalEntry);
 
             String genesisTime = currentLog.first().versionTime();
@@ -140,6 +143,7 @@ public final class UpdateOperation {
         if (options.getLog().isEmpty()) {
             throw new IllegalArgumentException("log must not be empty");
         }
+        OperationSupport.requireCompleteLog(options.getLog());
     }
 
     /**

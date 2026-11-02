@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * <ol>
  *   <li>Rewrite every reference to the document's own {@code did:web:<domain>}
  *       identifier (the {@code id}, {@code controller}, verification-method IDs,
- *       service IDs, fragments, and same-domain paths) to
+ *       service IDs, and DID URLs based on it) to
  *       {@code did:webvh:{SCID}:<domain>}. The literal {@code {SCID}} placeholder
  *       is later replaced with the computed SCID by the create operation.</li>
  *   <li>Record the original {@code did:web} DID in {@code alsoKnownAs} so the
@@ -185,12 +185,14 @@ public final class DidWebImporter {
      * Rewrites the document's own DID (and any fragment/path identifiers derived
      * from it) to the target {@code did:webvh} DID (placeholder or concrete), leaving
      * references to other DIDs untouched. The lookahead restricts replacement to a
-     * full DID token: the base DID followed by a closing quote, a fragment
-     * ({@code #}), a path or percent-encoded port ({@code :}), or a slash.
+     * full DID token: the base DID followed by a closing quote or a DID URL delimiter
+     * (path {@code /}, query {@code ?}, parameter {@code ;}, fragment {@code #}). A
+     * following {@code :} is excluded because in {@code did:web} it starts another
+     * path segment, which makes it a different DID.
      */
     private static DidDocument rewriteOwnDid(DidDocument document, String didWeb, String webVhDid) {
         String json = document.toJson();
-        String rewritten = Pattern.compile(Pattern.quote(didWeb) + "(?=[\"#:/])")
+        String rewritten = Pattern.compile(Pattern.quote(didWeb) + "(?=[\"#/?;])")
                 .matcher(json)
                 .replaceAll(Matcher.quoteReplacement(webVhDid));
         return DidDocument.fromJson(rewritten);

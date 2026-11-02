@@ -252,6 +252,8 @@ public final class LogValidator {
         }
         // Allow up to 5 seconds of clock skew so that an auto-advanced timestamp
         // (prev + 1 s) produced in the same wall-clock second is not rejected.
+        // This is deliberately looser than the spec, which requires the last entry's
+        // versionTime to be earlier than the current time.
         if (entryTime.isAfter(Instant.now().plusSeconds(5))) {
             throw new LogValidationException(
                     "versionTime '" + entry.versionTime() + "' is in the future");

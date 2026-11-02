@@ -70,7 +70,13 @@ public record ResolveResult(
         this(did, null, DidDocumentMetadata.EMPTY, resolutionMetadata, contentStream);
     }
 
-    /** Returns {@code true} if resolution or dereferencing succeeded. */
+    /**
+     * Returns {@code true} if resolution or dereferencing produced a document or content.
+     *
+     * <p>This is {@code false} for a deactivated DID resolved without a version filter, because
+     * no document is returned even though {@code resolutionMetadata} has no error. Check
+     * {@code documentMetadata().deactivated()} to tell that case apart from a failure.
+     */
     @JsonIgnore
     public boolean isSuccess() {
         return (document != null || contentStream != null)
